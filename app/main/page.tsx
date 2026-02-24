@@ -298,7 +298,7 @@ export default function MainPage() {
         {/* ✅ 회비 관리 화면 */}
         {activeTab === "fees" && (
           <div className="animate-fadeIn">
-            <div className="mb-4 p-4 bg-blue-50 rounded-xl flex justify-between items-center">
+            <div className="mb-4 p-2 md:p-4 bg-blue-50 rounded-xl flex justify-between items-center">
               <div className="flex gap-6 text-sm font-bold items-center">
                 <div className="flex items-center gap-2"><span className="text-black">●</span> 미납부</div>
                 <div className="flex items-center gap-2"><span className="text-red-500">●</span> 납부</div>
@@ -318,7 +318,7 @@ export default function MainPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-100 border-b">
                   <tr>
-                    <th className="p-4 border-r sticky left-0 bg-gray-100 z-10 w-24">이름</th>
+                    <th className="p-2 md:p-4 border-r sticky left-0 bg-gray-100 z-10 w-24">이름</th>
                     {Array.from({ length: 12 }, (_, i) => (<th key={i + 1} className="p-3 border-r">{i + 1}월</th>))}
                     <th className="p-3">일괄</th>
                   </tr>
@@ -326,7 +326,7 @@ export default function MainPage() {
                 <tbody className="divide-y">
                   {activeMembers.map((m) => (
                     <tr key={m.id} className="text-center hover:bg-gray-50 transition">
-                      <td className="p-4 border-r font-bold sticky left-0 bg-white z-10">{m.name}</td>
+                      <td className="p-2 md:p-4 border-r font-bold sticky left-0 bg-white z-10">{m.name}</td>
                       {Array.from({ length: 12 }, (_, i) => {
                         const month = i + 1;
                         const feeRecord = m.fees?.find((f) => f.year === selectedYear && f.month === month);
@@ -350,26 +350,26 @@ export default function MainPage() {
 
         {/* ✅ 회원 목록 테이블 (활동/탈퇴 공통) */}
         {activeTab !== "fees" && (
-          <div className="overflow-hidden border rounded-xl shadow-sm">
-            <table className="w-full text-sm text-left">
+          <div className="overflow-x-auto border rounded-xl shadow-sm">
+            <table className="min-w-[1000px] w-full text-xs md:text-sm text-left">
               <thead className="bg-gray-100 border-b text-gray-700">
                 <tr>
-                  <th className="p-4">이름</th>
-                  <th className="p-4">성별</th>
-                  <th className="p-4">생년월일</th>
-                  <th className="p-4">연락처</th>                  
-                  <th className="p-4">급수</th>
-                  <th className="p-4">등록일</th>
-                  <th className="p-4">{customLabel}</th>
-                  <th className="p-4">비고</th>
-                  <th className="p-4 text-center">관리</th>
+                  <th className="p-2 md:p-4">이름</th>
+                  <th className="p-2 md:p-4">성별</th>
+                  <th className="p-2 md:p-4">생년월일</th>
+                  <th className="p-2 md:p-4">연락처</th>                  
+                  <th className="p-2 md:p-4">급수</th>
+                  <th className="p-2 md:p-4">등록일</th>
+                  <th className="p-2 md:p-4">{customLabel}</th>
+                  <th className="p-2 md:p-4">비고</th>
+                  <th className="p-2 md:p-4 text-center">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {(activeTab === "active" ? activeMembers : deletedMembers).map((m) => (
                   <tr key={m.id} className={`hover:bg-gray-50 transition ${m.deleted ? "text-gray-400 bg-gray-50" : ""}`}>
-                    <td className="p-4 font-semibold">{m.name}</td>
-                    <td className="p-4">
+                    <td className="p-2 md:p-4 font-semibold">{m.name}</td>
+                    <td className="p-2 md:p-4">
                       <span className={`px-2 py-1 rounded text-xs font-bold ${m.gender === "남"
                           ? "bg-blue-100 text-blue-700"
                           : "bg-pink-100 text-pink-700"
@@ -377,11 +377,11 @@ export default function MainPage() {
                         {m.gender}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-500">
+                    <td className="p-2 md:p-4 text-gray-500">
                       {m.birth ? new Date(m.birth).toLocaleDateString("ko-KR") : ""}
                     </td>
-                    <td className="p-4">{m.phone}</td>
-                    <td className="p-4">
+                    <td className="p-2 md:p-4">{m.phone}</td>
+                    <td className="p-2 md:p-4">
                       <span
                         className={`px-2 py-1 rounded text-sm ${m.gender === "남"
                             ? "bg-blue-100 text-blue-700"
@@ -391,10 +391,10 @@ export default function MainPage() {
                         {m.level}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-500">{new Date(m.createdAt).toLocaleDateString()}</td>
-                    <td className="p-4 text-gray-500">{m.carnumber || "-"}</td>
-                    <td className="p-4 text-gray-500">{m.note}</td>
-                    <td className="p-4 text-center space-x-2">
+                    <td className="p-2 md:p-4 text-gray-500">{new Date(m.createdAt).toLocaleDateString()}</td>
+                    <td className="p-2 md:p-4 text-gray-500">{m.carnumber || "-"}</td>
+                    <td className="p-2 md:p-4 text-gray-500">{m.note}</td>
+                    <td className="p-2 md:p-4 text-center space-x-2">
                       {!m.deleted ? (
                         <>
                           {/* ✅ 수정 버튼: 테두리 및 음영 추가 */}
