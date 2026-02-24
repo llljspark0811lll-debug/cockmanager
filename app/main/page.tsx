@@ -61,6 +61,20 @@ export default function MainPage() {
     fetchMembers();
   }, []);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showModal) {
+        setShowModal(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [showModal]);
+
   // ✅ 정렬 로직 정의
   const sortMembers = (memberList: Member[]) => {
     return [...memberList].sort((a, b) => {
@@ -145,6 +159,7 @@ export default function MainPage() {
     setShowModal(false);
     setEditingMember(null);
     setForm({ name: "", gender: "", birth: "", phone: "", level: "", carnumber: "", note: "" });
+    window.history.back();
   };
 
   // ✅ Soft Delete
@@ -274,7 +289,10 @@ export default function MainPage() {
         {activeTab === "active" && (
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setShowModal(true);
+                window.history.pushState({ modal: true }, "");
+              }}
               className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm transition"
             >
               + 회원 등록
@@ -412,6 +430,7 @@ export default function MainPage() {
                                 note: m.note || "",
                               });
                               setShowModal(true);
+                              window.history.pushState({ modal: true }, "");
                             }}
                             className="px-3 py-1.5 rounded-lg border border-yellow-200 bg-yellow-50 text-yellow-700 text-xs font-bold shadow-sm hover:bg-yellow-500 hover:text-white hover:border-yellow-500 transition-all active:scale-95"
                           >
@@ -453,7 +472,7 @@ export default function MainPage() {
 
         {/* ✅ 회원 등록/수정 모달 */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 bg-black/60 flex justify-center items-center z-50">
+          <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
             <div className="bg-white p-6 rounded-2xl w-[95%] max-w-[420px] max-h-[85vh] overflow-y-auto shadow-2xl">
               <h2 className="text-xl font-bold mb-6 text-gray-800">{editingMember ? "회원 정보 수정" : "신규 회원 등록"}</h2>
               <div className="space-y-4">
@@ -487,8 +506,22 @@ export default function MainPage() {
                 ))}
               </div>
               <div className="flex gap-3 mt-8">
-                <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition">취소</button>
-                <button onClick={handleSubmit} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">저장하기</button>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    window.history.back();
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition"
+                >
+                  취소
+                </button>
+
+                <button
+                  onClick={handleSubmit}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition"
+                >
+                  저장하기
+                </button>
               </div>
             </div>
           </div>
