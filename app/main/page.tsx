@@ -54,17 +54,32 @@ export default function MainPage() {
   };
 
   useEffect(() => {
-    const savedLabel = localStorage.getItem("custom1Label");
-    if (savedLabel) {
-      setCustomLabel(savedLabel);
-    }
-    fetchMembers();
-  }, []);
+    // 현재 페이지를 고정
+    window.history.replaceState({ page: "main" }, "");
 
-  useEffect(() => {
+    // guard 하나 추가
+    window.history.pushState({ guard: true }, "");
+
     const handlePopState = () => {
       if (showModal) {
         setShowModal(false);
+
+        // 모달 닫았으면 guard 복구
+        window.history.pushState({ guard: true }, "");
+        return;
+      }
+
+      const confirmLogout = window.confirm("정말 로그아웃 하시겠습니까?");
+
+      if (confirmLogout) {
+        localStorage.removeItem("isLoggedIn");
+        window.location.href = "/";
+      } else {
+        // 🔥 여기서 중요한 건
+        // 이미 pop된 상태이므로
+        // replace + push 로 스택 복구
+        window.history.replaceState({ page: "main" }, "");
+        window.history.pushState({ guard: true }, "");
       }
     };
 
@@ -74,6 +89,14 @@ export default function MainPage() {
       window.removeEventListener("popstate", handlePopState);
     };
   }, [showModal]);
+
+  useEffect(() => {
+    const savedLabel = localStorage.getItem("custom1Label");
+    if (savedLabel) {
+      setCustomLabel(savedLabel);
+    }
+    fetchMembers();
+  }, []);
 
   // ✅ 정렬 로직 정의
   const sortMembers = (memberList: Member[]) => {
@@ -159,7 +182,14 @@ export default function MainPage() {
     setShowModal(false);
     setEditingMember(null);
     setForm({ name: "", gender: "", birth: "", phone: "", level: "", carnumber: "", note: "" });
-    window.history.back();
+  };
+
+  const handleLogout = () => {
+    const confirmLogout = window.confirm("정말 로그아웃 하시겠습니까?");
+    if (!confirmLogout) return;
+
+    localStorage.removeItem("isLoggedIn");
+    window.location.href = "/";
   };
 
   // ✅ Soft Delete
@@ -261,9 +291,18 @@ export default function MainPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-6 font-sans">
       <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-lg p-6">
-        <h1 className="text-lg md:text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
-          🏸 회원 관리 시스템
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            🏸 회원 관리 시스템
+          </h1>
+
+          <button
+            onClick={handleLogout}
+            className="text-sm md:text-base px-4 py-2 rounded-full bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition"
+          >
+            로그아웃
+          </button>
+        </div>
 
         {/* ✅ 탭 메뉴 */}
         <div className="flex gap-2 mb-6 border-b pb-4 overflow-x-auto whitespace-nowrap">
@@ -290,8 +329,19 @@ export default function MainPage() {
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
             <button
               onClick={() => {
+                setEditingMember(null);
+
+                setForm({
+                  name: "",
+                  gender: "",
+                  birth: "",
+                  phone: "",
+                  level: "",
+                  carnumber: "",
+                  note: "",
+                });
+
                 setShowModal(true);
-                window.history.pushState({ modal: true }, "");
               }}
               className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold shadow-sm transition"
             >
@@ -430,7 +480,6 @@ export default function MainPage() {
                                 note: m.note || "",
                               });
                               setShowModal(true);
-                              window.history.pushState({ modal: true }, "");
                             }}
                             className="px-3 py-1.5 rounded-lg border border-yellow-200 bg-yellow-50 text-yellow-700 text-xs font-bold shadow-sm hover:bg-yellow-500 hover:text-white hover:border-yellow-500 transition-all active:scale-95"
                           >
@@ -509,7 +558,7 @@ export default function MainPage() {
                 <button
                   onClick={() => {
                     setShowModal(false);
-                    window.history.back();
+                    window.history.pushState({ modal: true }, "");
                   }}
                   className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition"
                 >
