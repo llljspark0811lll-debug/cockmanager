@@ -30,6 +30,15 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { name, gender, birth, phone, level } = body;
+
+    if (!name || !gender || !birth || !phone || !level) {
+      return NextResponse.json(
+        { error: "필수 항목이 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
     const adminIdStr = req.headers.get("x-admin-id");
     const adminId = adminIdStr ? Number(adminIdStr) : 1;
 
@@ -60,9 +69,14 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    console.log("서버가 받은 데이터:", body); // 👈 터미널에서 데이터가 실제로 들어오는지 확인용
-
     const { id, name, gender, birth, phone, level, carnumber, note } = body;
+
+    if (!name || !gender || !birth || !phone || !level) {
+      return NextResponse.json(
+        { error: "필수 항목이 누락되었습니다." },
+        { status: 400 }
+      );
+    }
 
     const updated = await prisma.member.update({
       where: { id: Number(id) },

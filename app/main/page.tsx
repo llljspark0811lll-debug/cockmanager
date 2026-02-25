@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const LEVELS = ["S", "A", "B", "C", "D", "E", "초심"];
+
 interface Fee {
   id: number;
   year: number;
@@ -112,11 +114,9 @@ export default function MainPage() {
         };
         return (order[a.gender] || 99) - (order[b.gender] || 99);
       } else if (sortBy === "level") {
-        const levelOrder: { [key: string]: number } = {
-          "A": 1, "B": 2, "C": 3, "D": 4, "초심": 5
-        };
-        const levelA = levelOrder[a.level] || 99;
-        const levelB = levelOrder[b.level] || 99;
+        const levelA = LEVELS.indexOf(a.level);
+        const levelB = LEVELS.indexOf(b.level);
+
         return levelA - levelB; // 급수 높은 순 (A -> B -> C...)
       }
       return 0;
@@ -129,6 +129,42 @@ export default function MainPage() {
   // ✅ 등록 / 수정
   const handleSubmit = async () => {
     const adminId = localStorage.getItem("adminId") || "1";
+
+    // 🔥 필수값 검증
+    if (!form.name.trim()) {
+      alert("이름을 입력하세요.");
+      return;
+    }
+
+    if (!form.gender) {
+      alert("성별을 선택하세요.");
+      return;
+    }
+
+    if (!form.birth) {
+      alert("생년월일을 입력하세요.");
+      return;
+    }
+
+    const phone = form.phone.trim();
+
+    if (!phone) {
+      alert("전화번호를 입력하세요.");
+      return;
+    }
+
+    const phoneRegex = /^010-\d{4}-\d{4}$/;
+
+    if (!phoneRegex.test(phone)) {
+      alert("전화번호 형식은 010-0000-0000 입니다.");
+      return;
+    }
+
+    if (!form.level.trim()) {
+      alert("급수를 선택하세요.");
+      return;
+    }
+
     if (editingMember) {
       const prevMembers = members;
       const updatedMember: Member = { ...editingMember, ...form };
@@ -272,19 +308,24 @@ export default function MainPage() {
 
   const handleAllPaid = async (memberId: number) => {
     if (!confirm(`${selectedYear}년 전체를 완납 처리하시겠습니까?`)) return;
+
     try {
-      const promises = Array.from({ length: 12 }, (_, i) => {
-        return fetch("/api/fees", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberId, year: selectedYear, month: i + 1, paid: true }),
-        });
+      const res = await fetch("/api/fees/all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId, year: selectedYear }),
       });
-      await Promise.all(promises);
-      fetchMembers();
+
+      if (!res.ok) {
+        alert("완납 처리에 실패했습니다.");
+        return;
+      }
+
+      await fetchMembers();
       alert("완료되었습니다.");
     } catch (error) {
       console.error(error);
+      alert("네트워크 오류가 발생했습니다.");
     }
   };
 
@@ -357,7 +398,7 @@ export default function MainPage() {
               >
                 <option value="name">가나다순</option>
                 <option value="date">최신 가입순</option>
-                <option value="level">급수별(A-D)</option>
+                <option value="level">급수별(S→초심)</option>
                 <option value="gender">성별순(남→여)</option>
               </select>
             </div>
@@ -453,8 +494,8 @@ export default function MainPage() {
                     <td className="p-2 md:p-4">
                       <span
                         className={`px-2 py-1 rounded text-sm ${m.gender === "남"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-pink-100 text-pink-700"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-pink-100 text-pink-700"
                           }`}
                       >
                         {m.level}
@@ -544,13 +585,41 @@ export default function MainPage() {
                 {[
                   { id: "birth", label: "생년월일", ph: "1990-01-01" },
                   { id: "phone", label: "연락처", ph: "010-0000-0000" },
-                  { id: "level", label: "급수 (A, B, C, D, 초심)", ph: "A" },
+                  { id: "level", label: "급수 (S, A, B, C, D, E, 초심)"},
                   { id: "carnumber", label: customLabel, ph: customLabel },
                   { id: "note", label: "비고", ph: "특이사항" },
                 ].map((input) => (
                   <div key={input.id}>
-                    <label className="text-xs font-bold text-gray-500 ml-1">{input.label}</label>
-                    <input placeholder={input.ph} className="w-full border-gray-200 border p-2 md:p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={(form as any)[input.id]} onChange={(e) => setForm({ ...form, [input.id]: e.target.value })} />
+                    <label className="text-xs font-bold text-gray-500 ml-1">
+                      {input.label}
+                    </label>
+
+                    {input.id === "level" ? (
+                      <select
+                        className="w-full border-gray-200 border p-2 md:p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        value={form.level}
+                        onChange={(e) =>
+                          setForm({ ...form, level: e.target.value })
+                        }
+                      >
+                        <option value="">급수를 선택하세요</option>
+                        {LEVELS.map((level) => (
+                          <option key={level} value={level}>
+                            {level}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={input.id === "birth" ? "date" : "text"}
+                        placeholder={input.ph}
+                        className="w-full border-gray-200 border p-2 md:p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={(form as any)[input.id]}
+                        onChange={(e) =>
+                          setForm({ ...form, [input.id]: e.target.value })
+                        }
+                      />
+                    )}
                   </div>
                 ))}
               </div>
