@@ -68,8 +68,11 @@ export interface SessionParticipant {
   attendanceStatus: "PENDING" | "PRESENT" | "ABSENT" | "LATE";
   checkedInAt: string | Date | null;
   createdAt: string | Date;
-  memberId: number;
-  member: Member;
+  memberId: number | null;
+  guestName: string | null;
+  hostMemberId: number | null;
+  member: Member | null;
+  hostMember: Member | null;
 }
 
 export interface ClubSession {

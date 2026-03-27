@@ -5,7 +5,7 @@ import type {
   Member,
   SpecialFee,
 } from "@/components/dashboard/types";
-import { formatDate } from "@/components/dashboard/utils";
+import { formatDate, formatPhoneNumber } from "@/components/dashboard/utils";
 
 type SpecialFeesPanelProps = {
   members: Member[];
@@ -22,6 +22,8 @@ type SpecialFeesPanelProps = {
     paid: boolean
   ) => Promise<void>;
 };
+
+type SpecialFeeQuickFilter = "ALL" | "UNPAID";
 
 const initialForm = {
   title: "",
@@ -41,6 +43,8 @@ export function SpecialFeesPanel({
     specialFees[0]?.id ?? null
   );
   const [creating, setCreating] = useState(false);
+  const [quickFilter, setQuickFilter] =
+    useState<SpecialFeeQuickFilter>("ALL");
 
   useEffect(() => {
     if (!specialFees.length) {
@@ -64,7 +68,7 @@ export function SpecialFeesPanel({
   const selectedPayments = useMemo(() => {
     if (!selectedFee) return [];
 
-    return members.map((member) => {
+    const allRows = members.map((member) => {
       const payment = selectedFee.payments.find(
         (item) => item.memberId === member.id
       );
@@ -75,7 +79,13 @@ export function SpecialFeesPanel({
         paid: payment?.paid ?? false,
       };
     });
-  }, [members, selectedFee]);
+
+    if (quickFilter === "UNPAID") {
+      return allRows.filter((row) => !row.paid);
+    }
+
+    return allRows;
+  }, [members, quickFilter, selectedFee]);
 
   async function handleCreate() {
     setCreating(true);
@@ -101,8 +111,8 @@ export function SpecialFeesPanel({
             수시회비 항목 만들기
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            대회 참가비, 단체복비, 코트 추가비처럼 월회비 외의 일회성
-            금액을 따로 관리할 수 있습니다.
+            대회 참가비, 단체복비, 코트 추가비처럼 일시적인 회비 항목을
+            만들고 관리할 수 있어요.
           </p>
 
           <div className="mt-5 space-y-3">
@@ -192,7 +202,7 @@ export function SpecialFeesPanel({
                       </p>
                     </div>
                     <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
-                      {paidCount}/{specialFee.payments.length} 납부
+                      {paidCount}/{members.length} 납부
                     </span>
                   </div>
                 </button>
@@ -212,7 +222,7 @@ export function SpecialFeesPanel({
         {selectedFee ? (
           <>
             <div className="border-b border-slate-200 pb-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900">
                     {selectedFee.title}
@@ -224,7 +234,31 @@ export function SpecialFeesPanel({
                       : ""}
                   </p>
                 </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setQuickFilter("ALL")}
+                    className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                      quickFilter === "ALL"
+                        ? "bg-slate-900 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    전체 보기
+                  </button>
+                  <button
+                    onClick={() => setQuickFilter("UNPAID")}
+                    className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
+                      quickFilter === "UNPAID"
+                        ? "bg-rose-600 text-white"
+                        : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    }`}
+                  >
+                    미납 회원만
+                  </button>
+                </div>
               </div>
+
               <p className="mt-3 text-sm leading-6 text-slate-500">
                 {selectedFee.description || "설명 없음"}
               </p>
@@ -232,11 +266,10 @@ export function SpecialFeesPanel({
 
             <div className="mt-5 overflow-hidden rounded-[1.5rem] border border-slate-200">
               <div className="overflow-x-auto">
-                <table className="min-w-[820px] w-full text-sm">
+                <table className="min-w-[760px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-slate-500">
                     <tr>
                       <th className="px-4 py-4 font-semibold">회원</th>
-                      <th className="px-4 py-4 font-semibold">급수</th>
                       <th className="px-4 py-4 font-semibold">연락처</th>
                       <th className="px-4 py-4 font-semibold">납부 상태</th>
                       <th className="px-4 py-4 font-semibold">관리</th>
@@ -248,11 +281,8 @@ export function SpecialFeesPanel({
                         <td className="px-4 py-4 font-bold text-slate-900">
                           {member.name}
                         </td>
-                        <td className="px-4 py-4 font-bold text-sky-600">
-                          {member.level}
-                        </td>
                         <td className="px-4 py-4 text-slate-500">
-                          {member.phone || "-"}
+                          {formatPhoneNumber(member.phone) || "-"}
                         </td>
                         <td className="px-4 py-4">
                           <span
@@ -287,6 +317,17 @@ export function SpecialFeesPanel({
                         </td>
                       </tr>
                     ))}
+
+                    {selectedPayments.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-12 text-center text-sm text-slate-400"
+                        >
+                          조건에 맞는 회원이 없습니다.
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               </div>

@@ -112,8 +112,7 @@ export function MembersTable({
 
       if (sortOption === "level") {
         const rankDiff =
-          getLevelRank(left.level) -
-          getLevelRank(right.level);
+          getLevelRank(left.level) - getLevelRank(right.level);
 
         if (rankDiff !== 0) return rankDiff;
       }
@@ -144,8 +143,7 @@ export function MembersTable({
               회원 관리
             </h3>
             <p className="text-sm text-slate-500">
-              이름, 성별, 급수 기준으로 빠르게 회원을 찾을 수
-              있어요.
+              이름, 성별, 급수 기준으로 빠르게 회원을 찾을 수 있어요.
             </p>
           </div>
           <div className="text-sm font-semibold text-slate-500">

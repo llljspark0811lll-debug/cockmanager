@@ -3,6 +3,10 @@ import {
   formatDate,
   formatDateTime,
   getAttendanceStatusLabel,
+  getParticipantDisplayName,
+  getParticipantMetaText,
+  getParticipantStatusLabel,
+  isGuestParticipant,
 } from "@/components/dashboard/utils";
 
 type AttendancePanelProps = {
@@ -10,8 +14,7 @@ type AttendancePanelProps = {
   selectedSessionId: number | null;
   onSelectSession: (id: number) => void;
   onUpdateAttendance: (
-    sessionId: number,
-    memberId: number,
+    participantId: number,
     attendanceStatus: "PENDING" | "PRESENT" | "ABSENT" | "LATE"
   ) => Promise<void>;
 };
@@ -41,7 +44,7 @@ export function AttendancePanel({
               출석 관리
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              일정별 참석자 출석 상태를 빠르게 체크할 수 있습니다.
+              일정별 참석자와 게스트의 출석 상태를 빠르게 체크할 수 있어요.
             </p>
           </div>
 
@@ -73,14 +76,25 @@ export function AttendancePanel({
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-black text-slate-900">
-                  {participant.member.name}
+                <div className="flex items-center gap-2">
+                  <p className="text-base font-black text-slate-900">
+                    {getParticipantDisplayName(participant)}
+                  </p>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                      isGuestParticipant(participant)
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-sky-50 text-sky-700"
+                    }`}
+                  >
+                    {isGuestParticipant(participant) ? "게스트" : "회원"}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">
+                  {getParticipantMetaText(participant)}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  참여 상태:{" "}
-                  {participant.status === "WAITLIST"
-                    ? "대기"
-                    : "참석"}
+                  참여 상태: {getParticipantStatusLabel(participant.status)}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
                   출석 상태:{" "}
@@ -89,8 +103,7 @@ export function AttendancePanel({
                   )}
                 </p>
                 <p className="mt-1 text-sm text-slate-400">
-                  체크 시간:{" "}
-                  {formatDateTime(participant.checkedInAt)}
+                  체크 시간: {formatDateTime(participant.checkedInAt)}
                 </p>
               </div>
             </div>
@@ -99,8 +112,7 @@ export function AttendancePanel({
               <button
                 onClick={() =>
                   onUpdateAttendance(
-                    participant.sessionId,
-                    participant.memberId,
+                    participant.id,
                     "PRESENT"
                   ).catch((error: Error) => {
                     alert(error.message);
@@ -112,13 +124,11 @@ export function AttendancePanel({
               </button>
               <button
                 onClick={() =>
-                  onUpdateAttendance(
-                    participant.sessionId,
-                    participant.memberId,
-                    "LATE"
-                  ).catch((error: Error) => {
-                    alert(error.message);
-                  })
+                  onUpdateAttendance(participant.id, "LATE").catch(
+                    (error: Error) => {
+                      alert(error.message);
+                    }
+                  )
                 }
                 className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-100"
               >
@@ -126,13 +136,11 @@ export function AttendancePanel({
               </button>
               <button
                 onClick={() =>
-                  onUpdateAttendance(
-                    participant.sessionId,
-                    participant.memberId,
-                    "ABSENT"
-                  ).catch((error: Error) => {
-                    alert(error.message);
-                  })
+                  onUpdateAttendance(participant.id, "ABSENT").catch(
+                    (error: Error) => {
+                      alert(error.message);
+                    }
+                  )
                 }
                 className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
               >
@@ -141,8 +149,7 @@ export function AttendancePanel({
               <button
                 onClick={() =>
                   onUpdateAttendance(
-                    participant.sessionId,
-                    participant.memberId,
+                    participant.id,
                     "PENDING"
                   ).catch((error: Error) => {
                     alert(error.message);
@@ -165,10 +172,12 @@ export function AttendancePanel({
 
       <div className="hidden overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm md:block">
         <div className="overflow-x-auto">
-          <table className="min-w-[860px] w-full text-sm">
+          <table className="min-w-[980px] w-full text-sm">
             <thead className="bg-slate-50 text-left text-slate-500">
               <tr>
-                <th className="px-4 py-4 font-semibold">회원</th>
+                <th className="px-4 py-4 font-semibold">이름</th>
+                <th className="px-4 py-4 font-semibold">구분</th>
+                <th className="px-4 py-4 font-semibold">연락처/메모</th>
                 <th className="px-4 py-4 font-semibold">참여 상태</th>
                 <th className="px-4 py-4 font-semibold">출석 상태</th>
                 <th className="px-4 py-4 font-semibold">체크 시간</th>
@@ -179,12 +188,24 @@ export function AttendancePanel({
               {participants.map((participant) => (
                 <tr key={participant.id} className="hover:bg-slate-50">
                   <td className="px-4 py-4 font-bold text-slate-900">
-                    {participant.member.name}
+                    {getParticipantDisplayName(participant)}
+                  </td>
+                  <td className="px-4 py-4">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                        isGuestParticipant(participant)
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-sky-50 text-sky-700"
+                      }`}
+                    >
+                      {isGuestParticipant(participant) ? "게스트" : "회원"}
+                    </span>
                   </td>
                   <td className="px-4 py-4 text-slate-500">
-                    {participant.status === "WAITLIST"
-                      ? "대기"
-                      : "참석"}
+                    {getParticipantMetaText(participant)}
+                  </td>
+                  <td className="px-4 py-4 text-slate-500">
+                    {getParticipantStatusLabel(participant.status)}
                   </td>
                   <td className="px-4 py-4 font-semibold text-slate-700">
                     {getAttendanceStatusLabel(
@@ -199,8 +220,7 @@ export function AttendancePanel({
                       <button
                         onClick={() =>
                           onUpdateAttendance(
-                            participant.sessionId,
-                            participant.memberId,
+                            participant.id,
                             "PRESENT"
                           ).catch((error: Error) => {
                             alert(error.message);
@@ -213,8 +233,7 @@ export function AttendancePanel({
                       <button
                         onClick={() =>
                           onUpdateAttendance(
-                            participant.sessionId,
-                            participant.memberId,
+                            participant.id,
                             "LATE"
                           ).catch((error: Error) => {
                             alert(error.message);
@@ -227,8 +246,7 @@ export function AttendancePanel({
                       <button
                         onClick={() =>
                           onUpdateAttendance(
-                            participant.sessionId,
-                            participant.memberId,
+                            participant.id,
                             "ABSENT"
                           ).catch((error: Error) => {
                             alert(error.message);
@@ -241,8 +259,7 @@ export function AttendancePanel({
                       <button
                         onClick={() =>
                           onUpdateAttendance(
-                            participant.sessionId,
-                            participant.memberId,
+                            participant.id,
                             "PENDING"
                           ).catch((error: Error) => {
                             alert(error.message);
@@ -260,7 +277,7 @@ export function AttendancePanel({
               {participants.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-4 py-12 text-center text-sm text-slate-400"
                   >
                     선택한 일정에 참석자가 없습니다.

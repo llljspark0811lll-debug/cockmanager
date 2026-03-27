@@ -20,6 +20,7 @@ export async function GET() {
         participants: {
           include: {
             member: true,
+            hostMember: true,
           },
           orderBy: {
             createdAt: "asc",
@@ -27,8 +28,8 @@ export async function GET() {
         },
       },
       orderBy: [
-        { date: "asc" },
-        { startTime: "asc" },
+        { date: "desc" },
+        { startTime: "desc" },
       ],
     });
 
@@ -36,7 +37,7 @@ export async function GET() {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "운동 일정을 불러오지 못했습니다." },
+      { error: "운동 일정 목록을 불러오지 못했습니다." },
       { status: 500 }
     );
   }
@@ -63,7 +64,10 @@ export async function POST(req: Request) {
 
     if (!title || !date || !startTime || !endTime) {
       return NextResponse.json(
-        { error: "제목, 날짜, 시작 시간, 종료 시간은 필수입니다." },
+        {
+          error:
+            "제목, 날짜, 시작 시간, 종료 시간은 필수입니다.",
+        },
         { status: 400 }
       );
     }
@@ -79,7 +83,9 @@ export async function POST(req: Request) {
         startTime: String(startTime),
         endTime: String(endTime),
         capacity:
-          capacity === "" || capacity === null || capacity === undefined
+          capacity === "" ||
+          capacity === null ||
+          capacity === undefined
             ? null
             : Number(capacity),
         clubId: admin.clubId,
@@ -88,6 +94,7 @@ export async function POST(req: Request) {
         participants: {
           include: {
             member: true,
+            hostMember: true,
           },
         },
       },
@@ -167,6 +174,7 @@ export async function PUT(req: Request) {
         participants: {
           include: {
             member: true,
+            hostMember: true,
           },
         },
       },
@@ -177,6 +185,42 @@ export async function PUT(req: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "운동 일정 수정에 실패했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const admin = await requireAuthAdmin();
+
+    if (!admin) {
+      return unauthorizedResponse();
+    }
+
+    const { id } = await req.json();
+    const sessionId = Number(id);
+
+    const existingSession = await prisma.clubSession.findFirst({
+      where: {
+        id: sessionId,
+        clubId: admin.clubId,
+      },
+    });
+
+    if (!existingSession) {
+      return notFoundResponse("삭제할 일정을 찾을 수 없습니다.");
+    }
+
+    await prisma.clubSession.delete({
+      where: { id: existingSession.id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "운동 일정 삭제에 실패했습니다." },
       { status: 500 }
     );
   }

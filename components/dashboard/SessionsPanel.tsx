@@ -1,22 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type {
-  ClubSession,
-  Member,
-} from "@/components/dashboard/types";
+import type { ClubSession } from "@/components/dashboard/types";
 import {
-  findParticipant,
   formatDate,
+  getParticipantDisplayName,
+  getParticipantMetaText,
   getParticipantStatusLabel,
   getRegisteredParticipants,
   getSessionStatusLabel,
   getWaitlistedParticipants,
+  isGuestParticipant,
 } from "@/components/dashboard/utils";
 
 type SessionsPanelProps = {
   sessions: ClubSession[];
-  members: Member[];
   selectedSessionId: number | null;
   publicSessionBaseUrl: string;
   onSelectSession: (id: number) => void;
@@ -29,10 +27,7 @@ type SessionsPanelProps = {
     endTime: string;
     capacity: string;
   }) => Promise<void>;
-  onToggleRegistration: (
-    sessionId: number,
-    memberId: number
-  ) => Promise<void>;
+  onDeleteSession: (sessionId: number) => Promise<void>;
   onUpdateSessionStatus: (
     sessionId: number,
     status: ClubSession["status"]
@@ -49,14 +44,25 @@ const initialForm = {
   capacity: "",
 };
 
+function statusButtonClass(status: ClubSession["status"]) {
+  if (status === "OPEN") {
+    return "bg-emerald-50 text-emerald-700 hover:bg-emerald-100";
+  }
+
+  if (status === "CLOSED") {
+    return "bg-amber-50 text-amber-700 hover:bg-amber-100";
+  }
+
+  return "bg-rose-50 text-rose-700 hover:bg-rose-100";
+}
+
 export function SessionsPanel({
   sessions,
-  members,
   selectedSessionId,
   publicSessionBaseUrl,
   onSelectSession,
   onCreateSession,
-  onToggleRegistration,
+  onDeleteSession,
   onUpdateSessionStatus,
 }: SessionsPanelProps) {
   const [form, setForm] = useState(initialForm);
@@ -75,8 +81,16 @@ export function SessionsPanel({
     return `${publicSessionBaseUrl}/${selectedSession.publicToken}`;
   }, [publicSessionBaseUrl, selectedSession]);
 
+  const registeredParticipants = selectedSession
+    ? getRegisteredParticipants(selectedSession)
+    : [];
+  const waitlistedParticipants = selectedSession
+    ? getWaitlistedParticipants(selectedSession)
+    : [];
+
   async function handleSubmit() {
     setSubmitting(true);
+
     try {
       await onCreateSession(form);
       setForm(initialForm);
@@ -112,8 +126,8 @@ export function SessionsPanel({
             운동 일정 만들기
           </h3>
           <p className="mt-2 text-sm text-slate-500">
-            날짜, 시간, 장소, 정원을 입력하면 카톡 공유용 참석 링크까지
-            바로 만들 수 있습니다.
+            날짜, 시간, 장소, 정원을 입력하면 카카오톡 공유용 참석 링크까지
+            바로 만들어집니다.
           </p>
 
           <div className="mt-5 space-y-3">
@@ -125,7 +139,7 @@ export function SessionsPanel({
                   title: event.target.value,
                 })
               }
-              placeholder="예: 목요일 정기운동"
+              placeholder="예: 목요일 정기 운동"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
             />
             <input
@@ -153,6 +167,7 @@ export function SessionsPanel({
               />
               <input
                 type="number"
+                min="1"
                 value={form.capacity}
                 onChange={(event) =>
                   setForm({
@@ -202,7 +217,9 @@ export function SessionsPanel({
           </div>
 
           <button
-            onClick={handleSubmit}
+            onClick={() => {
+              handleSubmit().catch(() => undefined);
+            }}
             disabled={submitting}
             className="mt-5 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
@@ -211,13 +228,18 @@ export function SessionsPanel({
         </section>
 
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900">
-            일정 목록
-          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-black text-slate-900">
+              일정 목록
+            </h3>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+              총 {sessions.length}개
+            </span>
+          </div>
+
           <div className="mt-4 space-y-3">
             {sessions.map((session) => {
-              const isSelected =
-                selectedSession?.id === session.id;
+              const isSelected = selectedSession?.id === session.id;
 
               return (
                 <button
@@ -282,7 +304,7 @@ export function SessionsPanel({
                     {formatDate(selectedSession.date)}{" "}
                     {selectedSession.startTime} - {selectedSession.endTime}
                     {selectedSession.location
-                      ? ` | ${selectedSession.location}`
+                      ? ` · ${selectedSession.location}`
                       : ""}
                   </p>
                   <p className="mt-1 text-sm text-slate-400">
@@ -290,45 +312,46 @@ export function SessionsPanel({
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {(["OPEN", "CLOSED", "CANCELED"] as const).map(
+                    (status) => (
+                      <button
+                        key={status}
+                        onClick={() =>
+                          onUpdateSessionStatus(
+                            selectedSession.id,
+                            status
+                          ).catch((error: Error) => {
+                            alert(error.message);
+                          })
+                        }
+                        className={`rounded-xl px-3 py-2 text-xs font-bold transition ${statusButtonClass(
+                          status
+                        )}`}
+                      >
+                        {getSessionStatusLabel(status)}
+                      </button>
+                    )
+                  )}
                   <button
-                    onClick={() =>
-                      onUpdateSessionStatus(
-                        selectedSession.id,
-                        "OPEN"
-                      ).catch((error: Error) => {
-                        alert(error.message);
-                      })
-                    }
-                    className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100"
+                    onClick={() => {
+                      if (
+                        !confirm(
+                          "이 운동 일정을 삭제할까요? 참석 명단과 대기 명단도 함께 삭제됩니다."
+                        )
+                      ) {
+                        return;
+                      }
+
+                      onDeleteSession(selectedSession.id).catch(
+                        (error: Error) => {
+                          alert(error.message);
+                        }
+                      );
+                    }}
+                    className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-rose-700"
                   >
-                    모집 중
-                  </button>
-                  <button
-                    onClick={() =>
-                      onUpdateSessionStatus(
-                        selectedSession.id,
-                        "CLOSED"
-                      ).catch((error: Error) => {
-                        alert(error.message);
-                      })
-                    }
-                    className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-100"
-                  >
-                    마감
-                  </button>
-                  <button
-                    onClick={() =>
-                      onUpdateSessionStatus(
-                        selectedSession.id,
-                        "CANCELED"
-                      ).catch((error: Error) => {
-                        alert(error.message);
-                      })
-                    }
-                    className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
-                  >
-                    취소
+                    삭제
                   </button>
                 </div>
               </div>
@@ -340,8 +363,8 @@ export function SessionsPanel({
                       카카오톡 공유 링크
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      단톡방에 이 링크를 올리면 회원이 직접 참석 신청이나
-                      참석 취소를 할 수 있습니다.
+                      단톡방에 이 링크를 올리면 회원이 직접 참석 신청과 취소를
+                      할 수 있어요. 게스트도 함께 등록됩니다.
                     </p>
                   </div>
                   <button
@@ -376,7 +399,7 @@ export function SessionsPanel({
                   참석 인원
                 </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
-                  {getRegisteredParticipants(selectedSession).length}
+                  {registeredParticipants.length}
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
@@ -384,78 +407,143 @@ export function SessionsPanel({
                   대기 인원
                 </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
-                  {getWaitlistedParticipants(selectedSession).length}
+                  {waitlistedParticipants.length}
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-200">
-              <div className="overflow-x-auto">
-                <table className="min-w-[840px] w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-slate-500">
-                    <tr>
-                      <th className="px-4 py-4 font-semibold">회원</th>
-                      <th className="px-4 py-4 font-semibold">급수</th>
-                      <th className="px-4 py-4 font-semibold">연락처</th>
-                      <th className="px-4 py-4 font-semibold">상태</th>
-                      <th className="px-4 py-4 font-semibold">관리</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {members.map((member) => {
-                      const participant = findParticipant(
-                        selectedSession,
-                        member.id
-                      );
-                      const activeStatus =
-                        participant?.status &&
-                        participant.status !== "CANCELED"
-                          ? getParticipantStatusLabel(
-                              participant.status
-                            )
-                          : "미등록";
+            <div className="mt-6 space-y-6">
+              <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                  <h4 className="text-base font-black text-slate-900">
+                    참석 신청 명단
+                  </h4>
+                  <p className="mt-1 text-sm text-slate-500">
+                    링크로 실제 참석 신청한 사람만 표시됩니다.
+                  </p>
+                </div>
 
-                      return (
-                        <tr key={member.id} className="hover:bg-slate-50">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[520px] w-full text-sm">
+                    <thead className="bg-white text-left text-slate-500">
+                      <tr>
+                        <th className="px-4 py-4 font-semibold">이름</th>
+                        <th className="px-4 py-4 font-semibold">구분</th>
+                        <th className="px-4 py-4 font-semibold">연락처/메모</th>
+                        <th className="px-4 py-4 font-semibold">상태</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {registeredParticipants.map((participant) => (
+                        <tr
+                          key={participant.id}
+                          className="hover:bg-slate-50"
+                        >
                           <td className="px-4 py-4 font-bold text-slate-900">
-                            {member.name}
-                          </td>
-                          <td className="px-4 py-4 font-bold text-sky-600">
-                            {member.level}
-                          </td>
-                          <td className="px-4 py-4 text-slate-500">
-                            {member.phone || "-"}
-                          </td>
-                          <td className="px-4 py-4 text-slate-500">
-                            {activeStatus}
+                            {getParticipantDisplayName(participant)}
                           </td>
                           <td className="px-4 py-4">
-                            <button
-                              onClick={() =>
-                                onToggleRegistration(
-                                  selectedSession.id,
-                                  member.id
-                                ).catch((error: Error) => {
-                                  alert(error.message);
-                                })
-                              }
-                              disabled={
-                                selectedSession.status !== "OPEN"
-                              }
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                isGuestParticipant(participant)
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-sky-50 text-sky-700"
+                              }`}
                             >
-                              {participant &&
-                              participant.status !== "CANCELED"
-                                ? "참석 취소"
-                                : "참석 등록"}
-                            </button>
+                              {isGuestParticipant(participant)
+                                ? "게스트"
+                                : "회원"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {getParticipantMetaText(participant)}
+                          </td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {getParticipantStatusLabel(participant.status)}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+
+                      {registeredParticipants.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-4 py-12 text-center text-sm text-slate-400"
+                          >
+                            아직 참석 신청한 인원이 없습니다.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                  <h4 className="text-base font-black text-slate-900">
+                    대기 인원 명단
+                  </h4>
+                  <p className="mt-1 text-sm text-slate-500">
+                    정원 초과 후 신청한 인원은 자동으로 대기로 이동합니다.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-[520px] w-full text-sm">
+                    <thead className="bg-white text-left text-slate-500">
+                      <tr>
+                        <th className="px-4 py-4 font-semibold">이름</th>
+                        <th className="px-4 py-4 font-semibold">구분</th>
+                        <th className="px-4 py-4 font-semibold">연락처/메모</th>
+                        <th className="px-4 py-4 font-semibold">상태</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {waitlistedParticipants.map((participant) => (
+                        <tr
+                          key={participant.id}
+                          className="hover:bg-slate-50"
+                        >
+                          <td className="px-4 py-4 font-bold text-slate-900">
+                            {getParticipantDisplayName(participant)}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                isGuestParticipant(participant)
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-sky-50 text-sky-700"
+                              }`}
+                            >
+                              {isGuestParticipant(participant)
+                                ? "게스트"
+                                : "회원"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {getParticipantMetaText(participant)}
+                          </td>
+                          <td className="px-4 py-4 text-slate-500">
+                            {getParticipantStatusLabel(participant.status)}
+                          </td>
+                        </tr>
+                      ))}
+
+                      {waitlistedParticipants.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="px-4 py-12 text-center text-sm text-slate-400"
+                          >
+                            현재 대기 인원이 없습니다.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             </div>
           </>
         ) : (

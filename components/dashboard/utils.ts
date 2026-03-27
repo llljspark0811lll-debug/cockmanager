@@ -57,7 +57,9 @@ export function normalizePhoneNumber(value: string) {
   return value.replace(/\D/g, "");
 }
 
-export function formatPhoneNumber(value: string | null | undefined) {
+export function formatPhoneNumber(
+  value: string | null | undefined
+) {
   const digits = normalizePhoneNumber(value ?? "");
 
   if (!digits) {
@@ -70,13 +72,6 @@ export function formatPhoneNumber(value: string | null | undefined) {
 
   if (digits.length <= 7) {
     return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  }
-
-  if (digits.length <= 11) {
-    return `${digits.slice(0, 3)}-${digits.slice(
-      3,
-      7
-    )}-${digits.slice(7, 11)}`;
   }
 
   return `${digits.slice(0, 3)}-${digits.slice(
@@ -191,4 +186,32 @@ export function getLevelTextClasses(level: string) {
   if (normalized === "E") return "text-slate-600";
   if (normalized === "초심") return "text-cyan-700";
   return "text-slate-500";
+}
+
+export function getParticipantDisplayName(
+  participant: SessionParticipant
+) {
+  if (participant.guestName) {
+    return participant.guestName;
+  }
+
+  return participant.member?.name ?? "이름 없음";
+}
+
+export function getParticipantMetaText(
+  participant: SessionParticipant
+) {
+  if (participant.guestName) {
+    const hostName =
+      participant.hostMember?.name ?? "동반 회원 미확인";
+    return `게스트 · 동반 회원 ${hostName}`;
+  }
+
+  return formatPhoneNumber(participant.member?.phone) || "-";
+}
+
+export function isGuestParticipant(
+  participant: SessionParticipant
+) {
+  return Boolean(participant.guestName);
 }

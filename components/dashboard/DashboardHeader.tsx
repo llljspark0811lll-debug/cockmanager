@@ -25,10 +25,10 @@ export function DashboardHeader({
           {clubName} 운영 대시보드
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          회원, 회비, 일정, 출석을 한 곳에서 관리합니다.
+          회원, 회비, 일정, 출석을 한곳에서 관리합니다.
         </p>
         <p className="mt-3 text-xs font-medium text-slate-400">
-          구독 만료일: {subscriptionLabel}
+          구독 만료일 {subscriptionLabel}
         </p>
       </div>
 

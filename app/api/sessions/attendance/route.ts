@@ -14,13 +14,11 @@ export async function POST(req: Request) {
       return unauthorizedResponse();
     }
 
-    const { sessionId, memberId, attendanceStatus } =
-      await req.json();
+    const { participantId, attendanceStatus } = await req.json();
 
     const participant = await prisma.sessionParticipant.findFirst({
       where: {
-        sessionId: Number(sessionId),
-        memberId: Number(memberId),
+        id: Number(participantId),
         session: {
           clubId: admin.clubId,
         },

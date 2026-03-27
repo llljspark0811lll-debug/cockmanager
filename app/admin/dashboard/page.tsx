@@ -12,8 +12,8 @@ import { FeesTable } from "@/components/dashboard/FeesTable";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
 import { RequestsTable } from "@/components/dashboard/RequestsTable";
-import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
+import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
 import type {
   ClubInfo,
@@ -129,9 +129,7 @@ export default function DashboardPage() {
     clubInfo?.publicJoinToken && origin
       ? `${origin}/join/${clubInfo.publicJoinToken}`
       : "";
-  const publicSessionBaseUrl = origin
-    ? `${origin}/session`
-    : "/session";
+  const publicSessionBaseUrl = origin ? `${origin}/session` : "/session";
 
   const activeMembers = [...members]
     .filter((member) => !member.deleted)
@@ -192,6 +190,17 @@ export default function DashboardPage() {
     );
   }
 
+  async function performLogout() {
+    try {
+      await fetch("/api/admin/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      router.push("/admin/login");
+    }
+  }
+
   useEffect(() => {
     loadDashboardData().catch((error: Error) => {
       alert(error.message);
@@ -238,6 +247,39 @@ export default function DashboardPage() {
     document.head.appendChild(script);
   }, []);
 
+  useEffect(() => {
+    window.history.pushState(
+      { fromDashboard: true },
+      "",
+      window.location.href
+    );
+
+    const handlePopState = () => {
+      const shouldLogout = confirm(
+        "로그아웃하시겠습니까?"
+      );
+
+      if (!shouldLogout) {
+        window.history.pushState(
+          { fromDashboard: true },
+          "",
+          window.location.href
+        );
+        return;
+      }
+
+      performLogout().catch((error: Error) => {
+        alert(error.message);
+      });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [router]);
+
   async function handlePayment() {
     if (!clubInfo) {
       alert("클럽 정보를 불러오는 중입니다.");
@@ -277,17 +319,6 @@ export default function DashboardPage() {
       alert(message);
     } finally {
       setPaymentLoading(false);
-    }
-  }
-
-  async function handleLogout() {
-    try {
-      await fetch("/api/admin/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } finally {
-      router.push("/admin/login");
     }
   }
 
@@ -361,7 +392,7 @@ export default function DashboardPage() {
   async function handlePermanentDelete(id: number) {
     if (
       !confirm(
-        "영구 삭제하면 회비와 일정 기록도 함께 사라질 수 있습니다. 계속할까요?"
+        "영구 삭제하면 회비와 일정 기록까지 함께 사라집니다. 계속할까요?"
       )
     ) {
       return;
@@ -483,6 +514,15 @@ export default function DashboardPage() {
     setSelectedSessionId(created.id);
   }
 
+  async function handleDeleteSession(sessionId: number) {
+    await requestJson("/api/sessions", {
+      method: "DELETE",
+      body: JSON.stringify({ id: sessionId }),
+    });
+
+    await refreshSessions();
+  }
+
   async function handleSaveCustomFieldLabel() {
     const response = await requestJson<{
       customFieldLabel: string;
@@ -535,18 +575,6 @@ export default function DashboardPage() {
     await refreshSpecialFees();
   }
 
-  async function handleToggleRegistration(
-    sessionId: number,
-    memberId: number
-  ) {
-    await requestJson("/api/sessions/register", {
-      method: "POST",
-      body: JSON.stringify({ sessionId, memberId }),
-    });
-
-    await refreshSessions();
-  }
-
   async function handleUpdateSessionStatus(
     sessionId: number,
     status: ClubSession["status"]
@@ -560,15 +588,13 @@ export default function DashboardPage() {
   }
 
   async function handleUpdateAttendance(
-    sessionId: number,
-    memberId: number,
+    participantId: number,
     attendanceStatus: "PENDING" | "PRESENT" | "ABSENT" | "LATE"
   ) {
     await requestJson("/api/sessions/attendance", {
       method: "POST",
       body: JSON.stringify({
-        sessionId,
-        memberId,
+        participantId,
         attendanceStatus,
       }),
     });
@@ -597,7 +623,11 @@ export default function DashboardPage() {
             subscriptionEnd={clubInfo?.subscriptionEnd}
             onAddMember={openCreateMemberModal}
             onLogout={() => {
-              handleLogout().catch((error: Error) => {
+              if (!confirm("로그아웃하시겠습니까?")) {
+                return;
+              }
+
+              performLogout().catch((error: Error) => {
                 alert(error.message);
               });
             }}
@@ -703,12 +733,11 @@ export default function DashboardPage() {
         {activeTab === "sessions" ? (
           <SessionsPanel
             sessions={sessions}
-            members={activeMembers}
             selectedSessionId={selectedSessionId}
             publicSessionBaseUrl={publicSessionBaseUrl}
             onSelectSession={setSelectedSessionId}
             onCreateSession={handleCreateSession}
-            onToggleRegistration={handleToggleRegistration}
+            onDeleteSession={handleDeleteSession}
             onUpdateSessionStatus={handleUpdateSessionStatus}
           />
         ) : null}
