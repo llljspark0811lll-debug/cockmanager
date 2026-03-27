@@ -13,7 +13,7 @@ model Club {
   name               String
   code               String   @unique
   publicJoinToken    String   @unique @default(cuid())
-  subscriptionStatus String   @default("TRIAL") // TRIAL | ACTIVE | BLOCKED | EXPIRED
+  subscriptionStatus String   @default("TRIAL")
   subscriptionEnd    DateTime?
   createdAt          DateTime @default(now())
 
@@ -29,7 +29,7 @@ model Admin {
   id                 Int      @id @default(autoincrement())
   username           String   @unique
   password           String
-  role               String   @default("ADMIN") // ADMIN | SUPER_ADMIN
+  role               String   @default("ADMIN")
   status             String   @default("ACTIVE")
   mustChangePassword Boolean  @default(false)
   customFieldLabel   String   @default("차량번호") @map("custom1Label")
@@ -42,40 +42,41 @@ model Admin {
 }
 
 model Member {
-  id          Int      @id @default(autoincrement())
-  name        String
-  gender      String
-  birth       DateTime?
-  phone       String
-  level       String
-  customFieldValue String @default("") @map("carnumber")
-  note        String   @default("")
-  status      String   @default("pending") // pending | approved | rejected
-  createdAt   DateTime @default(now())
-  deleted     Boolean  @default(false)
-  deletedAt   DateTime?
-  withdrawnAt DateTime?
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  gender                 String
+  birth                  DateTime?
+  phone                  String
+  level                  String
+  customFieldValue       String   @default("") @map("carnumber")
+  note                   String   @default("")
+  status                 String   @default("pending")
+  createdAt              DateTime @default(now())
+  deleted                Boolean  @default(false)
+  deletedAt              DateTime?
+  withdrawnAt            DateTime?
 
   clubId Int
   club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
-  fees                Fee[]
-  sessionParticipants SessionParticipant[]
-  specialFeePayments  SpecialFeePayment[]
+  fees                    Fee[]
+  sessionParticipants     SessionParticipant[] @relation("SessionMember")
+  hostedGuestParticipants SessionParticipant[] @relation("GuestHost")
+  specialFeePayments      SpecialFeePayment[]
 }
 
 model MemberRequest {
-  id          Int      @id @default(autoincrement())
-  name        String
-  gender      String
-  birth       DateTime?
-  phone       String
-  level       String
-  customFieldValue String @default("") @map("carnumber")
-  note        String   @default("")
-  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
-  createdAt   DateTime @default(now())
-  processedAt DateTime?
+  id               Int      @id @default(autoincrement())
+  name             String
+  gender           String
+  birth            DateTime?
+  phone            String
+  level            String
+  customFieldValue String   @default("") @map("carnumber")
+  note             String   @default("")
+  status           String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  processedAt      DateTime?
 
   clubId Int
   club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
@@ -109,7 +110,7 @@ model Payment {
   orderId    String   @unique
   paymentKey String?
   amount     Int
-  status     String // READY | DONE | CANCELED
+  status     String
   method     String?
   orderName  String?
   createdAt  DateTime @default(now())
@@ -158,7 +159,7 @@ model ClubSession {
   startTime   String
   endTime     String
   capacity    Int?
-  status      String   @default("OPEN") // OPEN | CLOSED | CANCELED
+  status      String   @default("OPEN")
   createdAt   DateTime @default(now())
 
   clubId Int
@@ -169,16 +170,20 @@ model ClubSession {
 
 model SessionParticipant {
   id               Int      @id @default(autoincrement())
-  status           String   @default("REGISTERED") // REGISTERED | WAITLIST | CANCELED
-  attendanceStatus String   @default("PENDING") // PENDING | PRESENT | ABSENT | LATE
+  status           String   @default("REGISTERED")
+  attendanceStatus String   @default("PENDING")
   checkedInAt      DateTime?
   createdAt        DateTime @default(now())
+  guestName        String?
 
   sessionId Int
   session   ClubSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  memberId Int
-  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId Int?
+  member   Member? @relation("SessionMember", fields: [memberId], references: [id], onDelete: Cascade)
+
+  hostMemberId Int?
+  hostMember   Member? @relation("GuestHost", fields: [hostMemberId], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, memberId])
 }
