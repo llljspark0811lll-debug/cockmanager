@@ -5,6 +5,17 @@ import {
 } from "@/lib/session-summary";
 import { NextResponse } from "next/server";
 
+function getParticipantName(participant: {
+  guestName?: string | null;
+  member?: { name: string } | null;
+}) {
+  if (participant.guestName) {
+    return `${participant.guestName} (게스트)`;
+  }
+
+  return participant.member?.name ?? "이름 없음";
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ token: string }> }
@@ -29,6 +40,11 @@ export async function GET(
           },
           include: {
             member: {
+              select: {
+                name: true,
+              },
+            },
+            hostMember: {
               select: {
                 name: true,
               },
@@ -63,9 +79,9 @@ export async function GET(
       joinToken: session.club.publicJoinToken,
       registeredCount: getRegisteredParticipants(session.participants),
       waitlistCount: getWaitlistedParticipants(session.participants),
-      participantNames: session.participants.map(
-        (participant) => participant.member.name
-      ),
+      participantNames: session.participants
+        .filter((participant) => participant.status === "REGISTERED")
+        .map(getParticipantName),
     });
   } catch (error) {
     console.error(error);
