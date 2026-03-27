@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { LEVELS, GENDERS } from "@/lib/dashboard-constants";
+import { GENDERS, LEVELS } from "@/lib/dashboard-constants";
+import { formatPhoneNumber } from "@/components/dashboard/utils";
 
 type JoinConfig = {
   name: string;
@@ -27,7 +28,6 @@ export default function JoinPage() {
   const [form, setForm] = useState({
     name: "",
     gender: "",
-    birth: "",
     phone: "",
     level: "",
     customFieldValue: "",
@@ -57,7 +57,7 @@ export default function JoinPage() {
       });
   }, [accessKey]);
 
-  const handleSubmit = async () => {
+  async function handleSubmit() {
     if (!clubConfig.publicJoinToken) {
       alert("클럽 링크 정보가 올바르지 않습니다.");
       return;
@@ -65,29 +65,30 @@ export default function JoinPage() {
 
     if (!form.name.trim()) return alert("이름을 입력해주세요.");
     if (!form.gender) return alert("성별을 선택해주세요.");
-    if (!form.birth) return alert("생년월일을 입력해주세요.");
-    if (!form.phone.trim()) return alert("전화번호를 입력해주세요.");
+    if (!form.phone.trim()) return alert("연락처를 입력해주세요.");
     if (!form.level) return alert("급수를 선택해주세요.");
 
-    const res = await fetch("/api/member-request/apply", {
+    const response = await fetch("/api/member-request/apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        birth: new Date().toISOString(),
+        phone: formatPhoneNumber(form.phone),
         joinToken: clubConfig.publicJoinToken,
       }),
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (!res.ok) {
+    if (!response.ok) {
       alert(data.error || "가입 신청에 실패했습니다.");
       return;
     }
 
     alert("가입 신청이 완료되었습니다.");
     router.push("/");
-  };
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-6 sm:p-6">
@@ -114,10 +115,12 @@ export default function JoinPage() {
               <button
                 key={gender}
                 type="button"
-                className={`rounded-lg border py-3 text-sm font-semibold ${
+                className={`rounded-lg border py-3 text-sm font-semibold transition ${
                   form.gender === gender
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-600"
+                    ? gender === "남"
+                      ? "border-sky-600 bg-sky-600 text-white"
+                      : "border-rose-500 bg-rose-500 text-white"
+                    : "border-slate-200 bg-white text-gray-600"
                 }`}
                 onClick={() => setForm({ ...form, gender })}
               >
@@ -126,21 +129,19 @@ export default function JoinPage() {
             ))}
           </div>
 
-          <input
-            type="date"
-            className="w-full rounded-lg border p-3"
-            value={form.birth}
-            onChange={(event) =>
-              setForm({ ...form, birth: event.target.value })
-            }
-          />
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-500">
+            신청일은 오늘 날짜로 자동 기록됩니다.
+          </div>
 
           <input
-            placeholder="전화번호"
+            placeholder="연락처"
             className="w-full rounded-lg border p-3"
             value={form.phone}
             onChange={(event) =>
-              setForm({ ...form, phone: event.target.value })
+              setForm({
+                ...form,
+                phone: formatPhoneNumber(event.target.value),
+              })
             }
           />
 

@@ -3,6 +3,8 @@ import type {
   SessionParticipant,
 } from "@/components/dashboard/types";
 
+const LEVEL_ORDER = ["S", "A", "B", "C", "D", "E", "초심"];
+
 export function formatDate(
   value: string | Date | null | undefined
 ) {
@@ -51,6 +53,38 @@ export function toDateInputValue(
   return date.toISOString().split("T")[0];
 }
 
+export function normalizePhoneNumber(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+export function formatPhoneNumber(value: string | null | undefined) {
+  const digits = normalizePhoneNumber(value ?? "");
+
+  if (!digits) {
+    return "";
+  }
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  }
+
+  if (digits.length <= 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(
+      3,
+      7
+    )}-${digits.slice(7, 11)}`;
+  }
+
+  return `${digits.slice(0, 3)}-${digits.slice(
+    3,
+    7
+  )}-${digits.slice(7, 11)}`;
+}
+
 export function getRegisteredParticipants(session: ClubSession) {
   return session.participants.filter(
     (participant) => participant.status === "REGISTERED"
@@ -95,4 +129,66 @@ export function getAttendanceStatusLabel(
   if (status === "ABSENT") return "결석";
   if (status === "LATE") return "지각";
   return "미체크";
+}
+
+export function normalizeGenderLabel(gender: string) {
+  const value = gender.trim().toLowerCase();
+
+  if (["남", "남자", "m", "male"].includes(value)) return "남";
+  if (["여", "여자", "f", "female"].includes(value)) return "여";
+  return gender || "-";
+}
+
+export function getGenderSortRank(gender: string) {
+  const normalized = normalizeGenderLabel(gender);
+
+  if (normalized === "남") return 0;
+  if (normalized === "여") return 1;
+  return 2;
+}
+
+export function getGenderBadgeClasses(gender: string) {
+  const normalized = normalizeGenderLabel(gender);
+
+  if (normalized === "남") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (normalized === "여") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+export function getLevelRank(level: string) {
+  const normalized = level.trim().toUpperCase();
+  const index = LEVEL_ORDER.indexOf(normalized);
+  return index === -1 ? LEVEL_ORDER.length : index;
+}
+
+export function getSortedLevels(levels: string[]) {
+  return [...levels].sort((left, right) => {
+    const rankDiff =
+      getLevelRank(left) - getLevelRank(right);
+
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+
+    return left.localeCompare(right, "ko");
+  });
+}
+
+export function getLevelTextClasses(level: string) {
+  const normalized = level.trim().toUpperCase();
+
+  if (normalized === "S") return "text-amber-600";
+  if (normalized === "A") return "text-emerald-700";
+  if (normalized === "B") return "text-violet-700";
+  if (normalized === "C") return "text-orange-600";
+  if (normalized === "D") return "text-lime-700";
+  if (normalized === "E") return "text-slate-600";
+  if (normalized === "초심") return "text-cyan-700";
+  return "text-slate-500";
 }

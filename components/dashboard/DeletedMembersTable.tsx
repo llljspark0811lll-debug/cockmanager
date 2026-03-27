@@ -1,5 +1,11 @@
 import type { Member } from "@/components/dashboard/types";
-import { formatDate } from "@/components/dashboard/utils";
+import {
+  formatDate,
+  formatPhoneNumber,
+  getGenderBadgeClasses,
+  getLevelTextClasses,
+  normalizeGenderLabel,
+} from "@/components/dashboard/utils";
 
 type DeletedMembersTableProps = {
   members: Member[];
@@ -38,8 +44,14 @@ export function DeletedMembersTable({
                 <td className="px-4 py-4 font-bold text-slate-500">
                   {member.name}
                 </td>
-                <td className="px-4 py-4 text-slate-400">
-                  {member.gender}
+                <td className="px-4 py-4">
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenderBadgeClasses(
+                      member.gender
+                    )}`}
+                  >
+                    {normalizeGenderLabel(member.gender)}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-slate-400">
                   {formatDate(member.birth)}
@@ -48,10 +60,16 @@ export function DeletedMembersTable({
                   {formatDate(member.deletedAt)}
                 </td>
                 <td className="px-4 py-4 text-slate-400">
-                  {member.phone || "-"}
+                  {formatPhoneNumber(member.phone) || "-"}
                 </td>
-                <td className="px-4 py-4 font-bold text-slate-400">
-                  {member.level}
+                <td className="px-4 py-4">
+                  <span
+                    className={`text-xs font-extrabold ${getLevelTextClasses(
+                      member.level
+                    )}`}
+                  >
+                    {member.level}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-slate-400">
                   {member.customFieldValue || "-"}

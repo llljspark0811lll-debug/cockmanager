@@ -1,5 +1,11 @@
 import type { MemberRequest } from "@/components/dashboard/types";
-import { formatDate } from "@/components/dashboard/utils";
+import {
+  formatDate,
+  formatPhoneNumber,
+  getGenderBadgeClasses,
+  getLevelTextClasses,
+  normalizeGenderLabel,
+} from "@/components/dashboard/utils";
 
 type RequestsTableProps = {
   requests: MemberRequest[];
@@ -38,17 +44,29 @@ export function RequestsTable({
                 <td className="px-4 py-4 font-bold text-slate-900">
                   {request.name}
                 </td>
-                <td className="px-4 py-4 text-slate-600">
-                  {request.gender}
+                <td className="px-4 py-4">
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenderBadgeClasses(
+                      request.gender
+                    )}`}
+                  >
+                    {normalizeGenderLabel(request.gender)}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-slate-500">
                   {formatDate(request.birth)}
                 </td>
                 <td className="px-4 py-4 text-slate-700">
-                  {request.phone || "-"}
+                  {formatPhoneNumber(request.phone) || "-"}
                 </td>
-                <td className="px-4 py-4 font-bold text-sky-600">
-                  {request.level}
+                <td className="px-4 py-4">
+                  <span
+                    className={`text-xs font-extrabold ${getLevelTextClasses(
+                      request.level
+                    )}`}
+                  >
+                    {request.level}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-slate-500">
                   {request.customFieldValue || "-"}

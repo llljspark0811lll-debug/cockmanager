@@ -3,6 +3,7 @@ import type {
   Member,
   MemberFormState,
 } from "@/components/dashboard/types";
+import { formatPhoneNumber } from "@/components/dashboard/utils";
 
 type MemberFormModalProps = {
   open: boolean;
@@ -72,7 +73,9 @@ export function MemberFormModal({
                   }
                   className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${
                     form.gender === gender
-                      ? "border-sky-600 bg-sky-600 text-white"
+                      ? gender === "남"
+                        ? "border-sky-600 bg-sky-600 text-white"
+                        : "border-rose-500 bg-rose-500 text-white"
                       : "border-slate-200 bg-slate-50 text-slate-500"
                   }`}
                 >
@@ -131,7 +134,7 @@ export function MemberFormModal({
               onChange={(event) =>
                 onChange({
                   ...form,
-                  phone: event.target.value,
+                  phone: formatPhoneNumber(event.target.value),
                 })
               }
               placeholder="010-0000-0000"
