@@ -279,7 +279,7 @@ export default function DashboardPage() {
         (specialFee) => specialFee.id === current
       );
 
-      return exists ? current : nextSpecialFees[0].id;
+      return exists ? current : null;
     });
   }
 
@@ -415,30 +415,6 @@ export default function DashboardPage() {
       }
     );
   }, [activeTab, selectedSessionId, sessions]);
-
-  useEffect(() => {
-    if (activeTab !== "fees" || !selectedSpecialFeeId) {
-      return;
-    }
-
-    const selectedSpecialFee = specialFees.find(
-      (specialFee) => specialFee.id === selectedSpecialFeeId
-    );
-
-    if (!selectedSpecialFee) {
-      setSelectedSpecialFeeId(null);
-      return;
-    }
-
-    if (selectedSpecialFee?.payments) {
-      return;
-    }
-
-    refreshSpecialFeeDetail(
-      selectedSpecialFeeId,
-      true
-    ).catch(() => undefined);
-  }, [activeTab, selectedSpecialFeeId, specialFees]);
 
   useEffect(() => {
     const refreshLiveData = () => {
@@ -922,6 +898,23 @@ export default function DashboardPage() {
     setSelectedSpecialFeeId(created.id);
   }
 
+  async function handleSelectSpecialFee(specialFeeId: number) {
+    setSelectedSpecialFeeId(specialFeeId);
+
+    const selectedSpecialFee = specialFees.find(
+      (specialFee) => specialFee.id === specialFeeId
+    );
+
+    if (selectedSpecialFee?.payments) {
+      return;
+    }
+
+    await refreshSpecialFeeDetail(
+      specialFeeId,
+      true
+    ).catch(() => undefined);
+  }
+
   async function handleToggleSpecialFeePayment(
     specialFeeId: number,
     memberId: number,
@@ -1164,7 +1157,7 @@ export default function DashboardPage() {
               specialFees={specialFees}
               selectedFeeId={selectedSpecialFeeId}
               loadingSelectedFee={loadingSpecialFeeDetail}
-              onSelectFee={setSelectedSpecialFeeId}
+              onSelectFee={handleSelectSpecialFee}
               onCreateFee={handleCreateSpecialFee}
               onTogglePayment={handleToggleSpecialFeePayment}
             />
