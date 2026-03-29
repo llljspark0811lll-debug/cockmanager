@@ -81,7 +81,6 @@ export function SessionsPanel({
 
   const selectedSession =
     sessions.find((session) => session.id === selectedSessionId) ??
-    sessions[0] ??
     null;
 
   const publicSessionLink = useMemo(() => {

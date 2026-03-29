@@ -224,7 +224,7 @@ export default function DashboardPage() {
         (session) => session.id === current
       );
 
-      return exists ? current : nextSessions[0].id;
+      return exists ? current : null;
     });
   }
 
@@ -305,11 +305,7 @@ export default function DashboardPage() {
         )
       );
     } catch (error) {
-      if (
-        suppressNotFoundAlert &&
-        error instanceof Error &&
-        error.message.includes("수시회비 항목을 찾을 수 없습니다")
-      ) {
+      if (suppressNotFoundAlert) {
         setSelectedSpecialFeeId((current) =>
           current === specialFeeId ? null : current
         );
@@ -405,15 +401,16 @@ export default function DashboardPage() {
       (session) => session.id === selectedSessionId
     );
 
+    if (!selectedSession) {
+      setSelectedSessionId(null);
+      return;
+    }
+
     if (selectedSession?.participants) {
       return;
     }
 
-    refreshSessionDetail(selectedSessionId).catch(
-      (error: Error) => {
-        alert(error.message);
-      }
-    );
+    refreshSessionDetail(selectedSessionId).catch(() => undefined);
   }, [activeTab, selectedSessionId, sessions]);
 
   useEffect(() => {
@@ -846,6 +843,24 @@ export default function DashboardPage() {
     await refreshSessionDetail(created.id);
   }
 
+  async function handleSelectSession(sessionId: number) {
+    setSelectedSessionId(sessionId);
+
+    const selectedSession = sessions.find(
+      (session) => session.id === sessionId
+    );
+
+    if (selectedSession?.participants) {
+      return;
+    }
+
+    await refreshSessionDetail(sessionId).catch(() => {
+      setSelectedSessionId((current) =>
+        current === sessionId ? null : current
+      );
+    });
+  }
+
   async function handleDeleteSession(sessionId: number) {
     await requestJson("/api/sessions", {
       method: "DELETE",
@@ -1165,16 +1180,16 @@ export default function DashboardPage() {
         ) : null}
 
         {activeTab === "sessions" ? (
-          <SessionsPanel
-            sessions={sessions}
-            selectedSessionId={selectedSessionId}
-            publicSessionBaseUrl={publicSessionBaseUrl}
-            loadingSelectedSession={loadingSessionDetail}
-            onSelectSession={setSelectedSessionId}
-            onCreateSession={handleCreateSession}
-            onDeleteSession={handleDeleteSession}
-            onUpdateSessionStatus={handleUpdateSessionStatus}
-          />
+            <SessionsPanel
+              sessions={sessions}
+              selectedSessionId={selectedSessionId}
+              publicSessionBaseUrl={publicSessionBaseUrl}
+              loadingSelectedSession={loadingSessionDetail}
+              onSelectSession={handleSelectSession}
+              onCreateSession={handleCreateSession}
+              onDeleteSession={handleDeleteSession}
+              onUpdateSessionStatus={handleUpdateSessionStatus}
+            />
         ) : null}
 
         {activeTab === "attendance" ? (
@@ -1182,7 +1197,7 @@ export default function DashboardPage() {
             sessions={sessions}
             selectedSessionId={selectedSessionId}
             loadingSelectedSession={loadingSessionDetail}
-            onSelectSession={setSelectedSessionId}
+            onSelectSession={handleSelectSession}
             onUpdateAttendance={handleUpdateAttendance}
           />
         ) : null}
