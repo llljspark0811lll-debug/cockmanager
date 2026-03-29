@@ -152,13 +152,30 @@ export async function POST(req: Request) {
         });
       }
 
-      return specialFee;
+      return tx.specialFee.findUniqueOrThrow({
+        where: { id: specialFee.id },
+        include: {
+          payments: {
+            include: {
+              member: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+        },
+      });
     });
 
     return NextResponse.json({
       ...created,
       paidCount: 0,
-      payments: [],
     });
   } catch (error) {
     console.error(error);

@@ -6,6 +6,19 @@ import {
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+async function findClubMember(memberId: number, clubId: number) {
+  return prisma.member.findFirst({
+    where: {
+      id: memberId,
+      clubId,
+      deleted: false,
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
 export async function GET(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -15,18 +28,18 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const yearParam = Number(searchParams.get("year"));
+    const year = Number(searchParams.get("year"));
 
-    if (!Number.isFinite(yearParam)) {
+    if (!Number.isFinite(year)) {
       return NextResponse.json(
-        { error: "?곕룄瑜? ?뺤긽?곸쑝濡? ?낅젰?댁＜?몄슂." },
+        { error: "연도를 올바르게 입력해주세요." },
         { status: 400 }
       );
     }
 
     const fees = await prisma.fee.findMany({
       where: {
-        year: yearParam,
+        year,
         member: {
           clubId: admin.clubId,
           deleted: false,
@@ -45,7 +58,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "?뚮퉬 紐⑸줉?? 遺덈윭?ㅼ? 紐삵뻽?듬땲??" },
+      { error: "회비 목록을 불러오지 못했습니다." },
       { status: 500 }
     );
   }
@@ -60,12 +73,15 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { memberId, year, month, paid } = body;
+    const memberId = Number(body.memberId);
+    const year = Number(body.year);
+    const month = Number(body.month);
+    const paid = Boolean(body.paid);
 
     if (
-      memberId === undefined ||
-      year === undefined ||
-      month === undefined
+      !Number.isFinite(memberId) ||
+      !Number.isFinite(year) ||
+      !Number.isFinite(month)
     ) {
       return NextResponse.json(
         { error: "필수 데이터가 누락되었습니다." },
@@ -73,31 +89,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const member = await prisma.member.findFirst({
-      where: {
-        id: Number(memberId),
-        clubId: admin.clubId,
-      },
-    });
+    const member = await findClubMember(memberId, admin.clubId);
 
     if (!member) {
-      return notFoundResponse("회비를 수정할 회원을 찾을 수 없습니다.");
+      return notFoundResponse(
+        "회비를 수정할 회원을 찾을 수 없습니다."
+      );
     }
 
     const fee = await prisma.fee.upsert({
       where: {
         memberId_year_month: {
           memberId: member.id,
-          year: Number(year),
-          month: Number(month),
+          year,
+          month,
         },
       },
-      update: { paid: Boolean(paid) },
+      update: { paid },
       create: {
         memberId: member.id,
-        year: Number(year),
-        month: Number(month),
-        paid: Boolean(paid),
+        year,
+        month,
+        paid,
+      },
+      select: {
+        id: true,
+        memberId: true,
+        year: true,
+        month: true,
+        paid: true,
       },
     });
 
@@ -106,6 +126,72 @@ export async function POST(req: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "회비 상태를 저장하지 못했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const admin = await requireAuthAdmin();
+
+    if (!admin) {
+      return unauthorizedResponse();
+    }
+
+    const body = await req.json();
+    const memberId = Number(body.memberId);
+    const year = Number(body.year);
+    const paid = Boolean(body.paid);
+
+    if (!Number.isFinite(memberId) || !Number.isFinite(year)) {
+      return NextResponse.json(
+        { error: "회원과 연도 정보가 필요합니다." },
+        { status: 400 }
+      );
+    }
+
+    const member = await findClubMember(memberId, admin.clubId);
+
+    if (!member) {
+      return notFoundResponse(
+        "회비를 수정할 회원을 찾을 수 없습니다."
+      );
+    }
+
+    const fees = await prisma.$transaction(
+      Array.from({ length: 12 }, (_, index) =>
+        prisma.fee.upsert({
+          where: {
+            memberId_year_month: {
+              memberId: member.id,
+              year,
+              month: index + 1,
+            },
+          },
+          update: { paid },
+          create: {
+            memberId: member.id,
+            year,
+            month: index + 1,
+            paid,
+          },
+          select: {
+            id: true,
+            memberId: true,
+            year: true,
+            month: true,
+            paid: true,
+          },
+        })
+      )
+    );
+
+    return NextResponse.json(fees);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "회비 일괄 처리에 실패했습니다." },
       { status: 500 }
     );
   }

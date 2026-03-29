@@ -280,7 +280,8 @@ export default function DashboardPage() {
   }
 
   async function refreshSpecialFeeDetail(
-    specialFeeId: number
+    specialFeeId: number,
+    suppressNotFoundAlert = false
   ) {
     setLoadingSpecialFeeDetail(true);
 
@@ -299,6 +300,19 @@ export default function DashboardPage() {
             : specialFee
         )
       );
+    } catch (error) {
+      if (
+        suppressNotFoundAlert &&
+        error instanceof Error &&
+        error.message.includes("수시회비 항목을 찾을 수 없습니다")
+      ) {
+        setSelectedSpecialFeeId((current) =>
+          current === specialFeeId ? null : current
+        );
+        return;
+      }
+
+      throw error;
     } finally {
       setLoadingSpecialFeeDetail(false);
     }
@@ -411,7 +425,10 @@ export default function DashboardPage() {
       return;
     }
 
-    refreshSpecialFeeDetail(selectedSpecialFeeId).catch(
+    refreshSpecialFeeDetail(
+      selectedSpecialFeeId,
+      true
+    ).catch(
       (error: Error) => {
         alert(error.message);
       }
@@ -659,7 +676,7 @@ export default function DashboardPage() {
   ) {
     const nextPaid = !currentPaid;
 
-    await requestJson("/api/fees", {
+    const updatedFee = await requestJson<Fee>("/api/fees", {
       method: "POST",
       body: JSON.stringify({
         memberId,
@@ -669,7 +686,27 @@ export default function DashboardPage() {
       }),
     });
 
-    await refreshFees();
+    setFees((current) => {
+      const key = `${memberId}-${year}-${month}`;
+      let replaced = false;
+
+      const nextFees = current.map((fee) => {
+        if (
+          `${fee.memberId}-${fee.year}-${fee.month}` === key
+        ) {
+          replaced = true;
+          return updatedFee;
+        }
+
+        return fee;
+      });
+
+      if (!replaced) {
+        nextFees.push(updatedFee);
+      }
+
+      return nextFees;
+    });
   }
 
   async function handleAllPaid(memberId: number) {
@@ -677,21 +714,26 @@ export default function DashboardPage() {
       return;
     }
 
-    await Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
-        requestJson("/api/fees", {
-          method: "POST",
-          body: JSON.stringify({
-            memberId,
-            year: selectedYear,
-            month: index + 1,
-            paid: true,
-          }),
-        })
-      )
-    );
+    const updatedFees = await requestJson<Fee[]>("/api/fees", {
+      method: "PUT",
+      body: JSON.stringify({
+        memberId,
+        year: selectedYear,
+        paid: true,
+      }),
+    });
 
-    await refreshFees();
+    setFees((current) => {
+      const nextFees = current.filter(
+        (fee) =>
+          !(
+            fee.memberId === memberId &&
+            fee.year === selectedYear
+          )
+      );
+
+      return [...nextFees, ...updatedFees];
+    });
   }
 
   async function handleAllUnpaid(memberId: number) {
@@ -699,21 +741,26 @@ export default function DashboardPage() {
       return;
     }
 
-    await Promise.all(
-      Array.from({ length: 12 }, (_, index) =>
-        requestJson("/api/fees", {
-          method: "POST",
-          body: JSON.stringify({
-            memberId,
-            year: selectedYear,
-            month: index + 1,
-            paid: false,
-          }),
-        })
-      )
-    );
+    const updatedFees = await requestJson<Fee[]>("/api/fees", {
+      method: "PUT",
+      body: JSON.stringify({
+        memberId,
+        year: selectedYear,
+        paid: false,
+      }),
+    });
 
-    await refreshFees();
+    setFees((current) => {
+      const nextFees = current.filter(
+        (fee) =>
+          !(
+            fee.memberId === memberId &&
+            fee.year === selectedYear
+          )
+      );
+
+      return [...nextFees, ...updatedFees];
+    });
   }
 
   async function handleApprove(id: number) {
@@ -871,9 +918,11 @@ export default function DashboardPage() {
       body: JSON.stringify(payload),
     });
 
-    await refreshSpecialFees();
+    setSpecialFees((current) => [
+      created,
+      ...current.filter((item) => item.id !== created.id),
+    ]);
     setSelectedSpecialFeeId(created.id);
-    await refreshSpecialFeeDetail(created.id);
   }
 
   async function handleToggleSpecialFeePayment(
@@ -890,7 +939,15 @@ export default function DashboardPage() {
       return;
     }
 
-    await requestJson("/api/special-fees/payment", {
+    const updatedPayment = await requestJson<{
+      id: number;
+      paid: boolean;
+      paidAt: string | Date | null;
+      note: string;
+      createdAt: string | Date;
+      memberId: number;
+      specialFeeId: number;
+    }>("/api/special-fees/payment", {
       method: "POST",
       body: JSON.stringify({
         specialFeeId,
@@ -899,8 +956,42 @@ export default function DashboardPage() {
       }),
     });
 
-    await refreshSpecialFees();
-    await refreshSpecialFeeDetail(specialFeeId);
+    setSpecialFees((current) =>
+      current.map((specialFee) => {
+        if (specialFee.id !== specialFeeId) {
+          return specialFee;
+        }
+
+        const currentPayments = specialFee.payments ?? [];
+        const paymentIndex = currentPayments.findIndex(
+          (payment) => payment.memberId === memberId
+        );
+
+        let nextPayments = currentPayments;
+
+        if (paymentIndex >= 0) {
+          nextPayments = currentPayments.map((payment) =>
+            payment.memberId === memberId
+              ? {
+                  ...payment,
+                  ...updatedPayment,
+                }
+              : payment
+          );
+        }
+
+        const paidCount =
+          nextPayments.length > 0
+            ? nextPayments.filter((payment) => payment.paid).length
+            : specialFee.paidCount ?? 0;
+
+        return {
+          ...specialFee,
+          payments: nextPayments,
+          paidCount,
+        };
+      })
+    );
   }
 
   async function handleUpdateSessionStatus(
