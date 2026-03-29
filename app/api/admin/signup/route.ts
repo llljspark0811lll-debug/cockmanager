@@ -5,11 +5,35 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { clubName, username, password } = body;
+    const { clubName, username, email, password, confirmPassword } =
+      body;
 
-    if (!clubName || !username || !password) {
+    if (
+      !clubName ||
+      !username ||
+      !email ||
+      !password ||
+      !confirmPassword
+    ) {
       return NextResponse.json(
-        { error: "클럽 이름, 아이디, 비밀번호를 입력해주세요." },
+        {
+          error:
+            "클럽 이름, 관리자 아이디, 관리자 이메일, 비밀번호, 비밀번호 확인을 입력해주세요.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (String(password) !== String(confirmPassword)) {
+      return NextResponse.json(
+        { error: "비밀번호 확인이 일치하지 않습니다." },
+        { status: 400 }
+      );
+    }
+
+    if (String(password).length < 6) {
+      return NextResponse.json(
+        { error: "비밀번호는 6자 이상으로 입력해주세요." },
         { status: 400 }
       );
     }
@@ -21,6 +45,17 @@ export async function POST(req: Request) {
     if (existingAdmin) {
       return NextResponse.json(
         { error: "이미 사용 중인 관리자 아이디입니다." },
+        { status: 400 }
+      );
+    }
+
+    const existingEmail = await prisma.admin.findFirst({
+      where: { email: String(email).trim().toLowerCase() },
+    });
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: "이미 사용 중인 관리자 이메일입니다." },
         { status: 400 }
       );
     }
@@ -37,6 +72,7 @@ export async function POST(req: Request) {
       await tx.admin.create({
         data: {
           username: String(username).trim(),
+          email: String(email).trim().toLowerCase(),
           password: hashedPassword,
           clubId: club.id,
           role: "SUPER_ADMIN",

@@ -25,7 +25,10 @@ export async function GET() {
       }),
       prisma.admin.findUnique({
         where: { id: admin.adminId },
-        select: { customFieldLabel: true },
+        select: {
+          customFieldLabel: true,
+          email: true,
+        },
       }),
     ]);
 
@@ -36,12 +39,11 @@ export async function GET() {
       );
     }
 
-    const calculatedStatus =
-      getCalculatedSubscriptionStatus({
-        subscriptionStatus: club.subscriptionStatus,
-        createdAt: club.createdAt,
-        subscriptionEnd: club.subscriptionEnd,
-      });
+    const calculatedStatus = getCalculatedSubscriptionStatus({
+      subscriptionStatus: club.subscriptionStatus,
+      createdAt: club.createdAt,
+      subscriptionEnd: club.subscriptionEnd,
+    });
 
     return NextResponse.json({
       id: club.id,
@@ -51,6 +53,7 @@ export async function GET() {
       subscriptionEnd: club.subscriptionEnd,
       customFieldLabel:
         currentAdmin?.customFieldLabel ?? "차량번호",
+      adminEmail: currentAdmin?.email ?? "",
     });
   } catch (error) {
     console.error(error);

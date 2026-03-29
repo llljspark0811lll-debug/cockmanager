@@ -35,8 +35,13 @@ export async function POST(req: Request) {
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      const createdMember = await tx.member.create({
+    const specialFeeIds = await prisma.specialFee.findMany({
+      where: { clubId: memberRequest.clubId },
+      select: { id: true },
+    });
+
+    const createdMember = await prisma.$transaction(async (tx) => {
+      const nextMember = await tx.member.create({
         data: {
           name: memberRequest.name,
           gender: memberRequest.gender,
@@ -50,16 +55,11 @@ export async function POST(req: Request) {
         },
       });
 
-      const specialFees = await tx.specialFee.findMany({
-        where: { clubId: memberRequest.clubId },
-        select: { id: true },
-      });
-
-      if (specialFees.length > 0) {
+      if (specialFeeIds.length > 0) {
         await tx.specialFeePayment.createMany({
-          data: specialFees.map((specialFee) => ({
+          data: specialFeeIds.map((specialFee) => ({
             specialFeeId: specialFee.id,
-            memberId: createdMember.id,
+            memberId: nextMember.id,
           })),
         });
       }
@@ -71,9 +71,15 @@ export async function POST(req: Request) {
           processedAt: new Date(),
         },
       });
+
+      return nextMember;
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      member: createdMember,
+      requestId: memberRequest.id,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

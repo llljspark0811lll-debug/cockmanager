@@ -1,10 +1,7 @@
-import { prisma } from "@/lib/prisma";
-import {
-  createToken,
-  setAuthCookie,
-} from "@/lib/auth";
-import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import { prisma } from "@/lib/prisma";
+import { createToken, setAuthCookie } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {

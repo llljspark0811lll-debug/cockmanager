@@ -97,6 +97,7 @@ export interface ClubInfo {
   calculatedStatus: "TRIAL" | "ACTIVE" | "BLOCKED" | "EXPIRED";
   subscriptionEnd?: string | Date | null;
   customFieldLabel: string;
+  adminEmail: string;
 }
 
 export interface MemberFormState {

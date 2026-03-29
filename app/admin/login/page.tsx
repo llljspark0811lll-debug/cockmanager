@@ -13,20 +13,32 @@ export default function AdminLoginPage() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const [checkingAutoLogin, setCheckingAutoLogin] =
+    useState(true);
 
   useEffect(() => {
     const savedUsername =
       window.localStorage.getItem(LAST_LOGIN_ID_KEY) ?? "";
 
-    if (!savedUsername) {
-      return;
+    if (savedUsername) {
+      setForm((current) => ({
+        ...current,
+        username: savedUsername,
+      }));
     }
 
-    setForm((current) => ({
-      ...current,
-      username: savedUsername,
-    }));
-  }, []);
+    fetch("/api/club-info", {
+      credentials: "include",
+    })
+      .then((response) => {
+        if (response.ok) {
+          router.replace("/admin/dashboard");
+        }
+      })
+      .finally(() => {
+        setCheckingAutoLogin(false);
+      });
+  }, [router]);
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
@@ -56,6 +68,16 @@ export default function AdminLoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingAutoLogin) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+        <div className="rounded-2xl bg-white px-8 py-6 text-sm font-semibold text-slate-500 shadow-xl">
+          로그인 상태를 확인하는 중입니다...
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -109,6 +131,12 @@ export default function AdminLoginPage() {
           onClick={() => router.push("/admin/signup")}
         >
           클럽이 없나요? 새로 만들기
+        </p>
+        <p
+          className="mt-3 cursor-pointer text-center text-sm text-gray-500 hover:underline"
+          onClick={() => router.push("/admin/reset-password")}
+        >
+          아이디 / 비밀번호를 잊으셨나요?
         </p>
       </div>
     </main>

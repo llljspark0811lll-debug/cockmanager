@@ -24,6 +24,81 @@ type SortOption = "name" | "gender" | "level" | "recent";
 
 const STORAGE_KEY = "dashboard-members-filters-v1";
 
+function MemberCard({
+  member,
+  customFieldLabel,
+  onEdit,
+  onDelete,
+}: {
+  member: Member;
+  customFieldLabel: string;
+  onEdit: (member: Member) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-base font-black text-slate-900">
+            {member.name}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenderBadgeClasses(
+                member.gender
+              )}`}
+            >
+              {normalizeGenderLabel(member.gender)}
+            </span>
+            <span
+              className={`text-xs font-extrabold ${getLevelTextClasses(
+                member.level
+              )}`}
+            >
+              {member.level}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid grid-cols-[92px_1fr] gap-y-2 text-sm">
+        <dt className="font-semibold text-slate-500">생년월일</dt>
+        <dd className="text-slate-700">{formatDate(member.birth)}</dd>
+
+        <dt className="font-semibold text-slate-500">연락처</dt>
+        <dd className="text-slate-700">
+          {formatPhoneNumber(member.phone) || "-"}
+        </dd>
+
+        <dt className="font-semibold text-slate-500">
+          {customFieldLabel}
+        </dt>
+        <dd className="text-slate-700">
+          {member.customFieldValue || "-"}
+        </dd>
+
+        <dt className="font-semibold text-slate-500">메모</dt>
+        <dd className="text-slate-700">{member.note || "-"}</dd>
+      </dl>
+
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={() => onEdit(member)}
+          className="flex-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-100"
+        >
+          수정
+        </button>
+        <button
+          onClick={() => onDelete(member.id)}
+          className="flex-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
+        >
+          탈퇴 처리
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function MembersTable({
   members,
   customFieldLabel,
@@ -143,7 +218,8 @@ export function MembersTable({
               회원 관리
             </h3>
             <p className="text-sm text-slate-500">
-              이름, 성별, 급수 기준으로 빠르게 회원을 찾을 수 있어요.
+              이름, 성별, 급수 기준으로 빠르게 회원을 찾을 수
+              있어요.
             </p>
           </div>
           <div className="text-sm font-semibold text-slate-500">
@@ -224,15 +300,15 @@ export function MembersTable({
             className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
           >
             <option value="name">이름순 (가나다)</option>
-            <option value="gender">성별순 (남 → 여)</option>
-            <option value="level">급수순 (S → E)</option>
+            <option value="gender">성별순 (남, 여)</option>
+            <option value="level">급수순 (S ~ E)</option>
             <option value="recent">최근 등록순</option>
           </select>
         </div>
       </div>
 
       <div className="hidden overflow-x-auto lg:block">
-        <table className="min-w-[1040px] w-full text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
               <th className="px-4 py-4 font-semibold">이름</th>
@@ -328,58 +404,13 @@ export function MembersTable({
         ) : null}
 
         {filteredMembers.map((member) => (
-          <div
+          <MemberCard
             key={member.id}
-            className="rounded-[1.25rem] border border-slate-200 p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-base font-black text-slate-900">
-                  {member.name}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenderBadgeClasses(
-                      member.gender
-                    )}`}
-                  >
-                    {normalizeGenderLabel(member.gender)}
-                  </span>
-                  <span
-                    className={`text-xs font-extrabold ${getLevelTextClasses(
-                      member.level
-                    )}`}
-                  >
-                    {member.level}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2 text-sm text-slate-600">
-              <p>생년월일: {formatDate(member.birth)}</p>
-              <p>연락처: {formatPhoneNumber(member.phone) || "-"}</p>
-              <p>
-                {customFieldLabel}: {member.customFieldValue || "-"}
-              </p>
-              <p>메모: {member.note || "-"}</p>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => onEdit(member)}
-                className="flex-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 transition hover:bg-amber-100"
-              >
-                수정
-              </button>
-              <button
-                onClick={() => onDelete(member.id)}
-                className="flex-1 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100"
-              >
-                탈퇴 처리
-              </button>
-            </div>
-          </div>
+            member={member}
+            customFieldLabel={customFieldLabel}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     </div>

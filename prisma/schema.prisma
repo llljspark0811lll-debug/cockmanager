@@ -27,6 +27,7 @@ model Club {
 model Admin {
   id                 Int      @id @default(autoincrement())
   username           String   @unique
+  email              String?  @unique
   password           String
   role               String   @default("ADMIN")
   status             String   @default("ACTIVE")

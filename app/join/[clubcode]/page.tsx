@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { GENDERS, LEVELS } from "@/lib/dashboard-constants";
-import { formatPhoneNumber } from "@/components/dashboard/utils";
+import { formatPhoneNumber } from "@/lib/phone";
 
 type JoinConfig = {
   name: string;
@@ -25,6 +25,7 @@ export default function JoinPage() {
     customFieldLabel: "차량번호",
     publicJoinToken: "",
   });
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     gender: "",
@@ -58,36 +59,63 @@ export default function JoinPage() {
   }, [accessKey]);
 
   async function handleSubmit() {
+    if (submitting) {
+      return;
+    }
+
     if (!clubConfig.publicJoinToken) {
-      alert("클럽 링크 정보가 올바르지 않습니다.");
+      alert("가입 링크 정보가 올바르지 않습니다.");
       return;
     }
 
-    if (!form.name.trim()) return alert("이름을 입력해주세요.");
-    if (!form.gender) return alert("성별을 선택해주세요.");
-    if (!form.phone.trim()) return alert("연락처를 입력해주세요.");
-    if (!form.level) return alert("급수를 선택해주세요.");
-
-    const response = await fetch("/api/member-request/apply", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        birth: new Date().toISOString(),
-        phone: formatPhoneNumber(form.phone),
-        joinToken: clubConfig.publicJoinToken,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.error || "가입 신청에 실패했습니다.");
+    if (!form.name.trim()) {
+      alert("이름을 입력해주세요.");
       return;
     }
 
-    alert("가입 신청이 완료되었습니다.");
-    router.push("/");
+    if (!form.gender) {
+      alert("성별을 선택해주세요.");
+      return;
+    }
+
+    if (!form.phone.trim()) {
+      alert("연락처를 입력해주세요.");
+      return;
+    }
+
+    if (!form.level) {
+      alert("급수를 선택해주세요.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/member-request/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          birth: new Date().toISOString(),
+          phone: formatPhoneNumber(form.phone),
+          joinToken: clubConfig.publicJoinToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "가입 신청에 실패했습니다.");
+        return;
+      }
+
+      alert("가입 신청이 완료되었습니다.");
+      router.push("/");
+    } catch {
+      alert("가입 신청 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -184,9 +212,10 @@ export default function JoinPage() {
 
         <button
           onClick={handleSubmit}
-          className="mt-6 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white"
+          disabled={submitting}
+          className="mt-6 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
         >
-          가입 신청하기
+          {submitting ? "가입 신청 중..." : "가입 신청하기"}
         </button>
       </div>
     </main>

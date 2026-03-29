@@ -2,6 +2,15 @@ import type {
   ClubSession,
   SessionParticipant,
 } from "@/components/dashboard/types";
+import {
+  formatPhoneNumber,
+  normalizePhoneNumber,
+} from "@/lib/phone";
+
+export {
+  formatPhoneNumber,
+  normalizePhoneNumber,
+} from "@/lib/phone";
 
 const LEVEL_ORDER = ["S", "A", "B", "C", "D", "E", "초심"];
 
@@ -51,33 +60,6 @@ export function toDateInputValue(
   }
 
   return date.toISOString().split("T")[0];
-}
-
-export function normalizePhoneNumber(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-export function formatPhoneNumber(
-  value: string | null | undefined
-) {
-  const digits = normalizePhoneNumber(value ?? "");
-
-  if (!digits) {
-    return "";
-  }
-
-  if (digits.length <= 3) {
-    return digits;
-  }
-
-  if (digits.length <= 7) {
-    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  }
-
-  return `${digits.slice(0, 3)}-${digits.slice(
-    3,
-    7
-  )}-${digits.slice(7, 11)}`;
 }
 
 export function getRegisteredParticipants(session: ClubSession) {

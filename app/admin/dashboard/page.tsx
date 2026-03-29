@@ -117,8 +117,11 @@ export default function DashboardPage() {
     useState(false);
   const [customFieldLabelDraft, setCustomFieldLabelDraft] =
     useState("차량번호");
+  const [adminEmailDraft, setAdminEmailDraft] = useState("");
   const [savingClubSettings, setSavingClubSettings] =
     useState(false);
+  const [approvingRequestIds, setApprovingRequestIds] =
+    useState<number[]>([]);
 
   const paymentMode = getPaymentMode();
   const subscriptionAmount = getSubscriptionAmount();
@@ -129,7 +132,9 @@ export default function DashboardPage() {
     clubInfo?.publicJoinToken && origin
       ? `${origin}/join/${clubInfo.publicJoinToken}`
       : "";
-  const publicSessionBaseUrl = origin ? `${origin}/session` : "/session";
+  const publicSessionBaseUrl = origin
+    ? `${origin}/session`
+    : "/session";
 
   const activeMembers = [...members]
     .filter((member) => !member.deleted)
@@ -164,6 +169,7 @@ export default function DashboardPage() {
 
     setClubInfo(nextClubInfo);
     setCustomFieldLabelDraft(nextClubInfo.customFieldLabel);
+    setAdminEmailDraft(nextClubInfo.adminEmail);
     setMembers(nextMembers);
     setRequests(nextRequests);
     setSessions(nextSessions);
@@ -255,9 +261,7 @@ export default function DashboardPage() {
     );
 
     const handlePopState = () => {
-      const shouldLogout = confirm(
-        "로그아웃하시겠습니까?"
-      );
+      const shouldLogout = confirm("로그아웃하시겠습니까?");
 
       if (!shouldLogout) {
         window.history.pushState(
@@ -474,13 +478,42 @@ export default function DashboardPage() {
       return;
     }
 
-    await requestJson("/api/member-request/approve", {
-      method: "POST",
-      body: JSON.stringify({ id }),
-    });
+    if (approvingRequestIds.includes(id)) {
+      return;
+    }
 
-    await Promise.all([refreshRequests(), refreshMembers()]);
-    setActiveTab("members");
+    setApprovingRequestIds((current) => [...current, id]);
+
+    try {
+      const result = await requestJson<{
+        success: boolean;
+        requestId: number;
+        member: Member;
+      }>("/api/member-request/approve", {
+        method: "POST",
+        body: JSON.stringify({ id }),
+      });
+
+      setRequests((current) =>
+        current.filter((request) => request.id !== result.requestId)
+      );
+      setMembers((current) => {
+        const withoutDuplicate = current.filter(
+          (member) => member.id !== result.member.id
+        );
+
+        return [...withoutDuplicate, { ...result.member, fees: [] }];
+      });
+      setActiveTab("members");
+
+      void refreshRequests().catch(() => undefined);
+      void refreshMembers().catch(() => undefined);
+      void refreshSpecialFees().catch(() => undefined);
+    } finally {
+      setApprovingRequestIds((current) =>
+        current.filter((requestId) => requestId !== id)
+      );
+    }
   }
 
   async function handleReject(id: number) {
@@ -526,10 +559,12 @@ export default function DashboardPage() {
   async function handleSaveCustomFieldLabel() {
     const response = await requestJson<{
       customFieldLabel: string;
+      adminEmail: string;
     }>("/api/club-settings", {
       method: "PATCH",
       body: JSON.stringify({
         customFieldLabel: customFieldLabelDraft,
+        adminEmail: adminEmailDraft,
       }),
     });
 
@@ -538,10 +573,12 @@ export default function DashboardPage() {
         ? {
             ...current,
             customFieldLabel: response.customFieldLabel,
+            adminEmail: response.adminEmail,
           }
         : current
     );
     setCustomFieldLabelDraft(response.customFieldLabel);
+    setAdminEmailDraft(response.adminEmail);
   }
 
   async function handleCreateSpecialFee(payload: {
@@ -589,7 +626,11 @@ export default function DashboardPage() {
 
   async function handleUpdateAttendance(
     participantId: number,
-    attendanceStatus: "PENDING" | "PRESENT" | "ABSENT" | "LATE"
+    attendanceStatus:
+      | "PENDING"
+      | "PRESENT"
+      | "ABSENT"
+      | "LATE"
   ) {
     await requestJson("/api/sessions/attendance", {
       method: "POST",
@@ -644,25 +685,6 @@ export default function DashboardPage() {
 
         {activeTab === "members" ? (
           <div className="space-y-6">
-            <ClubSettingsPanel
-              customFieldLabel={
-                clubInfo?.customFieldLabel ?? "차량번호"
-              }
-              draftLabel={customFieldLabelDraft}
-              saving={savingClubSettings}
-              joinLink={publicJoinLink}
-              onChangeDraft={setCustomFieldLabelDraft}
-              onSave={() => {
-                setSavingClubSettings(true);
-                handleSaveCustomFieldLabel()
-                  .catch((error: Error) => {
-                    alert(error.message);
-                  })
-                  .finally(() => {
-                    setSavingClubSettings(false);
-                  });
-              }}
-            />
             <MembersTable
               members={activeMembers}
               customFieldLabel={
@@ -675,6 +697,28 @@ export default function DashboardPage() {
                 });
               }}
             />
+            <ClubSettingsPanel
+              customFieldLabel={
+                clubInfo?.customFieldLabel ?? "차량번호"
+              }
+              draftLabel={customFieldLabelDraft}
+              adminEmail={clubInfo?.adminEmail ?? ""}
+              adminEmailDraft={adminEmailDraft}
+              saving={savingClubSettings}
+              joinLink={publicJoinLink}
+              onChangeDraft={setCustomFieldLabelDraft}
+              onChangeAdminEmailDraft={setAdminEmailDraft}
+              onSave={() => {
+                setSavingClubSettings(true);
+                handleSaveCustomFieldLabel()
+                  .catch((error: Error) => {
+                    alert(error.message);
+                  })
+                  .finally(() => {
+                    setSavingClubSettings(false);
+                  });
+              }}
+            />
           </div>
         ) : null}
 
@@ -684,6 +728,7 @@ export default function DashboardPage() {
             customFieldLabel={
               clubInfo?.customFieldLabel ?? "차량번호"
             }
+            approvingIds={approvingRequestIds}
             onApprove={(id) => {
               handleApprove(id).catch((error: Error) => {
                 alert(error.message);

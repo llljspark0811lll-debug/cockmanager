@@ -3,18 +3,24 @@
 type ClubSettingsPanelProps = {
   customFieldLabel: string;
   draftLabel: string;
+  adminEmail: string;
+  adminEmailDraft: string;
   saving: boolean;
   joinLink: string;
   onChangeDraft: (value: string) => void;
+  onChangeAdminEmailDraft: (value: string) => void;
   onSave: () => void;
 };
 
 export function ClubSettingsPanel({
   customFieldLabel,
   draftLabel,
+  adminEmail,
+  adminEmailDraft,
   saving,
   joinLink,
   onChangeDraft,
+  onChangeAdminEmailDraft,
   onSave,
 }: ClubSettingsPanelProps) {
   async function handleCopyJoinLink() {
@@ -29,38 +35,68 @@ export function ClubSettingsPanel({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
-              클럽 설정
-            </p>
-            <h3 className="mt-2 text-2xl font-black text-slate-900">
-              회원 추가 정보 항목 이름
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              클럽마다 필요한 추가 정보 이름을 바꿔서 쓸 수 있습니다.
-              차량번호, 소속클럽, 기수, 지역 같은 항목으로 유연하게 활용해보세요.
-            </p>
-            <p className="mt-3 text-sm font-semibold text-slate-700">
-              현재 항목 이름: {customFieldLabel}
-            </p>
-          </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+                클럽 설정
+              </p>
+              <h3 className="mt-2 text-2xl font-black text-slate-900">
+                회원 추가 정보 항목 이름
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                차량번호, 소속클럽, 기수, 지역 같은 항목으로 유연하게 활용할 수
+                있습니다.
+              </p>
+              <p className="mt-3 text-sm font-semibold text-slate-700">
+                현재 항목 이름: {customFieldLabel}
+              </p>
+            </div>
 
-          <div className="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
             <input
               value={draftLabel}
               onChange={(event) => onChangeDraft(event.target.value)}
               placeholder="예: 소속클럽"
-              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
             />
-            <button
-              onClick={onSave}
-              disabled={saving}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {saving ? "저장 중..." : "항목 저장"}
-            </button>
           </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">
+                계정 보안
+              </p>
+              <h3 className="mt-2 text-2xl font-black text-slate-900">
+                관리자 복구 이메일
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                아이디 찾기와 비밀번호 재설정 메일을 받는 주소입니다.
+              </p>
+              <p className="mt-3 text-sm font-semibold text-slate-700 break-all">
+                현재 이메일: {adminEmail || "미설정"}
+              </p>
+            </div>
+
+            <input
+              type="email"
+              value={adminEmailDraft}
+              onChange={(event) =>
+                onChangeAdminEmailDraft(event.target.value)
+              }
+              placeholder="admin@example.com"
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {saving ? "저장 중..." : "설정 저장"}
+          </button>
         </div>
 
         <div className="rounded-[1.5rem] bg-slate-50 p-5">

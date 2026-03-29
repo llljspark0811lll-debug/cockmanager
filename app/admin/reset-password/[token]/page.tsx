@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
-export default function AdminSignupPage() {
+export default function AdminResetPasswordTokenPage() {
   const router = useRouter();
+  const params = useParams<{ token: string }>();
   const [form, setForm] = useState({
-    clubName: "",
-    username: "",
     password: "",
     confirmPassword: "",
-    email: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -32,20 +30,24 @@ export default function AdminSignupPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/signup", {
+      const response = await fetch("/api/admin/recovery/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          token: params.token,
+          newPassword: form.password,
+          confirmPassword: form.confirmPassword,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error ?? "클럽 생성에 실패했습니다.");
+        alert(data.error ?? "비밀번호 재설정에 실패했습니다.");
         return;
       }
 
-      alert("클럽 생성이 완료되었습니다.");
+      alert("비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.");
       router.push("/admin/login");
     } finally {
       setLoading(false);
@@ -55,36 +57,18 @@ export default function AdminSignupPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-lg">
-        <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">
-          새 클럽 만들기
+        <h1 className="mb-2 text-center text-2xl font-bold text-slate-900">
+          새 비밀번호 설정
         </h1>
+
+        <p className="mb-6 text-center text-sm text-gray-500">
+          이메일로 받은 링크에서 새 비밀번호를 설정해주세요.
+        </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <input
-            placeholder="클럽 이름"
-            className="w-full rounded-lg border p-3"
-            value={form.clubName}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                clubName: event.target.value,
-              })
-            }
-          />
-          <input
-            placeholder="관리자 아이디"
-            className="w-full rounded-lg border p-3"
-            value={form.username}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                username: event.target.value,
-              })
-            }
-          />
-          <input
             type="password"
-            placeholder="비밀번호"
+            placeholder="새 비밀번호"
             className="w-full rounded-lg border p-3"
             value={form.password}
             onChange={(event) =>
@@ -96,7 +80,7 @@ export default function AdminSignupPage() {
           />
           <input
             type="password"
-            placeholder="비밀번호 확인"
+            placeholder="새 비밀번호 확인"
             className="w-full rounded-lg border p-3"
             value={form.confirmPassword}
             onChange={(event) =>
@@ -106,30 +90,13 @@ export default function AdminSignupPage() {
               })
             }
           />
-          <div className="space-y-2">
-            <input
-              type="email"
-              placeholder="관리자 이메일"
-              className="w-full rounded-lg border p-3"
-              value={form.email}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  email: event.target.value,
-                })
-              }
-            />
-            <p className="text-xs leading-5 text-slate-500">
-              아이디/비밀번호 찾기와 비밀번호 재설정 메일을 받는 주소입니다.
-            </p>
-          </div>
 
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
-            {loading ? "클럽 생성 중..." : "클럽 생성"}
+            {loading ? "재설정 중..." : "비밀번호 재설정"}
           </button>
         </form>
       </div>
