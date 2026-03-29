@@ -26,6 +26,8 @@ export default function JoinPage() {
     publicJoinToken: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [birthInputActive, setBirthInputActive] =
+    useState(false);
   const [form, setForm] = useState({
     name: "",
     gender: "",
@@ -164,9 +166,16 @@ export default function JoinPage() {
           </div>
 
           <input
-            type="date"
+            type={birthInputActive || form.birth ? "date" : "text"}
             className="w-full rounded-lg border p-3"
+            placeholder="생년월일을 등록하세요"
             value={form.birth}
+            onFocus={() => setBirthInputActive(true)}
+            onBlur={() => {
+              if (!form.birth) {
+                setBirthInputActive(false);
+              }
+            }}
             onChange={(event) =>
               setForm({ ...form, birth: event.target.value })
             }

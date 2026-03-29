@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { AttendancePanel } from "@/components/dashboard/AttendancePanel";
@@ -94,6 +94,9 @@ async function requestJson<T>(
 
 export default function DashboardPage() {
   const router = useRouter();
+  const membersMutationCountRef = useRef(0);
+  const sessionsMutationCountRef = useRef(0);
+  const specialFeesMutationCountRef = useRef(0);
 
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -194,6 +197,45 @@ export default function DashboardPage() {
     setSpecialFees(
       await requestJson<SpecialFee[]>("/api/special-fees")
     );
+  }
+
+  function queueMembersRefresh() {
+    window.setTimeout(() => {
+      refreshMembers()
+        .catch(() => undefined)
+        .finally(() => {
+          membersMutationCountRef.current = Math.max(
+            0,
+            membersMutationCountRef.current - 1
+          );
+        });
+    }, 700);
+  }
+
+  function queueSessionsRefresh() {
+    window.setTimeout(() => {
+      refreshSessions()
+        .catch(() => undefined)
+        .finally(() => {
+          sessionsMutationCountRef.current = Math.max(
+            0,
+            sessionsMutationCountRef.current - 1
+          );
+        });
+    }, 700);
+  }
+
+  function queueSpecialFeesRefresh() {
+    window.setTimeout(() => {
+      refreshSpecialFees()
+        .catch(() => undefined)
+        .finally(() => {
+          specialFeesMutationCountRef.current = Math.max(
+            0,
+            specialFeesMutationCountRef.current - 1
+          );
+        });
+    }, 700);
   }
 
   function setMemberFeeLocally(
@@ -395,7 +437,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const refreshLiveData = () => {
       void refreshRequests().catch(() => undefined);
-      void refreshSessions().catch(() => undefined);
+
+      if (sessionsMutationCountRef.current === 0) {
+        void refreshSessions().catch(() => undefined);
+      }
     };
 
     const handleVisibilityChange = () => {
@@ -545,7 +590,7 @@ export default function DashboardPage() {
       return;
     }
 
-    await requestJson("/api/members", {
+    const savedMember = await requestJson<Member>("/api/members", {
       method: editingMember ? "PUT" : "POST",
       body: JSON.stringify(
         editingMember
@@ -554,10 +599,33 @@ export default function DashboardPage() {
       ),
     });
 
+    membersMutationCountRef.current += 1;
+
+    setMembers((current) => {
+      if (editingMember) {
+        return current.map((member) =>
+          member.id === savedMember.id
+            ? {
+                ...member,
+                ...savedMember,
+                fees: member.fees,
+              }
+            : member
+        );
+      }
+
+      return [{ ...savedMember, fees: [] }, ...current];
+    });
+
     setShowMemberModal(false);
     setEditingMember(null);
     setForm(initialForm);
-    await refreshMembers();
+    queueMembersRefresh();
+
+    if (!editingMember) {
+      specialFeesMutationCountRef.current += 1;
+      queueSpecialFeesRefresh();
+    }
   }
 
   async function handleMemberDelete(id: number) {
@@ -611,6 +679,7 @@ export default function DashboardPage() {
   ) {
     const nextPaid = !currentPaid;
 
+    membersMutationCountRef.current += 1;
     setMemberFeeLocally(memberId, year, month, nextPaid);
 
     try {
@@ -624,8 +693,12 @@ export default function DashboardPage() {
         }),
       });
 
-      void refreshMembers().catch(() => undefined);
+      queueMembersRefresh();
     } catch (error) {
+      membersMutationCountRef.current = Math.max(
+        0,
+        membersMutationCountRef.current - 1
+      );
       setMemberFeeLocally(memberId, year, month, currentPaid);
       throw error;
     }
@@ -636,6 +709,7 @@ export default function DashboardPage() {
       return;
     }
 
+    membersMutationCountRef.current += 1;
     setAllMemberFeesLocally(memberId, selectedYear, true);
 
     try {
@@ -653,8 +727,12 @@ export default function DashboardPage() {
         )
       );
 
-      void refreshMembers().catch(() => undefined);
+      queueMembersRefresh();
     } catch (error) {
+      membersMutationCountRef.current = Math.max(
+        0,
+        membersMutationCountRef.current - 1
+      );
       void refreshMembers().catch(() => undefined);
       throw error;
     }
@@ -665,6 +743,7 @@ export default function DashboardPage() {
       return;
     }
 
+    membersMutationCountRef.current += 1;
     setAllMemberFeesLocally(memberId, selectedYear, false);
 
     try {
@@ -682,8 +761,12 @@ export default function DashboardPage() {
         )
       );
 
-      void refreshMembers().catch(() => undefined);
+      queueMembersRefresh();
     } catch (error) {
+      membersMutationCountRef.current = Math.max(
+        0,
+        membersMutationCountRef.current - 1
+      );
       void refreshMembers().catch(() => undefined);
       throw error;
     }
@@ -825,6 +908,7 @@ export default function DashboardPage() {
       return;
     }
 
+    specialFeesMutationCountRef.current += 1;
     setSpecialFeePaymentLocally(specialFeeId, memberId, nextPaid);
 
     try {
@@ -837,8 +921,12 @@ export default function DashboardPage() {
         }),
       });
 
-      void refreshSpecialFees().catch(() => undefined);
+      queueSpecialFeesRefresh();
     } catch (error) {
+      specialFeesMutationCountRef.current = Math.max(
+        0,
+        specialFeesMutationCountRef.current - 1
+      );
       setSpecialFeePaymentLocally(specialFeeId, memberId, paid);
       throw error;
     }
@@ -864,6 +952,7 @@ export default function DashboardPage() {
       | "ABSENT"
       | "LATE"
   ) {
+    sessionsMutationCountRef.current += 1;
     setAttendanceLocally(participantId, attendanceStatus);
 
     try {
@@ -875,8 +964,12 @@ export default function DashboardPage() {
         }),
       });
 
-      void refreshSessions().catch(() => undefined);
+      queueSessionsRefresh();
     } catch (error) {
+      sessionsMutationCountRef.current = Math.max(
+        0,
+        sessionsMutationCountRef.current - 1
+      );
       void refreshSessions().catch(() => undefined);
       throw error;
     }
