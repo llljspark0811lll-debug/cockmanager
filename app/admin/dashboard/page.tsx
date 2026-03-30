@@ -110,6 +110,9 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [specialFees, setSpecialFees] = useState<SpecialFee[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
+  const [feesCache, setFeesCache] = useState<Record<number, Fee[]>>(
+    {}
+  );
   const [activeTab, setActiveTab] =
     useState<DashboardTab>("members");
   const [selectedYear, setSelectedYear] = useState(
@@ -142,6 +145,7 @@ export default function DashboardPage() {
   const [requestsLoaded, setRequestsLoaded] = useState(false);
   const [specialFeesLoaded, setSpecialFeesLoaded] =
     useState(false);
+  const [loadingFees, setLoadingFees] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [loadingRequests, setLoadingRequests] = useState(false);
 
@@ -173,6 +177,9 @@ export default function DashboardPage() {
   const isExpired =
     clubInfo?.calculatedStatus === "EXPIRED" ||
     clubInfo?.calculatedStatus === "BLOCKED";
+  const hasCachedFeesForSelectedYear = Boolean(
+    feesCache[selectedYear]
+  );
 
   async function refreshClubInfo() {
     const nextClubInfo = await requestJson<ClubInfo>("/api/club-info");
@@ -367,10 +374,30 @@ export default function DashboardPage() {
     }
   }
 
-  async function refreshFees(year = selectedYear) {
-    setFees(
-      await requestJson<Fee[]>(`/api/fees?year=${year}`)
-    );
+  async function refreshFees(
+    year = selectedYear,
+    force = false
+  ) {
+    if (!force && feesCache[year]) {
+      setFees(feesCache[year]);
+      return;
+    }
+
+    setLoadingFees(true);
+
+    try {
+      const nextFees = await requestJson<Fee[]>(
+        `/api/fees?year=${year}`
+      );
+
+      setFees(nextFees);
+      setFeesCache((current) => ({
+        ...current,
+        [year]: nextFees,
+      }));
+    } finally {
+      setLoadingFees(false);
+    }
   }
 
   async function performLogout() {
@@ -415,17 +442,27 @@ export default function DashboardPage() {
       return;
     }
 
-    Promise.all([
-      membersLoaded ? Promise.resolve() : refreshMembers(),
-      refreshFees(selectedYear),
-      specialFeesLoaded ? Promise.resolve() : refreshSpecialFees(),
-    ]).catch((error: Error) => {
-      if (isIgnorableDashboardNotFound(error)) {
-        return;
-      }
+    if (!membersLoaded) {
+      void refreshMembers().catch((error: Error) => {
+        alert(error.message);
+      });
+    }
 
+    void refreshFees(selectedYear).catch((error: Error) => {
       alert(error.message);
     });
+
+    if (!specialFeesLoaded) {
+      window.setTimeout(() => {
+        void refreshSpecialFees().catch((error: Error) => {
+          if (isIgnorableDashboardNotFound(error)) {
+            return;
+          }
+
+          alert(error.message);
+        });
+      }, 120);
+    }
   }, [activeTab, selectedYear, membersLoaded, specialFeesLoaded]);
 
   useEffect(() => {
@@ -768,6 +805,23 @@ export default function DashboardPage() {
 
       return nextFees;
     });
+    setFeesCache((current) => {
+      const yearFees = current[year] ?? [];
+      const key = `${memberId}-${year}-${month}`;
+      const nextYearFees = yearFees.filter(
+        (fee) =>
+          `${fee.memberId}-${fee.year}-${fee.month}` !== key
+      );
+
+      if (updatedFee.paid) {
+        nextYearFees.push(updatedFee);
+      }
+
+      return {
+        ...current,
+        [year]: nextYearFees,
+      };
+    });
   }
 
   async function handleAllPaid(memberId: number) {
@@ -795,6 +849,21 @@ export default function DashboardPage() {
 
       return [...nextFees, ...updatedFees];
     });
+    setFeesCache((current) => {
+      const yearFees = current[selectedYear] ?? [];
+      const nextYearFees = yearFees.filter(
+        (fee) =>
+          !(
+            fee.memberId === memberId &&
+            fee.year === selectedYear
+          )
+      );
+
+      return {
+        ...current,
+        [selectedYear]: [...nextYearFees, ...updatedFees],
+      };
+    });
   }
 
   async function handleAllUnpaid(memberId: number) {
@@ -821,6 +890,21 @@ export default function DashboardPage() {
       );
 
       return [...nextFees, ...updatedFees];
+    });
+    setFeesCache((current) => {
+      const yearFees = current[selectedYear] ?? [];
+      const nextYearFees = yearFees.filter(
+        (fee) =>
+          !(
+            fee.memberId === memberId &&
+            fee.year === selectedYear
+          )
+      );
+
+      return {
+        ...current,
+        [selectedYear]: [...nextYearFees, ...updatedFees],
+      };
     });
   }
 
@@ -1260,29 +1344,47 @@ export default function DashboardPage() {
 
         {activeTab === "fees" ? (
           <div className="space-y-6">
-            <FeesTable
-              members={activeMembers}
-              fees={fees}
-              selectedYear={selectedYear}
-              onChangeYear={setSelectedYear}
-              onToggleFee={(memberId, year, month, currentPaid) => {
-                toggleFee(memberId, year, month, currentPaid).catch(
-                  (error: Error) => {
-                    alert(error.message);
-                  }
-                );
-              }}
-              onMarkAllPaid={(memberId) => {
-                handleAllPaid(memberId).catch((error: Error) => {
-                  alert(error.message);
-                });
-              }}
-              onMarkAllUnpaid={(memberId) => {
-                handleAllUnpaid(memberId).catch((error: Error) => {
-                  alert(error.message);
-                });
-              }}
-            />
+            {loadingFees && !hasCachedFeesForSelectedYear
+              ? renderLoadingCard(
+                  "월회비 표를 불러오는 중입니다."
+                )
+              : (
+                <FeesTable
+                  members={activeMembers}
+                  fees={fees}
+                  selectedYear={selectedYear}
+                  onChangeYear={setSelectedYear}
+                  onToggleFee={(
+                    memberId,
+                    year,
+                    month,
+                    currentPaid
+                  ) => {
+                    toggleFee(
+                      memberId,
+                      year,
+                      month,
+                      currentPaid
+                    ).catch((error: Error) => {
+                      alert(error.message);
+                    });
+                  }}
+                  onMarkAllPaid={(memberId) => {
+                    handleAllPaid(memberId).catch(
+                      (error: Error) => {
+                        alert(error.message);
+                      }
+                    );
+                  }}
+                  onMarkAllUnpaid={(memberId) => {
+                    handleAllUnpaid(memberId).catch(
+                      (error: Error) => {
+                        alert(error.message);
+                      }
+                    );
+                  }}
+                />
+              )}
             <SpecialFeesPanel
               members={activeMembers}
               specialFees={specialFees}
