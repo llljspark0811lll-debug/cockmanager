@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     description: "",
     images: [
       {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
+        url: "/share-thumbnail.png",
+        width: 788,
+        height: 772,
         alt: siteTitle,
       },
     ],
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: "",
-    images: ["/twitter-image"],
+    images: ["/share-thumbnail.png"],
   },
   icons: {
     icon: "/favicon.ico",
