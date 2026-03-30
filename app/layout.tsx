@@ -39,20 +39,11 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     title: siteTitle,
     description: "",
-    images: [
-      {
-        url: "/api/og",
-        width: 1200,
-        height: 630,
-        alt: siteTitle,
-      },
-    ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: siteTitle,
     description: "",
-    images: ["/api/og"],
   },
   icons: {
     icon: "/favicon.ico",
