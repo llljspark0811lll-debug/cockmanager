@@ -138,6 +138,9 @@ export default function DashboardPage() {
   const [customFieldLabelDraft, setCustomFieldLabelDraft] =
     useState("차량번호");
   const [adminEmailDraft, setAdminEmailDraft] = useState("");
+  const [customFieldLabelDirty, setCustomFieldLabelDirty] =
+    useState(false);
+  const [adminEmailDirty, setAdminEmailDirty] = useState(false);
   const [savingClubSettings, setSavingClubSettings] =
     useState(false);
   const [approvingRequestIds, setApprovingRequestIds] =
@@ -208,8 +211,14 @@ export default function DashboardPage() {
     const nextClubInfo = await requestJson<ClubInfo>("/api/club-info");
 
     setClubInfo(nextClubInfo);
-    setCustomFieldLabelDraft(nextClubInfo.customFieldLabel);
-    setAdminEmailDraft(nextClubInfo.adminEmail);
+    setCustomFieldLabelDraft((current) =>
+      customFieldLabelDirty
+        ? current
+        : nextClubInfo.customFieldLabel
+    );
+    setAdminEmailDraft((current) =>
+      adminEmailDirty ? current : nextClubInfo.adminEmail
+    );
   }
 
   async function refreshMembers() {
@@ -653,7 +662,12 @@ export default function DashboardPage() {
         handleVisibilityChange
       );
     };
-  }, [activeTab, selectedSessionId]);
+  }, [
+    activeTab,
+    selectedSessionId,
+    customFieldLabelDirty,
+    adminEmailDirty,
+  ]);
 
   useEffect(() => {
     if (
@@ -1176,28 +1190,36 @@ export default function DashboardPage() {
   }
 
   async function handleSaveCustomFieldLabel() {
-    const response = await requestJson<{
-      customFieldLabel: string;
-      adminEmail: string;
-    }>("/api/club-settings", {
-      method: "PATCH",
-      body: JSON.stringify({
-        customFieldLabel: customFieldLabelDraft,
-        adminEmail: adminEmailDraft,
-      }),
-    });
+    setSavingClubSettings(true);
 
-    setClubInfo((current) =>
-      current
-        ? {
-            ...current,
-            customFieldLabel: response.customFieldLabel,
-            adminEmail: response.adminEmail,
-          }
-        : current
-    );
-    setCustomFieldLabelDraft(response.customFieldLabel);
-    setAdminEmailDraft(response.adminEmail);
+    try {
+      const response = await requestJson<{
+        customFieldLabel: string;
+        adminEmail: string;
+      }>("/api/club-settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          customFieldLabel: customFieldLabelDraft,
+          adminEmail: adminEmailDraft,
+        }),
+      });
+
+      setClubInfo((current) =>
+        current
+          ? {
+              ...current,
+              customFieldLabel: response.customFieldLabel,
+              adminEmail: response.adminEmail,
+            }
+          : current
+      );
+      setCustomFieldLabelDraft(response.customFieldLabel);
+      setAdminEmailDraft(response.adminEmail);
+      setCustomFieldLabelDirty(false);
+      setAdminEmailDirty(false);
+    } finally {
+      setSavingClubSettings(false);
+    }
   }
 
   async function handleCreateSpecialFee(payload: {
@@ -1438,16 +1460,18 @@ export default function DashboardPage() {
               adminEmailDraft={adminEmailDraft}
               saving={savingClubSettings}
               joinLink={publicJoinLink}
-              onChangeDraft={setCustomFieldLabelDraft}
-              onChangeAdminEmailDraft={setAdminEmailDraft}
+              onChangeDraft={(value) => {
+                setCustomFieldLabelDraft(value);
+                setCustomFieldLabelDirty(true);
+              }}
+              onChangeAdminEmailDraft={(value) => {
+                setAdminEmailDraft(value);
+                setAdminEmailDirty(true);
+              }}
               onSave={() => {
-                setSavingClubSettings(true);
                 handleSaveCustomFieldLabel()
                   .catch((error: Error) => {
                     alert(error.message);
-                  })
-                  .finally(() => {
-                    setSavingClubSettings(false);
                   });
               }}
             />
