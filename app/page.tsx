@@ -18,7 +18,7 @@ export default function Home() {
 
             <div className="mt-8 space-y-4 sm:mt-10 sm:space-y-5">
               <p className="text-4xl font-black tracking-[-0.05em] text-slate-950 sm:text-5xl md:text-7xl">
-                콕매니저
+                콕매니저🏸
               </p>
 
               <h1 className="text-base font-semibold leading-relaxed text-slate-600 sm:text-lg md:text-2xl">
