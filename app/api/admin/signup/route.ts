@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramNewClubAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -7,6 +8,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { clubName, username, email, password, confirmPassword } =
       body;
+    console.log("[signup] New club signup requested", {
+      clubName: String(clubName ?? "").trim(),
+      username: String(username ?? "").trim(),
+      email: String(email ?? "").trim().toLowerCase(),
+    });
 
     if (
       !clubName ||
@@ -81,6 +87,22 @@ export async function POST(req: Request) {
 
       return club;
     });
+
+    console.log("[signup] Club created successfully", {
+      clubId: result.id,
+      clubName: result.name,
+    });
+
+    try {
+      await sendTelegramNewClubAlert({
+        clubName: result.name,
+      });
+    } catch (telegramError) {
+      console.error(
+        "Telegram new club alert failed",
+        telegramError
+      );
+    }
 
     return NextResponse.json({
       message: "클럽이 생성되었습니다.",
