@@ -3,6 +3,10 @@ import {
   requireAuthAdmin,
   unauthorizedResponse,
 } from "@/lib/api-auth";
+import {
+  formatPhoneNumber,
+  normalizePhoneNumber,
+} from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -16,6 +20,45 @@ async function findClubMember(
       clubId,
     },
   });
+}
+
+async function findDuplicateActiveMember(
+  clubId: number,
+  name: string,
+  phone: string,
+  excludeMemberId?: number
+) {
+  if (!phone) {
+    return null;
+  }
+
+  const candidates = await prisma.member.findMany({
+    where: {
+      clubId,
+      name,
+      deleted: false,
+      ...(excludeMemberId
+        ? {
+            NOT: {
+              id: excludeMemberId,
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      phone: true,
+    },
+  });
+
+  const normalizedPhone = normalizePhoneNumber(phone);
+
+  return (
+    candidates.find(
+      (member) =>
+        normalizePhoneNumber(member.phone) === normalizedPhone
+    ) ?? null
+  );
 }
 
 export async function GET(req: Request) {
@@ -93,23 +136,41 @@ export async function POST(req: Request) {
       level,
       customFieldValue,
       note,
-    } =
-      body;
+    } = body;
 
-    if (!name || !gender || !level) {
+    const normalizedName = String(name ?? "").trim();
+    const normalizedPhone = formatPhoneNumber(phone);
+
+    if (!normalizedName || !gender || !level) {
       return NextResponse.json(
         { error: "이름, 성별, 급수는 필수입니다." },
         { status: 400 }
       );
     }
 
+    const duplicateMember = await findDuplicateActiveMember(
+      admin.clubId,
+      normalizedName,
+      normalizedPhone
+    );
+
+    if (duplicateMember) {
+      return NextResponse.json(
+        {
+          error:
+            "이미 동일한 이름과 연락처로 등록된 회원이 있습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
     const newMember = await prisma.$transaction(async (tx) => {
       const createdMember = await tx.member.create({
         data: {
-          name: String(name).trim(),
+          name: normalizedName,
           gender,
           birth: birth ? new Date(birth) : null,
-          phone: phone ? String(phone).trim() : "",
+          phone: normalizedPhone,
           level,
           customFieldValue: customFieldValue
             ? String(customFieldValue).trim()
@@ -165,9 +226,10 @@ export async function PUT(req: Request) {
       level,
       customFieldValue,
       note,
-    } =
-      body;
+    } = body;
     const memberId = Number(id);
+    const normalizedName = String(name ?? "").trim();
+    const normalizedPhone = formatPhoneNumber(phone);
 
     if (!Number.isFinite(memberId)) {
       return NextResponse.json(
@@ -185,13 +247,30 @@ export async function PUT(req: Request) {
       return notFoundResponse("수정할 회원을 찾을 수 없습니다.");
     }
 
+    const duplicateMember = await findDuplicateActiveMember(
+      admin.clubId,
+      normalizedName,
+      normalizedPhone,
+      existingMember.id
+    );
+
+    if (duplicateMember) {
+      return NextResponse.json(
+        {
+          error:
+            "이미 동일한 이름과 연락처로 등록된 회원이 있습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
     const updatedMember = await prisma.member.update({
       where: { id: existingMember.id },
       data: {
-        name: String(name).trim(),
+        name: normalizedName,
         gender,
         birth: birth ? new Date(birth) : null,
-        phone: phone ? String(phone).trim() : "",
+        phone: normalizedPhone,
         level,
         customFieldValue: customFieldValue
           ? String(customFieldValue).trim()
@@ -267,12 +346,30 @@ export async function PATCH(req: Request) {
       return notFoundResponse("복구할 회원을 찾을 수 없습니다.");
     }
 
+    const duplicateMember = await findDuplicateActiveMember(
+      admin.clubId,
+      String(existingMember.name).trim(),
+      formatPhoneNumber(existingMember.phone),
+      existingMember.id
+    );
+
+    if (duplicateMember) {
+      return NextResponse.json(
+        {
+          error:
+            "이미 동일한 이름과 연락처로 등록된 회원이 있어 복구할 수 없습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
     await prisma.member.update({
       where: { id: existingMember.id },
       data: {
         deleted: false,
         deletedAt: null,
         withdrawnAt: null,
+        phone: formatPhoneNumber(existingMember.phone),
       },
     });
 

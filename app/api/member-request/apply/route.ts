@@ -1,4 +1,7 @@
-import { formatPhoneNumber } from "@/lib/phone";
+import {
+  formatPhoneNumber,
+  normalizePhoneNumber,
+} from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -42,34 +45,57 @@ export async function POST(req: Request) {
       );
     }
 
-    const [existingPendingRequest, existingMember] =
+    const [pendingRequestCandidates, memberCandidates] =
       await Promise.all([
-        prisma.memberRequest.findFirst({
+        prisma.memberRequest.findMany({
           where: {
             clubId: club.id,
             name,
-            phone,
             status: "PENDING",
           },
-          orderBy: {
-            createdAt: "desc",
+          select: {
+            id: true,
+            phone: true,
+            createdAt: true,
           },
         }),
-        prisma.member.findFirst({
+        prisma.member.findMany({
           where: {
             clubId: club.id,
             name,
-            phone,
             deleted: false,
+          },
+          select: {
+            id: true,
+            phone: true,
           },
         }),
       ]);
+
+    const normalizedPhone = normalizePhoneNumber(phone);
+
+    const existingPendingRequest =
+      pendingRequestCandidates
+        .filter(
+          (request) =>
+            normalizePhoneNumber(request.phone) === normalizedPhone
+        )
+        .sort(
+          (left, right) =>
+            right.createdAt.getTime() - left.createdAt.getTime()
+        )[0] ?? null;
+
+    const existingMember =
+      memberCandidates.find(
+        (member) =>
+          normalizePhoneNumber(member.phone) === normalizedPhone
+      ) ?? null;
 
     if (existingPendingRequest) {
       return NextResponse.json(
         {
           error:
-            "같은 이름과 연락처로 이미 가입 신청이 접수되어 있어요. 운영진 승인 후 다시 확인해주세요.",
+            "이미 동일한 이름과 연락처로 가입 신청이 접수되어 있습니다. 운영진 확인 후 다시 확인해주세요.",
         },
         { status: 409 }
       );
@@ -79,7 +105,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "이미 등록된 회원입니다. 중복 가입 신청이 필요하면 운영진에게 문의해주세요.",
+            "이미 동일한 이름과 연락처로 등록된 회원이 있습니다.",
         },
         { status: 409 }
       );

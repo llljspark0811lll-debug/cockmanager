@@ -3,6 +3,10 @@ import {
   requireAuthAdmin,
   unauthorizedResponse,
 } from "@/lib/api-auth";
+import {
+  formatPhoneNumber,
+  normalizePhoneNumber,
+} from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -35,6 +39,37 @@ export async function POST(req: Request) {
       );
     }
 
+    const normalizedPhone = formatPhoneNumber(memberRequest.phone);
+
+    const duplicateMemberCandidates = await prisma.member.findMany({
+      where: {
+        clubId: memberRequest.clubId,
+        name: memberRequest.name,
+        deleted: false,
+      },
+      select: {
+        id: true,
+        phone: true,
+      },
+    });
+
+    const duplicateMember =
+      duplicateMemberCandidates.find(
+        (member) =>
+          normalizePhoneNumber(member.phone) ===
+          normalizePhoneNumber(normalizedPhone)
+      ) ?? null;
+
+    if (duplicateMember) {
+      return NextResponse.json(
+        {
+          error:
+            "이미 동일한 이름과 연락처로 등록된 회원이 있습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
     const specialFeeIds = await prisma.specialFee.findMany({
       where: { clubId: memberRequest.clubId },
       select: { id: true },
@@ -46,7 +81,7 @@ export async function POST(req: Request) {
           name: memberRequest.name,
           gender: memberRequest.gender,
           birth: memberRequest.birth,
-          phone: memberRequest.phone,
+          phone: normalizedPhone,
           level: memberRequest.level,
           customFieldValue: memberRequest.customFieldValue,
           note: memberRequest.note,
