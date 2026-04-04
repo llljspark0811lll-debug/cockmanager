@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { AttendancePanel } from "@/components/dashboard/AttendancePanel";
 import { ClubSettingsPanel } from "@/components/dashboard/ClubSettingsPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import {
+  DashboardTutorial,
+  type DashboardTutorialStep,
+} from "@/components/dashboard/DashboardTutorial";
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
 import { DeletedMembersTable } from "@/components/dashboard/DeletedMembersTable";
@@ -166,6 +170,10 @@ export default function DashboardPage() {
     useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
+  const [tutorialInitialized, setTutorialInitialized] =
+    useState(false);
 
   const paymentMode = getPaymentMode();
   const subscriptionAmount = getSubscriptionAmount();
@@ -207,6 +215,71 @@ export default function DashboardPage() {
     (activeTab === "sessions" || activeTab === "attendance") &&
     loadingSessions &&
     sessions.length === 0;
+  const tutorialSteps = useMemo<DashboardTutorialStep[]>(
+    () => [
+      {
+        id: "welcome",
+        title: "콕매니저 사용 가이드",
+        description:
+          "처음 쓰는 관리자도 바로 시작할 수 있도록\n주요 탭과 버튼만 짧게 안내해드릴게요.",
+      },
+      {
+        id: "members",
+        title: "회원 관리부터 시작하세요",
+        description:
+          "회원 직접 등록, 수정, 탈퇴 처리는 여기서 합니다.\n이미 등록된 회원 명단도 이 탭에서 가장 자주 확인하게 됩니다.",
+        targetId: "tab-members",
+        tab: "members",
+      },
+      {
+        id: "requests",
+        title: "가입 신청 링크를 먼저 공유하세요",
+        description:
+          "가입 신청 탭 맨 위에서 공유 링크를 복사해 단톡방이나 공지에 올리면,\n신규 회원이 직접 신청서를 작성할 수 있습니다.",
+        targetId: "tab-requests",
+        tab: "requests",
+      },
+      {
+        id: "sessions",
+        title: "운동 일정은 링크로 받습니다",
+        description:
+          "운동 일정을 만들고 참석 링크를 공유하면,\n참석 신청 · 대기 인원 · 게스트 신청이 한 흐름으로 정리됩니다.",
+        targetId: "tab-sessions",
+        tab: "sessions",
+      },
+      {
+        id: "fees",
+        title: "회비는 월회비와 수시회비로 나눠 관리합니다",
+        description:
+          "월회비는 체크 방식으로 빠르게 관리하고,\n대회비나 단체복비 같은 일시성 비용은 수시회비로 따로 관리하면 됩니다.",
+        targetId: "tab-fees",
+        tab: "fees",
+      },
+      {
+        id: "attendance",
+        title: "출석은 실제 참석 상태만 체크하면 됩니다",
+        description:
+          "운동 신청된 명단이 자동으로 넘어오기 때문에,\n현장에서는 출석 · 지각 · 결석만 체크하면 됩니다.",
+        targetId: "tab-attendance",
+        tab: "attendance",
+      },
+      {
+        id: "stats",
+        title: "운영 통계도 바로 확인할 수 있습니다",
+        description:
+          "주간 · 월간 기준으로 참석, 게스트, 미납 현황을 보면서\n총무가 운영 상태를 빠르게 파악할 수 있습니다.",
+        targetId: "tab-stats",
+        tab: "stats",
+      },
+      {
+        id: "finish",
+        title: "이제 바로 운영을 시작해보세요",
+        description:
+          "회원 등록부터 시작하거나,\n가입 신청 링크와 운동 일정 링크를 먼저 공유해도 좋습니다.",
+      },
+    ],
+    []
+  );
 
   async function refreshClubInfo() {
     const nextClubInfo = await requestJson<ClubInfo>("/api/club-info");
@@ -497,6 +570,35 @@ export default function DashboardPage() {
       router.push("/admin/login");
     });
   }, [router]);
+
+  useEffect(() => {
+    if (!clubInfo || tutorialInitialized || isExpired) {
+      return;
+    }
+
+    const storageKey = `kokmanager-dashboard-tutorial:${clubInfo.id}`;
+    const hasSeenTutorial =
+      window.localStorage.getItem(storageKey) === "done";
+
+    if (!hasSeenTutorial) {
+      setTutorialStepIndex(0);
+      setTutorialOpen(true);
+    }
+
+    setTutorialInitialized(true);
+  }, [clubInfo, isExpired, tutorialInitialized]);
+
+  useEffect(() => {
+    if (!tutorialOpen) {
+      return;
+    }
+
+    const currentStep = tutorialSteps[tutorialStepIndex];
+
+    if (currentStep?.tab && activeTab !== currentStep.tab) {
+      setActiveTab(currentStep.tab);
+    }
+  }, [activeTab, tutorialOpen, tutorialStepIndex, tutorialSteps]);
 
   useEffect(() => {
     if (activeTab !== "stats" || statsLoaded) {
@@ -1384,6 +1486,35 @@ export default function DashboardPage() {
     }
   }
 
+  function markTutorialAsCompleted() {
+    if (clubInfo) {
+      window.localStorage.setItem(
+        `kokmanager-dashboard-tutorial:${clubInfo.id}`,
+        "done"
+      );
+    }
+  }
+
+  function closeTutorial() {
+    markTutorialAsCompleted();
+    setTutorialOpen(false);
+    setTutorialStepIndex(0);
+  }
+
+  function openTutorial() {
+    setTutorialStepIndex(0);
+    setTutorialOpen(true);
+  }
+
+  function moveTutorialStep(direction: -1 | 1) {
+    setTutorialStepIndex((current) =>
+      Math.min(
+        Math.max(current + direction, 0),
+        tutorialSteps.length - 1
+      )
+    );
+  }
+
   function renderLoadingCard(message: string) {
     return (
       <div className="rounded-[1.5rem] border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400 shadow-sm">
@@ -1405,6 +1536,16 @@ export default function DashboardPage() {
           });
         }}
       />
+      <DashboardTutorial
+        open={tutorialOpen}
+        step={tutorialSteps[tutorialStepIndex]}
+        stepIndex={tutorialStepIndex}
+        totalSteps={tutorialSteps.length}
+        onPrev={() => moveTutorialStep(-1)}
+        onNext={() => moveTutorialStep(1)}
+        onSkip={closeTutorial}
+        onComplete={closeTutorial}
+      />
 
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-[2rem] border border-white/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
@@ -1412,6 +1553,7 @@ export default function DashboardPage() {
             clubName={clubInfo?.name ?? "클럽"}
             subscriptionEnd={clubInfo?.subscriptionEnd}
             onAddMember={openCreateMemberModal}
+            onRestartTutorial={openTutorial}
             onLogout={() => {
               if (!confirm("로그아웃하시겠습니까?")) {
                 return;
@@ -1435,11 +1577,16 @@ export default function DashboardPage() {
         </div>
 
         {activeTab === "stats" ? (
-          <StatsOverview stats={stats} loading={loadingStats} />
+          <div data-tutorial-id="stats-panel">
+            <StatsOverview stats={stats} loading={loadingStats} />
+          </div>
         ) : null}
 
         {activeTab === "members" ? (
-          <div className="space-y-6">
+          <div
+            className="space-y-6"
+            data-tutorial-id="members-panel"
+          >
             <MembersTable
               members={activeMembers}
               customFieldLabel={
@@ -1479,7 +1626,10 @@ export default function DashboardPage() {
         ) : null}
 
         {activeTab === "requests" ? (
-          <div className="space-y-6">
+          <div
+            className="space-y-6"
+            data-tutorial-id="requests-panel"
+          >
             <JoinRequestLinkPanel joinLink={publicJoinLink} />
             <RequestsTable
             requests={requests}
@@ -1502,7 +1652,10 @@ export default function DashboardPage() {
         ) : null}
 
         {activeTab === "fees" ? (
-          <div className="space-y-6">
+          <div
+            className="space-y-6"
+            data-tutorial-id="fees-panel"
+          >
             {shouldShowInitialFeesLoading
               ? renderLoadingCard(
                   "월회비 표를 불러오는 중입니다."
