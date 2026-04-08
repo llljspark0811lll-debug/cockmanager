@@ -18,6 +18,7 @@ import { FeesTable } from "@/components/dashboard/FeesTable";
 import { JoinRequestLinkPanel } from "@/components/dashboard/JoinRequestLinkPanel";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
+import { PersonalSettingsModal } from "@/components/dashboard/PersonalSettingsModal";
 import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
 import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
@@ -143,14 +144,24 @@ export default function DashboardPage() {
     useState(false);
   const [customFieldLabelDraft, setCustomFieldLabelDraft] =
     useState("차량번호");
-  const [adminEmailDraft, setAdminEmailDraft] = useState("");
   const [customFieldLabelDirty, setCustomFieldLabelDirty] =
     useState(false);
-  const [adminEmailDirty, setAdminEmailDirty] = useState(false);
   const [savingClubSettings, setSavingClubSettings] =
+    useState(false);
+  const [showPersonalSettingsModal, setShowPersonalSettingsModal] =
+    useState(false);
+  const [personalClubNameDraft, setPersonalClubNameDraft] =
+    useState("");
+  const [personalAdminEmailDraft, setPersonalAdminEmailDraft] =
+    useState("");
+  const [personalCurrentPassword, setPersonalCurrentPassword] =
+    useState("");
+  const [savingPersonalSettings, setSavingPersonalSettings] =
     useState(false);
   const [approvingRequestIds, setApprovingRequestIds] =
     useState<number[]>([]);
+  const [processingAllRequests, setProcessingAllRequests] =
+    useState(false);
   const [loadingSpecialFeeDetail, setLoadingSpecialFeeDetail] =
     useState(false);
   const [loadingSessionDetail, setLoadingSessionDetail] =
@@ -294,9 +305,6 @@ export default function DashboardPage() {
       customFieldLabelDirty
         ? current
         : nextClubInfo.customFieldLabel
-    );
-    setAdminEmailDraft((current) =>
-      adminEmailDirty ? current : nextClubInfo.adminEmail
     );
   }
 
@@ -790,7 +798,6 @@ export default function DashboardPage() {
     activeTab,
     selectedSessionId,
     customFieldLabelDirty,
-    adminEmailDirty,
   ]);
 
   useEffect(() => {
@@ -1275,6 +1282,82 @@ export default function DashboardPage() {
     await refreshRequests();
   }
 
+  async function handleApproveAll() {
+    if (requests.length === 0 || processingAllRequests) {
+      return;
+    }
+
+    if (
+      !confirm("현재 대기 중인 가입 신청을 모두 승인할까요?")
+    ) {
+      return;
+    }
+
+    setProcessingAllRequests(true);
+
+    try {
+      await requestJson<{
+        success: boolean;
+        approvedCount: number;
+      }>("/api/member-request/approve-all", {
+        method: "POST",
+      });
+
+      await Promise.all([
+        refreshRequests(),
+        refreshMembers(),
+        refreshFeeMembers(),
+        refreshClubInfo(),
+      ]);
+
+      setRequestsLoaded(true);
+      setMembersLoaded(true);
+      setFeeMembersLoaded(true);
+      setActiveTab("members");
+
+      if (activeTab === "fees") {
+        await refreshSpecialFees();
+      }
+
+      if (
+        activeTab === "sessions" ||
+        activeTab === "attendance"
+      ) {
+        await refreshSessions();
+      }
+    } finally {
+      setProcessingAllRequests(false);
+    }
+  }
+
+  async function handleRejectAll() {
+    if (requests.length === 0 || processingAllRequests) {
+      return;
+    }
+
+    if (
+      !confirm("현재 대기 중인 가입 신청을 모두 거절할까요?")
+    ) {
+      return;
+    }
+
+    setProcessingAllRequests(true);
+
+    try {
+      await requestJson<{
+        success: boolean;
+        rejectedCount: number;
+      }>("/api/member-request/reject-all", {
+        method: "POST",
+      });
+
+      await Promise.all([refreshRequests(), refreshClubInfo()]);
+      setRequestsLoaded(true);
+    } finally {
+      setProcessingAllRequests(false);
+    }
+  }
+
   async function handleCreateSession(payload: {
     title: string;
     description: string;
@@ -1329,12 +1412,10 @@ export default function DashboardPage() {
     try {
       const response = await requestJson<{
         customFieldLabel: string;
-        adminEmail: string;
       }>("/api/club-settings", {
         method: "PATCH",
         body: JSON.stringify({
           customFieldLabel: customFieldLabelDraft,
-          adminEmail: adminEmailDraft,
         }),
       });
 
@@ -1343,16 +1424,59 @@ export default function DashboardPage() {
           ? {
               ...current,
               customFieldLabel: response.customFieldLabel,
-              adminEmail: response.adminEmail,
             }
           : current
       );
       setCustomFieldLabelDraft(response.customFieldLabel);
-      setAdminEmailDraft(response.adminEmail);
       setCustomFieldLabelDirty(false);
-      setAdminEmailDirty(false);
     } finally {
       setSavingClubSettings(false);
+    }
+  }
+
+  function openPersonalSettingsModal() {
+    setPersonalClubNameDraft(clubInfo?.name ?? "");
+    setPersonalAdminEmailDraft(clubInfo?.adminEmail ?? "");
+    setPersonalCurrentPassword("");
+    setShowPersonalSettingsModal(true);
+  }
+
+  function closePersonalSettingsModal() {
+    setShowPersonalSettingsModal(false);
+    setPersonalCurrentPassword("");
+  }
+
+  async function handleSavePersonalSettings() {
+    setSavingPersonalSettings(true);
+
+    try {
+      const response = await requestJson<{
+        clubName: string;
+        adminEmail: string;
+      }>("/api/personal-settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          clubName: personalClubNameDraft,
+          adminEmail: personalAdminEmailDraft,
+          currentPassword: personalCurrentPassword,
+        }),
+      });
+
+      setClubInfo((current) =>
+        current
+          ? {
+              ...current,
+              name: response.clubName,
+              adminEmail: response.adminEmail,
+            }
+          : current
+      );
+      setPersonalClubNameDraft(response.clubName);
+      setPersonalAdminEmailDraft(response.adminEmail);
+      setPersonalCurrentPassword("");
+      setShowPersonalSettingsModal(false);
+    } finally {
+      setSavingPersonalSettings(false);
     }
   }
 
@@ -1635,6 +1759,7 @@ export default function DashboardPage() {
             clubName={clubInfo?.name ?? "클럽"}
             subscriptionEnd={clubInfo?.subscriptionEnd}
             onAddMember={openCreateMemberModal}
+            onOpenPersonalSettings={openPersonalSettingsModal}
             onRestartTutorial={openTutorial}
             onLogout={() => {
               if (!confirm("로그아웃하시겠습니까?")) {
@@ -1686,16 +1811,10 @@ export default function DashboardPage() {
                 clubInfo?.customFieldLabel ?? "차량번호"
               }
               draftLabel={customFieldLabelDraft}
-              adminEmail={clubInfo?.adminEmail ?? ""}
-              adminEmailDraft={adminEmailDraft}
               saving={savingClubSettings}
               onChangeDraft={(value) => {
                 setCustomFieldLabelDraft(value);
                 setCustomFieldLabelDirty(true);
-              }}
-              onChangeAdminEmailDraft={(value) => {
-                setAdminEmailDraft(value);
-                setAdminEmailDirty(true);
               }}
               onSave={() => {
                 handleSaveCustomFieldLabel()
@@ -1719,6 +1838,7 @@ export default function DashboardPage() {
               clubInfo?.customFieldLabel ?? "차량번호"
             }
             approvingIds={approvingRequestIds}
+            bulkProcessing={processingAllRequests}
             onApprove={(id) => {
               handleApprove(id).catch((error: Error) => {
                 alert(error.message);
@@ -1726,6 +1846,16 @@ export default function DashboardPage() {
             }}
             onReject={(id) => {
               handleReject(id).catch((error: Error) => {
+                alert(error.message);
+              });
+            }}
+            onApproveAll={() => {
+              handleApproveAll().catch((error: Error) => {
+                alert(error.message);
+              });
+            }}
+            onRejectAll={() => {
+              handleRejectAll().catch((error: Error) => {
                 alert(error.message);
               });
             }}
@@ -1872,6 +2002,22 @@ export default function DashboardPage() {
         }}
         onSubmit={() => {
           handleMemberSubmit().catch((error: Error) => {
+            alert(error.message);
+          });
+        }}
+      />
+      <PersonalSettingsModal
+        open={showPersonalSettingsModal}
+        clubName={personalClubNameDraft}
+        adminEmail={personalAdminEmailDraft}
+        currentPassword={personalCurrentPassword}
+        saving={savingPersonalSettings}
+        onChangeClubName={setPersonalClubNameDraft}
+        onChangeAdminEmail={setPersonalAdminEmailDraft}
+        onChangeCurrentPassword={setPersonalCurrentPassword}
+        onClose={closePersonalSettingsModal}
+        onSubmit={() => {
+          handleSavePersonalSettings().catch((error: Error) => {
             alert(error.message);
           });
         }}

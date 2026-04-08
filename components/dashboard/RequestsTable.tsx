@@ -11,23 +11,30 @@ type RequestsTableProps = {
   requests: MemberRequest[];
   customFieldLabel: string;
   approvingIds?: number[];
+  bulkProcessing?: boolean;
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
+  onApproveAll: () => void;
+  onRejectAll: () => void;
 };
 
 function RequestCard({
   request,
   customFieldLabel,
   approving,
+  bulkProcessing,
   onApprove,
   onReject,
 }: {
   request: MemberRequest;
   customFieldLabel: string;
   approving: boolean;
+  bulkProcessing: boolean;
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
 }) {
+  const disabled = approving || bulkProcessing;
+
   return (
     <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -77,14 +84,14 @@ function RequestCard({
       <div className="mt-4 flex gap-2">
         <button
           onClick={() => onApprove(request.id)}
-          disabled={approving}
+          disabled={disabled}
           className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
         >
           {approving ? "처리 중..." : "승인"}
         </button>
         <button
           onClick={() => onReject(request.id)}
-          disabled={approving}
+          disabled={disabled}
           className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
         >
           거절
@@ -98,11 +105,42 @@ export function RequestsTable({
   requests,
   customFieldLabel,
   approvingIds = [],
+  bulkProcessing = false,
   onApprove,
   onReject,
+  onApproveAll,
+  onRejectAll,
 }: RequestsTableProps) {
   return (
     <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-lg font-black text-slate-900">
+            가입 신청 목록
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            들어온 신청을 개별로 확인하거나 한 번에 처리할 수 있습니다.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onApproveAll}
+            disabled={requests.length === 0 || bulkProcessing}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+          >
+            {bulkProcessing ? "처리 중..." : "전체 승인"}
+          </button>
+          <button
+            onClick={onRejectAll}
+            disabled={requests.length === 0 || bulkProcessing}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+          >
+            전체 거절
+          </button>
+        </div>
+      </div>
+
       <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[960px] text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
@@ -122,6 +160,7 @@ export function RequestsTable({
           <tbody className="divide-y divide-slate-100">
             {requests.map((request) => {
               const approving = approvingIds.includes(request.id);
+              const disabled = approving || bulkProcessing;
 
               return (
                 <tr key={request.id} className="hover:bg-slate-50">
@@ -162,14 +201,14 @@ export function RequestsTable({
                     <div className="flex gap-2">
                       <button
                         onClick={() => onApprove(request.id)}
-                        disabled={approving}
+                        disabled={disabled}
                         className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
                       >
                         {approving ? "처리 중..." : "승인"}
                       </button>
                       <button
                         onClick={() => onReject(request.id)}
-                        disabled={approving}
+                        disabled={disabled}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
                       >
                         거절
@@ -207,6 +246,7 @@ export function RequestsTable({
             request={request}
             customFieldLabel={customFieldLabel}
             approving={approvingIds.includes(request.id)}
+            bulkProcessing={bulkProcessing}
             onApprove={onApprove}
             onReject={onReject}
           />

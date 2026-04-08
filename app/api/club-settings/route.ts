@@ -35,11 +35,8 @@ export async function PATCH(req: Request) {
       return unauthorizedResponse();
     }
 
-    const { customFieldLabel, adminEmail } = await req.json();
+    const { customFieldLabel } = await req.json();
     const nextLabel = String(customFieldLabel ?? "").trim();
-    const nextEmail = String(adminEmail ?? "")
-      .trim()
-      .toLowerCase();
 
     if (!nextLabel) {
       return NextResponse.json(
@@ -48,53 +45,18 @@ export async function PATCH(req: Request) {
       );
     }
 
-    if (!nextEmail) {
-      return NextResponse.json(
-        { error: "관리자 복구 이메일을 입력해주세요." },
-        { status: 400 }
-      );
-    }
-
-    const existingEmail = await prisma.admin.findFirst({
+    await prisma.admin.updateMany({
       where: {
-        email: nextEmail,
-        id: {
-          not: admin.adminId,
-        },
+        clubId: admin.clubId,
       },
-      select: {
-        id: true,
+      data: {
+        customFieldLabel: nextLabel,
       },
     });
-
-    if (existingEmail) {
-      return NextResponse.json(
-        { error: "이미 다른 관리자 계정에서 사용 중인 이메일입니다." },
-        { status: 400 }
-      );
-    }
-
-    await prisma.$transaction([
-      prisma.admin.updateMany({
-        where: {
-          clubId: admin.clubId,
-        },
-        data: {
-          customFieldLabel: nextLabel,
-        },
-      }),
-      prisma.admin.update({
-        where: { id: admin.adminId },
-        data: {
-          email: nextEmail,
-        },
-      }),
-    ]);
 
     return NextResponse.json({
       success: true,
       customFieldLabel: nextLabel,
-      adminEmail: nextEmail,
     });
   } catch (error) {
     console.error(error);

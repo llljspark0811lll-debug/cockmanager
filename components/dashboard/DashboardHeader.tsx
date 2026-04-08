@@ -3,6 +3,7 @@ type DashboardHeaderProps = {
   subscriptionEnd?: string | Date | null;
   onAddMember: () => void;
   onLogout: () => void;
+  onOpenPersonalSettings: () => void;
   onRestartTutorial: () => void;
 };
 
@@ -11,6 +12,7 @@ export function DashboardHeader({
   subscriptionEnd,
   onAddMember,
   onLogout,
+  onOpenPersonalSettings,
   onRestartTutorial,
 }: DashboardHeaderProps) {
   const subscriptionLabel = subscriptionEnd
@@ -42,20 +44,42 @@ export function DashboardHeader({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col items-stretch gap-3 md:items-end">
         <button
-          onClick={onAddMember}
-          data-tutorial-id="add-member-button"
-          className="rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-700"
+          onClick={onOpenPersonalSettings}
+          className="inline-flex items-center justify-center gap-2 self-end rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
         >
-          회원 직접 등록
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-.33-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.33H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1-.33 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 .33 1 1.65 1.65 0 0 0 1 .6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.24.31.44.65.6 1a1.65 1.65 0 0 0 1 .33H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1 .33 1.65 1.65 0 0 0-.51.34z" />
+          </svg>
+          개인 설정
         </button>
-        <button
-          onClick={onLogout}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-        >
-          로그아웃
-        </button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={onAddMember}
+            data-tutorial-id="add-member-button"
+            className="rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-700"
+          >
+            회원 직접 등록
+          </button>
+          <button
+            onClick={onLogout}
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            로그아웃
+          </button>
+        </div>
       </div>
     </div>
   );
