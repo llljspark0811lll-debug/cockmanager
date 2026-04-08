@@ -11,15 +11,26 @@ export type DashboardTutorialStep = {
   tab?: DashboardTab;
 };
 
+export type DashboardTutorialFinishMode =
+  | "prompt"
+  | "member-button"
+  | "final";
+
 type DashboardTutorialProps = {
   open: boolean;
   step: DashboardTutorialStep;
   stepIndex: number;
   totalSteps: number;
+  finishMode?: DashboardTutorialFinishMode;
+  targetIdOverride?: string;
   onPrev: () => void;
   onNext: () => void;
   onSkip: () => void;
   onComplete: () => void;
+  onFinishYes?: () => void;
+  onFinishNo?: () => void;
+  onOpenMemberPractice?: () => void;
+  onMemberPracticeBack?: () => void;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -31,10 +42,16 @@ export function DashboardTutorial({
   step,
   stepIndex,
   totalSteps,
+  finishMode = "final",
+  targetIdOverride,
   onPrev,
   onNext,
   onSkip,
   onComplete,
+  onFinishYes,
+  onFinishNo,
+  onOpenMemberPractice,
+  onMemberPracticeBack,
 }: DashboardTutorialProps) {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -46,21 +63,24 @@ export function DashboardTutorial({
     }
 
     const updateLayout = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      const targetId = targetIdOverride ?? step.targetId;
 
-      if (!step.targetId) {
+      setIsMobile(mobile);
+
+      if (!targetId) {
         setTargetRect(null);
         return;
       }
 
       const element = document.querySelector(
-        `[data-tutorial-id="${step.targetId}"]`
+        `[data-tutorial-id="${targetId}"]`
       ) as HTMLElement | null;
 
       if (element) {
         element.scrollIntoView({
           behavior: "smooth",
-          block: isMobile ? "center" : "nearest",
+          block: mobile ? "center" : "nearest",
           inline: "center",
         });
       }
@@ -77,7 +97,7 @@ export function DashboardTutorial({
       window.removeEventListener("resize", updateLayout);
       window.removeEventListener("scroll", updateLayout, true);
     };
-  }, [open, step.targetId, step.tab]);
+  }, [open, step.targetId, targetIdOverride]);
 
   useEffect(() => {
     if (!open) {
@@ -135,6 +155,39 @@ export function DashboardTutorial({
   }
 
   const isLastStep = stepIndex === totalSteps - 1;
+  const isFinishStep = isLastStep && step.id === "finish";
+
+  const displayedTitle = (() => {
+    if (!isFinishStep) {
+      return step.title;
+    }
+
+    if (finishMode === "prompt") {
+      return "회원 등록을 해볼까요?";
+    }
+
+    if (finishMode === "member-button") {
+      return "회원 직접 등록 버튼을 눌러보세요";
+    }
+
+    return "이제 바로 운영을 시작해보세요";
+  })();
+
+  const displayedDescription = (() => {
+    if (!isFinishStep) {
+      return step.description;
+    }
+
+    if (finishMode === "prompt") {
+      return "실제 사용 전, 회원 1명을 직접 등록해보면 전체 흐름을 훨씬 빠르게 이해할 수 있습니다.";
+    }
+
+    if (finishMode === "member-button") {
+      return "오른쪽 위의 회원 직접 등록 버튼을 눌러 회원 등록 창을 열어보세요.\n잠깐만 체험해도 이후 사용 흐름이 훨씬 잘 보입니다.";
+    }
+
+    return "회원 등록부터 시작하거나\n가입 신청 링크와 운동 일정 링크를 먼저 공유해도 좋습니다.";
+  })();
 
   return (
     <div className="fixed inset-0 z-[90]">
@@ -161,44 +214,78 @@ export function DashboardTutorial({
               사용 가이드 {stepIndex + 1}/{totalSteps}
             </p>
             <h2 className="mt-2 text-xl font-black text-slate-900">
-              {step.title}
+              {displayedTitle}
             </h2>
           </div>
           <button
             onClick={onSkip}
-            className="min-w-[4.5rem] rounded-full px-3 py-1 text-center text-xs font-semibold leading-tight text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 whitespace-nowrap"
+            className="min-w-[4.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold leading-tight text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >
             건너뛰기
           </button>
         </div>
 
         <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
-          {step.description}
+          {displayedDescription}
         </p>
 
         <div className="mt-5 flex items-center justify-between gap-3">
-          <button
-            onClick={onPrev}
-            disabled={stepIndex === 0}
-            className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            이전
-          </button>
-
-          {isLastStep ? (
-            <button
-              onClick={onComplete}
-              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
-            >
-              바로 시작하기
-            </button>
+          {isFinishStep && finishMode === "prompt" ? (
+            <>
+              <button
+                onClick={onFinishNo}
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                아니오
+              </button>
+              <button
+                onClick={onFinishYes}
+                className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+              >
+                예
+              </button>
+            </>
+          ) : isFinishStep && finishMode === "member-button" ? (
+            <>
+              <button
+                onClick={onMemberPracticeBack}
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+              >
+                이전
+              </button>
+              <button
+                onClick={onOpenMemberPractice}
+                className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+              >
+                회원 등록 창 열기
+              </button>
+            </>
           ) : (
-            <button
-              onClick={onNext}
-              className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
-            >
-              다음
-            </button>
+            <>
+              <button
+                onClick={onPrev}
+                disabled={stepIndex === 0}
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                이전
+              </button>
+
+              {isLastStep ? (
+                <button
+                  onClick={onComplete}
+                  className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  바로 시작하기
+                </button>
+              ) : (
+                <button
+                  onClick={onNext}
+                  className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  다음
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -8,6 +8,7 @@ import { ClubSettingsPanel } from "@/components/dashboard/ClubSettingsPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import {
   DashboardTutorial,
+  type DashboardTutorialFinishMode,
   type DashboardTutorialStep,
 } from "@/components/dashboard/DashboardTutorial";
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
@@ -172,6 +173,10 @@ export default function DashboardPage() {
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
+  const [tutorialFinishMode, setTutorialFinishMode] =
+    useState<DashboardTutorialFinishMode>("prompt");
+  const [tutorialMemberPracticePending, setTutorialMemberPracticePending] =
+    useState(false);
   const [tutorialInitialized, setTutorialInitialized] =
     useState(false);
 
@@ -595,10 +600,26 @@ export default function DashboardPage() {
 
     const currentStep = tutorialSteps[tutorialStepIndex];
 
+    if (
+      currentStep?.id === "finish" &&
+      tutorialFinishMode === "member-button"
+    ) {
+      if (activeTab !== "members") {
+        setActiveTab("members");
+      }
+      return;
+    }
+
     if (currentStep?.tab && activeTab !== currentStep.tab) {
       setActiveTab(currentStep.tab);
     }
-  }, [activeTab, tutorialOpen, tutorialStepIndex, tutorialSteps]);
+  }, [
+    activeTab,
+    tutorialFinishMode,
+    tutorialOpen,
+    tutorialStepIndex,
+    tutorialSteps,
+  ]);
 
   useEffect(() => {
     if (activeTab !== "stats" || statsLoaded) {
@@ -946,6 +967,16 @@ export default function DashboardPage() {
     if (!editingMember) {
       if (activeTab === "fees") {
         await refreshSpecialFees();
+      }
+
+      if (
+        tutorialOpen &&
+        tutorialSteps[tutorialStepIndex]?.id === "finish" &&
+        tutorialMemberPracticePending
+      ) {
+        setTutorialMemberPracticePending(false);
+        setTutorialOpen(true);
+        setTutorialFinishMode("final");
       }
     }
   }
@@ -1499,21 +1530,66 @@ export default function DashboardPage() {
     markTutorialAsCompleted();
     setTutorialOpen(false);
     setTutorialStepIndex(0);
+    setTutorialFinishMode("prompt");
   }
 
   function openTutorial() {
     setTutorialStepIndex(0);
+    setTutorialFinishMode("prompt");
     setTutorialOpen(true);
   }
 
   function moveTutorialStep(direction: -1 | 1) {
-    setTutorialStepIndex((current) =>
-      Math.min(
+    setTutorialStepIndex((current) => {
+      const next = Math.min(
         Math.max(current + direction, 0),
         tutorialSteps.length - 1
-      )
-    );
+      );
+
+      if (tutorialSteps[next]?.id === "finish") {
+        setTutorialFinishMode("prompt");
+      }
+
+      return next;
+    });
   }
+
+  function handleTutorialMemberPracticeYes() {
+    setActiveTab("members");
+    setTutorialFinishMode("member-button");
+  }
+
+  function handleTutorialMemberPracticeNo() {
+    setTutorialFinishMode("final");
+  }
+
+  function handleOpenTutorialMemberPractice() {
+    setActiveTab("members");
+    openCreateMemberModal();
+    setTutorialMemberPracticePending(true);
+    setTutorialOpen(false);
+  }
+
+  function handleTutorialMemberPracticeBack() {
+    if (tutorialMemberPracticePending) {
+      setShowMemberModal(false);
+      setEditingMember(null);
+      setForm(initialForm);
+      setTutorialMemberPracticePending(false);
+      setTutorialOpen(true);
+      setTutorialFinishMode("member-button");
+      return;
+    }
+
+    setTutorialFinishMode("prompt");
+  }
+
+  const tutorialTargetIdOverride =
+    tutorialSteps[tutorialStepIndex]?.id === "finish"
+      ? tutorialFinishMode === "member-button"
+        ? "add-member-button"
+        : undefined
+      : undefined;
 
   function renderLoadingCard(message: string) {
     return (
@@ -1541,10 +1617,16 @@ export default function DashboardPage() {
         step={tutorialSteps[tutorialStepIndex]}
         stepIndex={tutorialStepIndex}
         totalSteps={tutorialSteps.length}
+        finishMode={tutorialFinishMode}
+        targetIdOverride={tutorialTargetIdOverride}
         onPrev={() => moveTutorialStep(-1)}
         onNext={() => moveTutorialStep(1)}
         onSkip={closeTutorial}
         onComplete={closeTutorial}
+        onFinishYes={handleTutorialMemberPracticeYes}
+        onFinishNo={handleTutorialMemberPracticeNo}
+        onOpenMemberPractice={handleOpenTutorialMemberPractice}
+        onMemberPracticeBack={handleTutorialMemberPracticeBack}
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
@@ -1774,11 +1856,19 @@ export default function DashboardPage() {
         customFieldLabel={
           clubInfo?.customFieldLabel ?? "차량번호"
         }
+        tutorialTargetId="member-form-modal"
         onChange={setForm}
         onClose={() => {
           setShowMemberModal(false);
           setEditingMember(null);
           setForm(initialForm);
+          if (
+            tutorialMemberPracticePending
+          ) {
+            setTutorialMemberPracticePending(false);
+            setTutorialOpen(true);
+            setTutorialFinishMode("member-button");
+          }
         }}
         onSubmit={() => {
           handleMemberSubmit().catch((error: Error) => {

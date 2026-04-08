@@ -10,6 +10,7 @@ type MemberFormModalProps = {
   editingMember: Member | null;
   form: MemberFormState;
   customFieldLabel: string;
+  tutorialTargetId?: string;
   onChange: (form: MemberFormState) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -20,6 +21,7 @@ export function MemberFormModal({
   editingMember,
   form,
   customFieldLabel,
+  tutorialTargetId,
   onChange,
   onClose,
   onSubmit,
@@ -31,7 +33,10 @@ export function MemberFormModal({
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm md:p-6">
       <div className="flex min-h-full items-start justify-center py-4 md:items-center">
-        <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl md:max-h-[92vh]">
+        <div
+          data-tutorial-id={tutorialTargetId}
+          className="flex w-full max-w-lg flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl md:max-h-[92vh]"
+        >
           <div className="border-b border-slate-100 px-6 pb-4 pt-6">
             <h2 className="text-2xl font-black text-slate-900">
               {editingMember ? "회원 정보 수정" : "새 회원 등록"}
