@@ -2,5 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 /* 그 아래에 있던 기존 CSS 코드(폰트 설정 등)는 그대로 두거나, 
    일단 빌드 성공을 위해 위 세 줄만 남기고 다 지워보세요. */

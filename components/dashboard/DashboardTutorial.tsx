@@ -60,7 +60,7 @@ export function DashboardTutorial({
       if (element) {
         element.scrollIntoView({
           behavior: "smooth",
-          block: "nearest",
+          block: isMobile ? "center" : "nearest",
           inline: "center",
         });
       }
