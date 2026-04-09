@@ -52,6 +52,7 @@ export default function InAppBrowserNotice() {
       <div className="mx-auto flex max-w-6xl items-start justify-between gap-3">
         <p className="text-[11px] leading-5 text-slate-500 sm:text-xs">
           화면이 다르게 보이면 우측 상단 메뉴에서
+          <br />
           <span className="font-semibold text-slate-700"> Chrome에서 열기</span>
           를 눌러주세요.
         </p>
