@@ -232,15 +232,15 @@ export function SessionsPanel({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-6">
       <div className="space-y-6">
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-xl font-black text-slate-900">
                 {editingSessionId ? "운동 일정 수정" : "운동 일정 만들기"}
               </h3>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-1.5 text-xs leading-5 text-slate-500 md:mt-2 md:text-sm">
                 날짜, 시간, 장소, 정원을 입력하면 카카오톡 공유용 참석 링크까지
                 바로 만들 수 있어요.
               </p>
@@ -256,7 +256,7 @@ export function SessionsPanel({
             ) : null}
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2.5 md:mt-5 md:space-y-3">
             <input
               value={form.title}
               onChange={(event) =>
@@ -266,7 +266,7 @@ export function SessionsPanel({
                 })
               }
               placeholder="예: 목요일 정기 운동"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+              className="w-full rounded-2xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
             />
             <input
               value={form.location}
@@ -277,9 +277,9 @@ export function SessionsPanel({
                 })
               }
               placeholder="장소"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+              className="w-full rounded-2xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
             />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2.5 md:gap-3">
               <input
                 type="date"
                 value={form.date}
@@ -289,7 +289,7 @@ export function SessionsPanel({
                     date: event.target.value,
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
               />
               <input
                 type="number"
@@ -302,10 +302,10 @@ export function SessionsPanel({
                   })
                 }
                 placeholder="정원"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2.5 md:gap-3">
               <input
                 type="time"
                 value={form.startTime}
@@ -315,7 +315,7 @@ export function SessionsPanel({
                     startTime: event.target.value,
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
               />
               <input
                 type="time"
@@ -326,7 +326,7 @@ export function SessionsPanel({
                     endTime: event.target.value,
                   })
                 }
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-sky-400 md:px-4 md:py-3"
               />
             </div>
             <textarea
@@ -338,7 +338,7 @@ export function SessionsPanel({
                 })
               }
               placeholder="운영 메모"
-              className="h-24 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+              className="h-20 w-full resize-none rounded-2xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-sky-400 md:h-24 md:px-4 md:py-3"
             />
           </div>
 
@@ -347,7 +347,7 @@ export function SessionsPanel({
               handleSubmit().catch(() => undefined);
             }}
             disabled={submitting}
-            className="mt-5 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="mt-4 w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 md:mt-5 md:py-3"
           >
             {submitting
               ? editingSessionId
@@ -359,7 +359,7 @@ export function SessionsPanel({
           </button>
         </section>
 
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-xl font-black text-slate-900">
               일정 목록
@@ -377,14 +377,14 @@ export function SessionsPanel({
                 <button
                   key={session.id}
                   onClick={() => onSelectSession(session.id)}
-                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                  className={`w-full rounded-2xl border p-3.5 text-left transition md:p-4 ${
                     isSelected
                       ? "border-slate-900 bg-slate-900 text-white"
                       : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-base font-bold">
+                    <div className="text-sm font-bold md:text-base">
                       {session.title}
                     </div>
                     <span
@@ -397,11 +397,11 @@ export function SessionsPanel({
                       {SESSION_STATUS_LABEL[session.status]}
                     </span>
                   </div>
-                  <div className="mt-2 text-sm opacity-80">
+                  <div className="mt-1.5 text-xs opacity-80 md:mt-2 md:text-sm">
                     {formatDate(session.date)} {session.startTime} -{" "}
                     {session.endTime}
                   </div>
-                  <div className="mt-2 text-sm opacity-80">
+                  <div className="mt-1.5 text-xs opacity-80 md:mt-2 md:text-sm">
                     참석 {session.registeredCount ?? 0}명 / 대기{" "}
                     {session.waitlistedCount ?? 0}명
                   </div>
