@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -614,18 +614,51 @@ export default function PublicSessionPage() {
                 마지막 업데이트는 5초마다 자동 반영됩니다.
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600">
-              <div className="font-bold text-slate-900">현재 참석 요약</div>
-              <div className="mt-2 space-y-1">
-                <div>참석 {session.registeredCount}명</div>
-                <div>회원 {session.registeredMemberCount}명</div>
-                <div>게스트 {session.registeredGuestCount}명</div>
-                <div>대기 {session.waitlistCount}명</div>
-                <div>정원 {session.capacity === null ? "제한 없음" : `${session.capacity}명`}</div>
+            <div className="w-full max-w-xl space-y-2.5 lg:max-w-sm">
+              <div className="rounded-[1.35rem] border border-sky-200 bg-sky-50 px-4 py-3.5">
+                <div className="text-xs font-black tracking-[0.18em] text-sky-600">
+                  CAPACITY
+                </div>
+                <div className="mt-1.5 text-sm font-bold text-slate-500">정원</div>
+                <div className="mt-1 text-[1.75rem] font-black text-sky-700 sm:text-[2rem]">
+                  {session.capacity === null ? "제한 없음" : `${session.capacity}명`}
+                </div>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <div className="rounded-[1.35rem] border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+                  <div className="text-xs font-black tracking-[0.18em] text-emerald-600">
+                    REGISTERED
+                  </div>
+                  <div className="mt-1.5 text-sm font-bold text-slate-500">참석 현황</div>
+                  <div className="mt-1 text-[1.65rem] font-black text-emerald-700">
+                    {session.registeredCount}명
+                  </div>
+                  <div className="mt-2.5 space-y-1 text-xs font-semibold text-slate-600 sm:text-sm">
+                    <div>회원 {session.registeredMemberCount}명</div>
+                    <div>게스트 {session.registeredGuestCount}명</div>
+                  </div>
+                </div>
+                <div className="rounded-[1.35rem] border border-amber-200 bg-amber-50 px-4 py-3.5">
+                  <div className="text-xs font-black tracking-[0.18em] text-amber-600">
+                    WAITLIST
+                  </div>
+                  <div className="mt-1.5 text-sm font-bold text-slate-500">대기 현황</div>
+                  <div className="mt-1 text-[1.65rem] font-black text-amber-700">
+                    {session.waitlistCount}명
+                  </div>
+                  <div className="mt-2.5 space-y-1 text-xs font-semibold text-slate-600 sm:text-sm">
+                    <div>회원 {session.waitlistMemberCount}명</div>
+                    <div>게스트 {session.waitlistGuestCount}명</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-2">
+            <StatChip
+              label={`정원 ${session.capacity === null ? "제한 없음" : `${session.capacity}명`}`}
+              accent="male"
+            />
             <StatChip label={`참석 ${session.registeredCount}명`} />
             <StatChip label={`회원 ${session.registeredMemberCount}명`} accent="male" />
             <StatChip label={`게스트 ${session.registeredGuestCount}명`} accent="female" />

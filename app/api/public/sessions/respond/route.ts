@@ -28,7 +28,7 @@ function hasMissingGuestProfileColumns(error: unknown) {
 }
 
 async function findSessionForRespond(token: string) {
-  return await prisma.clubSession.findUnique({
+  return prisma.clubSession.findUnique({
     where: { publicToken: token },
     include: {
       participants: {
@@ -51,11 +51,9 @@ async function findSessionForRespond(token: string) {
 function sanitizeGuestEntries(value: unknown): GuestEntry[] {
   const legacyGuestNames = Array.isArray(value)
     ? value
-    : Array.isArray(
-        (value as { guestNames?: unknown[] } | null)?.guestNames
-      )
-    ? ((value as { guestNames?: unknown[] }).guestNames ?? [])
-    : [];
+    : Array.isArray((value as { guestNames?: unknown[] } | null)?.guestNames)
+      ? ((value as { guestNames?: unknown[] }).guestNames ?? [])
+      : [];
 
   return legacyGuestNames
     .map((item) => {
@@ -70,10 +68,7 @@ function sanitizeGuestEntries(value: unknown): GuestEntry[] {
 
       return {
         name: String((item as GuestEntry | null)?.name ?? "").trim(),
-        age: String((item as GuestEntry | null)?.age ?? "").replace(
-          /\D/g,
-          ""
-        ),
+        age: String((item as GuestEntry | null)?.age ?? "").replace(/\D/g, ""),
         gender: String((item as GuestEntry | null)?.gender ?? "").trim(),
         level: String((item as GuestEntry | null)?.level ?? "").trim(),
       };
@@ -109,9 +104,7 @@ export async function POST(req: Request) {
     const token = String(body.token ?? "").trim();
     const rememberToken = String(body.rememberToken ?? "").trim();
     const action = body.action === "CANCEL" ? "CANCEL" : "REGISTER";
-    const guestEntries = sanitizeGuestEntries(
-      body.guests ?? body.guestNames
-    );
+    const guestEntries = sanitizeGuestEntries(body.guests ?? body.guestNames);
 
     if (!token || !rememberToken) {
       return NextResponse.json(
@@ -234,37 +227,21 @@ export async function POST(req: Request) {
       (item) => item.status !== "CANCELED" && !excludedIds.includes(item.id)
     );
 
-    let registeredCount = otherParticipants.filter(
+    const registeredCount = otherParticipants.filter(
       (item) => item.status === "REGISTERED"
     ).length;
 
     const createdAt = new Date();
-    const memberStatus = getNextRegistrationStatus(
+    const partySize = 1 + guestEntries.length;
+    const partyStatus = getNextRegistrationStatus(
       session.capacity,
-      registeredCount
+      registeredCount,
+      partySize
     );
+    const memberStatus = partyStatus;
+    const guestStatuses = guestEntries.map(() => partyStatus);
 
-    if (memberStatus === "REGISTERED") {
-      registeredCount += 1;
-    }
-
-    const guestStatuses = guestEntries.map(() => {
-      const status = getNextRegistrationStatus(
-        session.capacity,
-        registeredCount
-      );
-
-      if (status === "REGISTERED") {
-        registeredCount += 1;
-      }
-
-      return status;
-    });
-
-    const nextRegisteredCount =
-      (memberStatus === "REGISTERED" ? 1 : 0) +
-      guestStatuses.filter((status) => status === "REGISTERED").length;
-
+    const nextRegisteredCount = partyStatus === "REGISTERED" ? partySize : 0;
     const freedRegisteredCount = Math.max(
       0,
       previousRegisteredCount - nextRegisteredCount
@@ -272,9 +249,7 @@ export async function POST(req: Request) {
 
     const applyRegistrationChanges = async (includeGuestProfile: boolean) => {
       await prisma.$transaction(async (tx) => {
-        const createParticipant = async (
-          data: Record<string, unknown>
-        ) => {
+        const createParticipant = async (data: Record<string, unknown>) => {
           if (includeGuestProfile) {
             await tx.sessionParticipant.create({ data: data as never });
             return;
@@ -391,8 +366,7 @@ export async function POST(req: Request) {
     };
 
     const includeGuestProfile =
-      guestEntries.length > 0 &&
-      (await hasSessionParticipantGuestProfileColumns());
+      guestEntries.length > 0 && (await hasSessionParticipantGuestProfileColumns());
 
     try {
       await applyRegistrationChanges(includeGuestProfile);
@@ -408,9 +382,8 @@ export async function POST(req: Request) {
       success: true,
       status: memberStatus,
       guestCount: guestEntries.length,
-      waitlistGuestCount: guestStatuses.filter(
-        (status) => status === "WAITLIST"
-      ).length,
+      waitlistGuestCount: guestStatuses.filter((status) => status === "WAITLIST")
+        .length,
     });
   } catch (error) {
     console.error(error);

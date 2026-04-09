@@ -4,21 +4,11 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import {
+  rebalanceRegisteredParticipantsToCapacity,
+} from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { NextResponse } from "next/server";
-
-function hasMissingGuestProfileColumns(error: unknown) {
-  const message =
-    error instanceof Error ? error.message : String(error ?? "");
-
-  return (
-    message.includes("guestAge") ||
-    message.includes("guestGender") ||
-    message.includes("guestLevel") ||
-    message.includes("The column") ||
-    message.includes("P2022")
-  );
-}
 
 async function getSessionSummaries(clubId: number) {
   const sessions = await prisma.clubSession.findMany({
@@ -57,27 +47,21 @@ async function getSessionSummaries(clubId: number) {
   const countMap = new Map<string, number>();
 
   for (const row of counts) {
-    countMap.set(
-      `${row.sessionId}-${row.status}`,
-      row._count._all
-    );
+    countMap.set(`${row.sessionId}-${row.status}`, row._count._all);
   }
 
   return sessions.map((session) => ({
     ...session,
-    registeredCount:
-      countMap.get(`${session.id}-REGISTERED`) ?? 0,
-    waitlistedCount:
-      countMap.get(`${session.id}-WAITLIST`) ?? 0,
+    registeredCount: countMap.get(`${session.id}-REGISTERED`) ?? 0,
+    waitlistedCount: countMap.get(`${session.id}-WAITLIST`) ?? 0,
   }));
 }
 
 async function findSessionDetail(sessionId: number, clubId: number) {
-  const includeGuestProfile =
-    await hasSessionParticipantGuestProfileColumns();
+  const includeGuestProfile = await hasSessionParticipantGuestProfileColumns();
 
   if (includeGuestProfile) {
-    return await prisma.clubSession.findFirst({
+    return prisma.clubSession.findFirst({
       where: {
         id: sessionId,
         clubId,
@@ -119,7 +103,7 @@ async function findSessionDetail(sessionId: number, clubId: number) {
     });
   }
 
-  return await prisma.clubSession.findFirst({
+  return prisma.clubSession.findFirst({
     where: {
       id: sessionId,
       clubId,
@@ -168,9 +152,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const sessionIdParam = searchParams.get("id");
-    const sessionId = sessionIdParam
-      ? Number(sessionIdParam)
-      : null;
+    const sessionId = sessionIdParam ? Number(sessionIdParam) : null;
 
     if (
       sessionIdParam !== null &&
@@ -194,9 +176,7 @@ export async function GET(req: Request) {
       });
     }
 
-    return NextResponse.json(
-      await getSessionSummaries(admin.clubId)
-    );
+    return NextResponse.json(await getSessionSummaries(admin.clubId));
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -215,21 +195,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      title,
-      description,
-      location,
-      date,
-      startTime,
-      endTime,
-      capacity,
-    } = body;
+    const { title, description, location, date, startTime, endTime, capacity } =
+      body;
 
     if (!title || !date || !startTime || !endTime) {
       return NextResponse.json(
         {
-          error:
-            "제목, 날짜, 시작 시간, 종료 시간은 필수입니다.",
+          error: "제목, 날짜, 시작 시간, 종료 시간은 필수입니다.",
         },
         { status: 400 }
       );
@@ -238,17 +210,13 @@ export async function POST(req: Request) {
     const session = await prisma.clubSession.create({
       data: {
         title: String(title).trim(),
-        description: description
-          ? String(description).trim()
-          : "",
+        description: description ? String(description).trim() : "",
         location: location ? String(location).trim() : "",
         date: new Date(date),
         startTime: String(startTime),
         endTime: String(endTime),
         capacity:
-          capacity === "" ||
-          capacity === null ||
-          capacity === undefined
+          capacity === "" || capacity === null || capacity === undefined
             ? null
             : Number(capacity),
         clubId: admin.clubId,
@@ -321,9 +289,7 @@ export async function PUT(req: Request) {
       where: { id: existingSession.id },
       data: {
         title:
-          title !== undefined
-            ? String(title).trim()
-            : existingSession.title,
+          title !== undefined ? String(title).trim() : existingSession.title,
         description:
           description !== undefined
             ? String(description).trim()
@@ -358,7 +324,27 @@ export async function PUT(req: Request) {
       },
     });
 
-    return NextResponse.json(updatedSession);
+    await rebalanceRegisteredParticipantsToCapacity(
+      prisma,
+      updatedSession.id,
+      updatedSession.capacity
+    );
+
+    const refreshedSession = await findSessionDetail(updatedSession.id, admin.clubId);
+
+    if (!refreshedSession) {
+      return NextResponse.json(updatedSession);
+    }
+
+    return NextResponse.json({
+      ...refreshedSession,
+      registeredCount: refreshedSession.participants.filter(
+        (participant) => participant.status === "REGISTERED"
+      ).length,
+      waitlistedCount: refreshedSession.participants.filter(
+        (participant) => participant.status === "WAITLIST"
+      ).length,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

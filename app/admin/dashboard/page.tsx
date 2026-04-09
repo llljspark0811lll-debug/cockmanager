@@ -1379,6 +1379,42 @@ export default function DashboardPage() {
     setSelectedSessionId(created.id);
   }
 
+  async function handleUpdateSession(
+    sessionId: number,
+    payload: {
+      title: string;
+      description: string;
+      location: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      capacity: string;
+    }
+  ) {
+    const updated = await requestJson<ClubSession>("/api/sessions", {
+      method: "PUT",
+      body: JSON.stringify({
+        id: sessionId,
+        ...payload,
+      }),
+    });
+
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === sessionId
+          ? {
+              ...session,
+              ...updated,
+              participants: session.participants,
+            }
+          : session
+      )
+    );
+    setSelectedSessionId(sessionId);
+
+    await refreshSessionDetail(sessionId);
+  }
+
   async function handleSelectSession(sessionId: number) {
     setSelectedSessionId(sessionId);
 
@@ -1935,6 +1971,7 @@ export default function DashboardPage() {
               loadingSelectedSession={loadingSessionDetail}
               onSelectSession={handleSelectSession}
               onCreateSession={handleCreateSession}
+              onUpdateSession={handleUpdateSession}
               onDeleteSession={handleDeleteSession}
               onUpdateSessionStatus={handleUpdateSessionStatus}
             />

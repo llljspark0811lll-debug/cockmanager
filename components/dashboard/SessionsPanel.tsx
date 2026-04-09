@@ -11,21 +11,27 @@ import {
   isGuestParticipant,
 } from "@/components/dashboard/utils";
 
+type SessionFormPayload = {
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  capacity: string;
+};
+
 type SessionsPanelProps = {
   sessions: ClubSession[];
   selectedSessionId: number | null;
   publicSessionBaseUrl: string;
   loadingSelectedSession: boolean;
   onSelectSession: (id: number) => void;
-  onCreateSession: (payload: {
-    title: string;
-    description: string;
-    location: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    capacity: string;
-  }) => Promise<void>;
+  onCreateSession: (payload: SessionFormPayload) => Promise<void>;
+  onUpdateSession: (
+    sessionId: number,
+    payload: SessionFormPayload
+  ) => Promise<void>;
   onDeleteSession: (sessionId: number) => Promise<void>;
   onUpdateSessionStatus: (
     sessionId: number,
@@ -48,7 +54,7 @@ function getTodayDateInputValue() {
   return offsetDate.toISOString().split("T")[0];
 }
 
-const initialForm = {
+const initialForm: SessionFormPayload = {
   title: "",
   description: "",
   location: "",
@@ -70,6 +76,21 @@ function statusButtonClass(status: ClubSession["status"]) {
   return "bg-rose-50 text-rose-700 hover:bg-rose-100";
 }
 
+function toSessionForm(session: ClubSession): SessionFormPayload {
+  return {
+    title: session.title ?? "",
+    description: session.description ?? "",
+    location: session.location ?? "",
+    date: new Date(session.date).toISOString().split("T")[0],
+    startTime: session.startTime ?? "19:00",
+    endTime: session.endTime ?? "21:00",
+    capacity:
+      session.capacity === null || session.capacity === undefined
+        ? ""
+        : String(session.capacity),
+  };
+}
+
 export function SessionsPanel({
   sessions,
   selectedSessionId,
@@ -77,11 +98,15 @@ export function SessionsPanel({
   loadingSelectedSession,
   onSelectSession,
   onCreateSession,
+  onUpdateSession,
   onDeleteSession,
   onUpdateSessionStatus,
 }: SessionsPanelProps) {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(
+    null
+  );
 
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -113,20 +138,71 @@ export function SessionsPanel({
     ? getWaitlistedParticipants(selectedSession)
     : [];
 
+  const registeredMemberCount = registeredParticipants.filter(
+    (participant) => !isGuestParticipant(participant)
+  ).length;
+  const registeredGuestCount = registeredParticipants.filter(
+    (participant) => isGuestParticipant(participant)
+  ).length;
+  const waitlistedMemberCount = waitlistedParticipants.filter(
+    (participant) => !isGuestParticipant(participant)
+  ).length;
+  const waitlistedGuestCount = waitlistedParticipants.filter(
+    (participant) => isGuestParticipant(participant)
+  ).length;
+
+  function resetForm() {
+    setForm({
+      ...initialForm,
+      date: getTodayDateInputValue(),
+    });
+    setEditingSessionId(null);
+  }
+
   async function handleSubmit() {
+    if (
+      editingSessionId &&
+      selectedSession &&
+      form.capacity !== ""
+    ) {
+      const nextCapacity = Number(form.capacity);
+      const previousCapacity = selectedSession.capacity;
+      const currentRegisteredCount =
+        selectedSession.registeredCount ?? registeredParticipants.length;
+
+      if (
+        Number.isFinite(nextCapacity) &&
+        nextCapacity >= 0 &&
+        currentRegisteredCount > nextCapacity &&
+        (previousCapacity === null || nextCapacity < previousCapacity)
+      ) {
+        const shouldContinue = confirm(
+          "현재 참석 인원이 새 정원을 초과합니다.\n가장 마지막 신청 단위부터 대기 인원으로 이동됩니다."
+        );
+
+        if (!shouldContinue) {
+          return;
+        }
+      }
+    }
+
     setSubmitting(true);
 
     try {
-      await onCreateSession(form);
-      setForm({
-        ...initialForm,
-        date: getTodayDateInputValue(),
-      });
+      if (editingSessionId) {
+        await onUpdateSession(editingSessionId, form);
+      } else {
+        await onCreateSession(form);
+      }
+
+      resetForm();
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "운동 일정을 생성하지 못했습니다.";
+          : editingSessionId
+            ? "운동 일정을 수정하지 못했습니다."
+            : "운동 일정을 생성하지 못했습니다.";
       alert(message);
     } finally {
       setSubmitting(false);
@@ -146,17 +222,39 @@ export function SessionsPanel({
     }
   }
 
+  function startEditingSelectedSession() {
+    if (!selectedSession) {
+      return;
+    }
+
+    setEditingSessionId(selectedSession.id);
+    setForm(toSessionForm(selectedSession));
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
       <div className="space-y-6">
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900">
-            운동 일정 만들기
-          </h3>
-          <p className="mt-2 text-sm text-slate-500">
-            날짜, 시간, 장소, 정원을 입력하면 카카오톡 공유용 참석 링크까지
-            바로 만들 수 있습니다.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">
+                {editingSessionId ? "운동 일정 수정" : "운동 일정 만들기"}
+              </h3>
+              <p className="mt-2 text-sm text-slate-500">
+                날짜, 시간, 장소, 정원을 입력하면 카카오톡 공유용 참석 링크까지
+                바로 만들 수 있어요.
+              </p>
+            </div>
+
+            {editingSessionId ? (
+              <button
+                onClick={resetForm}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                수정 취소
+              </button>
+            ) : null}
+          </div>
 
           <div className="mt-5 space-y-3">
             <input
@@ -251,7 +349,13 @@ export function SessionsPanel({
             disabled={submitting}
             className="mt-5 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {submitting ? "생성 중..." : "운동 일정 생성"}
+            {submitting
+              ? editingSessionId
+                ? "수정 중..."
+                : "생성 중..."
+              : editingSessionId
+                ? "운동 일정 수정"
+                : "운동 일정 생성"}
           </button>
         </section>
 
@@ -341,6 +445,12 @@ export function SessionsPanel({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={startEditingSelectedSession}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    수정
+                  </button>
                   {(["OPEN", "CLOSED", "CANCELED"] as const).map(
                     (status) => (
                       <button
@@ -391,7 +501,7 @@ export function SessionsPanel({
                       참석 신청 공유 링크
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      회원은 이 링크에서 현재 참석 현황을 바로 보고 참석 신청,
+                      회원과 게스트는 링크에서 현재 참석 현황을 보고 참석 신청,
                       취소, 게스트 등록까지 할 수 있습니다.
                     </p>
                   </div>
@@ -415,9 +525,7 @@ export function SessionsPanel({
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-500">
-                  정원
-                </p>
+                <p className="text-sm font-semibold text-slate-500">정원</p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
                   {selectedSession.capacity ?? "제한 없음"}
                 </p>
@@ -430,6 +538,9 @@ export function SessionsPanel({
                   {selectedSession.registeredCount ??
                     registeredParticipants.length}
                 </p>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  회원 {registeredMemberCount}명 / 게스트 {registeredGuestCount}명
+                </p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-sm font-semibold text-slate-500">
@@ -438,6 +549,9 @@ export function SessionsPanel({
                 <p className="mt-2 text-2xl font-black text-slate-900">
                   {selectedSession.waitlistedCount ??
                     waitlistedParticipants.length}
+                </p>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  회원 {waitlistedMemberCount}명 / 게스트 {waitlistedGuestCount}명
                 </p>
               </div>
             </div>
@@ -450,30 +564,31 @@ export function SessionsPanel({
               <div className="mt-6 space-y-6">
                 <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-                    <h4 className="text-base font-black text-slate-900">
-                      참석 신청 명단
-                    </h4>
-                    <p className="mt-1 text-sm text-slate-500">
-                      링크로 실제 참석 신청한 사람만 표시됩니다.
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-base font-black text-slate-900">
+                          참석 신청 명단
+                        </h4>
+                        <p className="mt-1 text-sm text-slate-500">
+                          링크로 실제 참석 신청한 회원과 게스트 명단입니다.
+                        </p>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                        회원 {registeredMemberCount}명 / 게스트 {registeredGuestCount}명
+                      </div>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-[520px] w-full text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
-                          <th className="px-4 py-4 font-semibold">
-                            이름
-                          </th>
-                          <th className="px-4 py-4 font-semibold">
-                            구분
-                          </th>
+                          <th className="px-4 py-4 font-semibold">이름</th>
+                          <th className="px-4 py-4 font-semibold">구분</th>
                           <th className="px-4 py-4 font-semibold">
                             연락처 / 메모
                           </th>
-                          <th className="px-4 py-4 font-semibold">
-                            상태
-                          </th>
+                          <th className="px-4 py-4 font-semibold">상태</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -524,30 +639,31 @@ export function SessionsPanel({
 
                 <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-                    <h4 className="text-base font-black text-slate-900">
-                      대기 인원 명단
-                    </h4>
-                    <p className="mt-1 text-sm text-slate-500">
-                      정원 초과 후 신청한 인원은 자동으로 대기로 들어갑니다.
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-base font-black text-slate-900">
+                          대기 인원 명단
+                        </h4>
+                        <p className="mt-1 text-sm text-slate-500">
+                          정원 초과 시 자동으로 대기 인원으로 들어갑니다.
+                        </p>
+                      </div>
+                      <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                        회원 {waitlistedMemberCount}명 / 게스트 {waitlistedGuestCount}명
+                      </div>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-[520px] w-full text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
-                          <th className="px-4 py-4 font-semibold">
-                            이름
-                          </th>
-                          <th className="px-4 py-4 font-semibold">
-                            구분
-                          </th>
+                          <th className="px-4 py-4 font-semibold">이름</th>
+                          <th className="px-4 py-4 font-semibold">구분</th>
                           <th className="px-4 py-4 font-semibold">
                             연락처 / 메모
                           </th>
-                          <th className="px-4 py-4 font-semibold">
-                            상태
-                          </th>
+                          <th className="px-4 py-4 font-semibold">상태</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -587,7 +703,7 @@ export function SessionsPanel({
                               colSpan={4}
                               className="px-4 py-12 text-center text-sm text-slate-400"
                             >
-                              현재 대기 인원은 없습니다.
+                              현재 대기 인원이 없습니다.
                             </td>
                           </tr>
                         ) : null}
