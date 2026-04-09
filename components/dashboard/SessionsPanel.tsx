@@ -233,7 +233,7 @@ export function SessionsPanel({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-6">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -418,28 +418,28 @@ export function SessionsPanel({
         </section>
       </div>
 
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="min-w-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         {selectedSession ? (
           <>
             <div className="flex flex-col gap-4 border-b border-slate-200 pb-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-2xl font-black text-slate-900">
+                    <h3 className="break-words text-xl font-black text-slate-900 md:text-2xl">
                       {selectedSession.title}
                     </h3>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                       {SESSION_STATUS_LABEL[selectedSession.status]}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 break-words text-xs leading-5 text-slate-500 md:text-sm">
                     {formatDate(selectedSession.date)}{" "}
                     {selectedSession.startTime} - {selectedSession.endTime}
                     {selectedSession.location
                       ? ` | ${selectedSession.location}`
                       : ""}
                   </p>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 break-words text-xs leading-5 text-slate-400 md:text-sm">
                     {selectedSession.description || "설명 없음"}
                   </p>
                 </div>
@@ -447,7 +447,7 @@ export function SessionsPanel({
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={startEditingSelectedSession}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:text-xs"
                   >
                     수정
                   </button>
@@ -463,7 +463,7 @@ export function SessionsPanel({
                             alert(error.message);
                           })
                         }
-                        className={`rounded-xl px-3 py-2 text-xs font-bold transition ${statusButtonClass(
+                        className={`rounded-xl px-3 py-2 text-[11px] font-bold transition md:text-xs ${statusButtonClass(
                           status
                         )}`}
                       >
@@ -487,20 +487,20 @@ export function SessionsPanel({
                         }
                       );
                     }}
-                    className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-rose-700"
+                    className="rounded-xl bg-rose-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-rose-700 md:text-xs"
                   >
                     삭제
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] bg-sky-50 p-4">
+              <div className="rounded-[1.5rem] bg-sky-50 p-3 md:p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="max-w-2xl">
-                    <p className="text-sm font-semibold text-sky-700">
+                  <div className="min-w-0 max-w-2xl">
+                    <p className="text-xs font-semibold text-sky-700 md:text-sm">
                       참석 신청 공유 링크
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                    <p className="mt-1.5 text-xs leading-5 text-slate-600 md:mt-2 md:text-sm md:leading-6">
                       회원과 게스트는 링크에서 현재 참석 현황을 보고 참석 신청,
                       취소, 게스트 등록까지 할 수 있습니다.
                     </p>
@@ -511,46 +511,46 @@ export function SessionsPanel({
                         alert("참석 신청 링크 복사에 실패했습니다.");
                       });
                     }}
-                    className="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-700"
+                    className="w-full rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700 lg:w-auto lg:py-3"
                   >
                     링크 복사
                   </button>
                 </div>
 
-                <div className="mt-4 break-all rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs leading-7 text-slate-500 sm:text-sm">
+                <div className="mt-3 break-all rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[11px] leading-5 text-slate-500 sm:text-sm sm:leading-7 md:mt-4 md:px-4 md:py-3">
                   {publicSessionLink}
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-500">정원</p>
-                <p className="mt-2 text-2xl font-black text-slate-900">
+            <div className="mt-4 grid grid-cols-3 gap-2 md:mt-5 md:gap-4">
+              <div className="rounded-2xl bg-slate-50 p-3 md:p-4">
+                <p className="text-[11px] font-semibold text-slate-500 md:text-sm">정원</p>
+                <p className="mt-1.5 text-xl font-black text-slate-900 md:mt-2 md:text-2xl">
                   {selectedSession.capacity ?? "제한 없음"}
                 </p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-500">
+              <div className="rounded-2xl bg-slate-50 p-3 md:p-4">
+                <p className="text-[11px] font-semibold text-slate-500 md:text-sm">
                   참석 인원
                 </p>
-                <p className="mt-2 text-2xl font-black text-slate-900">
+                <p className="mt-1.5 text-xl font-black text-slate-900 md:mt-2 md:text-2xl">
                   {selectedSession.registeredCount ??
                     registeredParticipants.length}
                 </p>
-                <p className="mt-2 text-xs font-medium text-slate-500">
+                <p className="mt-1.5 text-[10px] font-medium leading-4 text-slate-500 md:mt-2 md:text-xs">
                   회원 {registeredMemberCount}명 / 게스트 {registeredGuestCount}명
                 </p>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-500">
+              <div className="rounded-2xl bg-slate-50 p-3 md:p-4">
+                <p className="text-[11px] font-semibold text-slate-500 md:text-sm">
                   대기 인원
                 </p>
-                <p className="mt-2 text-2xl font-black text-slate-900">
+                <p className="mt-1.5 text-xl font-black text-slate-900 md:mt-2 md:text-2xl">
                   {selectedSession.waitlistedCount ??
                     waitlistedParticipants.length}
                 </p>
-                <p className="mt-2 text-xs font-medium text-slate-500">
+                <p className="mt-1.5 text-[10px] font-medium leading-4 text-slate-500 md:mt-2 md:text-xs">
                   회원 {waitlistedMemberCount}명 / 게스트 {waitlistedGuestCount}명
                 </p>
               </div>
@@ -563,7 +563,7 @@ export function SessionsPanel({
             ) : (
               <div className="mt-6 space-y-6">
                 <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
-                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 md:px-4 md:py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h4 className="text-base font-black text-slate-900">
@@ -573,22 +573,22 @@ export function SessionsPanel({
                           링크로 실제 참석 신청한 회원과 게스트 명단입니다.
                         </p>
                       </div>
-                      <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                      <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 md:px-3 md:text-xs">
                         회원 {registeredMemberCount}명 / 게스트 {registeredGuestCount}명
                       </div>
                     </div>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="min-w-[520px] w-full text-sm">
+                    <table className="w-full text-xs sm:min-w-[520px] sm:text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
-                          <th className="px-4 py-4 font-semibold">이름</th>
-                          <th className="px-4 py-4 font-semibold">구분</th>
-                          <th className="px-4 py-4 font-semibold">
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">이름</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">구분</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">
                             연락처 / 메모
                           </th>
-                          <th className="px-4 py-4 font-semibold">상태</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">상태</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -597,10 +597,10 @@ export function SessionsPanel({
                             key={participant.id}
                             className="hover:bg-slate-50"
                           >
-                            <td className="px-4 py-4 font-bold text-slate-900">
+                            <td className="px-3 py-3 font-bold text-slate-900 md:px-4 md:py-4">
                               {getParticipantDisplayName(participant)}
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-3 md:px-4 md:py-4">
                               <span
                                 className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                                   isGuestParticipant(participant)
@@ -613,10 +613,10 @@ export function SessionsPanel({
                                   : "회원"}
                               </span>
                             </td>
-                            <td className="px-4 py-4 text-slate-500">
+                            <td className="px-3 py-3 text-slate-500 md:px-4 md:py-4">
                               {getParticipantMetaText(participant)}
                             </td>
-                            <td className="px-4 py-4 text-slate-500">
+                            <td className="px-3 py-3 text-slate-500 md:px-4 md:py-4">
                               참석
                             </td>
                           </tr>
@@ -626,7 +626,7 @@ export function SessionsPanel({
                           <tr>
                             <td
                               colSpan={4}
-                              className="px-4 py-12 text-center text-sm text-slate-400"
+                              className="px-3 py-10 text-center text-xs text-slate-400 md:px-4 md:py-12 md:text-sm"
                             >
                               아직 참석 신청한 사람이 없습니다.
                             </td>
@@ -638,7 +638,7 @@ export function SessionsPanel({
                 </section>
 
                 <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
-                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 md:px-4 md:py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h4 className="text-base font-black text-slate-900">
@@ -648,22 +648,22 @@ export function SessionsPanel({
                           정원 초과 시 자동으로 대기 인원으로 들어갑니다.
                         </p>
                       </div>
-                      <div className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">
+                      <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 md:px-3 md:text-xs">
                         회원 {waitlistedMemberCount}명 / 게스트 {waitlistedGuestCount}명
                       </div>
                     </div>
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="min-w-[520px] w-full text-sm">
+                    <table className="w-full text-xs sm:min-w-[520px] sm:text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
-                          <th className="px-4 py-4 font-semibold">이름</th>
-                          <th className="px-4 py-4 font-semibold">구분</th>
-                          <th className="px-4 py-4 font-semibold">
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">이름</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">구분</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">
                             연락처 / 메모
                           </th>
-                          <th className="px-4 py-4 font-semibold">상태</th>
+                          <th className="px-3 py-3 font-semibold md:px-4 md:py-4">상태</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -672,10 +672,10 @@ export function SessionsPanel({
                             key={participant.id}
                             className="hover:bg-slate-50"
                           >
-                            <td className="px-4 py-4 font-bold text-slate-900">
+                            <td className="px-3 py-3 font-bold text-slate-900 md:px-4 md:py-4">
                               {getParticipantDisplayName(participant)}
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-3 md:px-4 md:py-4">
                               <span
                                 className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                                   isGuestParticipant(participant)
@@ -688,10 +688,10 @@ export function SessionsPanel({
                                   : "회원"}
                               </span>
                             </td>
-                            <td className="px-4 py-4 text-slate-500">
+                            <td className="px-3 py-3 text-slate-500 md:px-4 md:py-4">
                               {getParticipantMetaText(participant)}
                             </td>
-                            <td className="px-4 py-4 text-slate-500">
+                            <td className="px-3 py-3 text-slate-500 md:px-4 md:py-4">
                               대기
                             </td>
                           </tr>
@@ -701,7 +701,7 @@ export function SessionsPanel({
                           <tr>
                             <td
                               colSpan={4}
-                              className="px-4 py-12 text-center text-sm text-slate-400"
+                              className="px-3 py-10 text-center text-xs text-slate-400 md:px-4 md:py-12 md:text-sm"
                             >
                               현재 대기 인원이 없습니다.
                             </td>
