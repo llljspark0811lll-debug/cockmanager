@@ -1760,7 +1760,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_45%,#ffffff_100%)] px-4 py-6 md:px-6">
+    <main className="webview-safe min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_45%,#ffffff_100%)] px-4 py-6 md:px-6">
       <SubscriptionOverlay
         visible={isExpired}
         paymentLoading={paymentLoading}

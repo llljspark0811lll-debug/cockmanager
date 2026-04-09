@@ -33,3 +33,18 @@ html[data-in-app-browser="true"] body {
   min-width: 320px;
   overflow-x: hidden;
 }
+
+html[data-in-app-browser="true"] .webview-safe {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+html[data-in-app-browser="true"] .webview-safe-row {
+  min-width: 0;
+}
+
+html[data-in-app-browser="true"] .webview-safe-text {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}

@@ -145,7 +145,7 @@ export default function JoinPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-6 sm:p-6">
+    <main className="webview-safe flex min-h-screen items-center justify-center bg-gray-100 px-4 py-6 sm:p-6">
       <div className="w-full max-w-[440px] rounded-2xl bg-white p-5 shadow-2xl sm:p-8">
         <h2 className="mb-2 text-center text-2xl font-bold">
           {clubConfig.name} 가입 신청

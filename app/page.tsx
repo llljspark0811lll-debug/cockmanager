@@ -6,10 +6,10 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#eef3f9] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
+    <main className="webview-safe relative min-h-screen overflow-hidden bg-[#eef3f9] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.08),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.12),_transparent_30%)]" />
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center sm:min-h-[calc(100vh-5rem)]">
+      <div className="webview-safe-row relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center sm:min-h-[calc(100vh-5rem)]">
         <section className="grid w-full gap-4 lg:grid-cols-[1.25fr_420px] lg:gap-6">
           <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.12)] backdrop-blur sm:rounded-[2.5rem] sm:p-10 md:p-14">
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 sm:px-4 sm:text-xs">
@@ -21,13 +21,13 @@ export default function Home() {
                 콕매니저🏸
               </p>
 
-              <h1 className="text-base font-semibold leading-relaxed text-slate-600 sm:text-lg md:text-2xl">
+              <h1 className="webview-safe-text text-base font-semibold leading-relaxed text-slate-600 sm:text-lg md:text-2xl">
                 전국 배드민턴 클럽/소모임
                 <br />
                 자동 운영 관리 시스템
               </h1>
 
-              <p className="max-w-2xl text-sm leading-6 text-slate-500 md:text-base md:leading-7">
+              <p className="webview-safe-text max-w-2xl text-sm leading-6 text-slate-500 md:text-base md:leading-7">
                 회원 관리부터 가입 승인, 운동 일정, 출석, 각종 회비까지.
                 <br />
                 총무가 카카오톡, 엑셀을 오가며 하던 운영을 한 곳에서 관리하는

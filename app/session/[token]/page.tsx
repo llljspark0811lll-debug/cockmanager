@@ -590,18 +590,18 @@ export default function PublicSessionPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-8 sm:px-6 sm:py-10">
+    <main className="webview-safe min-h-screen bg-slate-100 px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
+          <div className="webview-safe-row flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl min-w-0">
               <p className="text-sm font-bold tracking-[0.2em] text-sky-600">
                 {session.clubName}
               </p>
-              <h1 className="mt-3 text-3xl font-black text-slate-900 sm:text-4xl">
+              <h1 className="webview-safe-text mt-3 text-3xl font-black text-slate-900 sm:text-4xl">
                 {session.title}
               </h1>
-              <div className="mt-4 space-y-1.5 text-sm leading-7 text-slate-500 sm:text-base">
+              <div className="webview-safe-text mt-4 space-y-1.5 text-sm leading-7 text-slate-500 sm:text-base">
                 <p>
                   <span className="font-bold text-slate-600">운동날짜</span> ·{" "}
                   {formatDate(session.date)}
