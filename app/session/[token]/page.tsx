@@ -627,38 +627,38 @@ export default function PublicSessionPage() {
               </p>
             </div>
             <div className="w-full max-w-3xl">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[1.4rem] border border-sky-200 bg-sky-50 px-4 py-4">
-                  <div className="text-[11px] font-black tracking-[0.18em] text-sky-600">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="rounded-[1.15rem] border border-sky-200 bg-sky-50 px-3 py-3 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                  <div className="text-[9px] font-black tracking-[0.14em] text-sky-600 sm:text-[11px] sm:tracking-[0.18em]">
                     CAPACITY
                   </div>
-                  <div className="mt-1.5 text-sm font-bold text-slate-500">정원</div>
-                  <div className="mt-2 text-[2rem] font-black text-sky-700 sm:text-[2.25rem]">
+                  <div className="mt-1 text-xs font-bold text-slate-500 sm:mt-1.5 sm:text-sm">정원</div>
+                  <div className="mt-1.5 text-[1.55rem] font-black text-sky-700 sm:mt-2 sm:text-[2.25rem]">
                     {session.capacity === null ? "∞" : `${session.capacity}명`}
                   </div>
                 </div>
-                <div className="rounded-[1.4rem] border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <div className="text-[11px] font-black tracking-[0.18em] text-emerald-600">
+                <div className="rounded-[1.15rem] border border-emerald-200 bg-emerald-50 px-3 py-3 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                  <div className="text-[9px] font-black tracking-[0.14em] text-emerald-600 sm:text-[11px] sm:tracking-[0.18em]">
                     REGISTERED
                   </div>
-                  <div className="mt-1.5 text-sm font-bold text-slate-500">참석 현황</div>
-                  <div className="mt-2 text-[2rem] font-black text-emerald-700 sm:text-[2.25rem]">
+                  <div className="mt-1 text-xs font-bold text-slate-500 sm:mt-1.5 sm:text-sm">참석 현황</div>
+                  <div className="mt-1.5 text-[1.55rem] font-black text-emerald-700 sm:mt-2 sm:text-[2.25rem]">
                     {session.registeredCount}명
                   </div>
-                  <div className="mt-2 space-y-1 text-xs font-semibold text-slate-600">
+                  <div className="mt-1.5 space-y-0.5 text-[11px] font-semibold leading-4 text-slate-600 sm:mt-2 sm:space-y-1 sm:text-xs">
                     <div>회원 {session.registeredMemberCount}명</div>
                     <div>게스트 {session.registeredGuestCount}명</div>
                   </div>
                 </div>
-                <div className="rounded-[1.4rem] border border-amber-200 bg-amber-50 px-4 py-4">
-                  <div className="text-[11px] font-black tracking-[0.18em] text-amber-600">
+                <div className="rounded-[1.15rem] border border-amber-200 bg-amber-50 px-3 py-3 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                  <div className="text-[9px] font-black tracking-[0.14em] text-amber-600 sm:text-[11px] sm:tracking-[0.18em]">
                     WAITLIST
                   </div>
-                  <div className="mt-1.5 text-sm font-bold text-slate-500">대기 현황</div>
-                  <div className="mt-2 text-[2rem] font-black text-amber-700 sm:text-[2.25rem]">
+                  <div className="mt-1 text-xs font-bold text-slate-500 sm:mt-1.5 sm:text-sm">대기 현황</div>
+                  <div className="mt-1.5 text-[1.55rem] font-black text-amber-700 sm:mt-2 sm:text-[2.25rem]">
                     {session.waitlistCount}명
                   </div>
-                  <div className="mt-2 space-y-1 text-xs font-semibold text-slate-600">
+                  <div className="mt-1.5 space-y-0.5 text-[11px] font-semibold leading-4 text-slate-600 sm:mt-2 sm:space-y-1 sm:text-xs">
                     <div>회원 {session.waitlistMemberCount}명</div>
                     <div>게스트 {session.waitlistGuestCount}명</div>
                   </div>
