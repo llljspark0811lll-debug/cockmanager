@@ -2,15 +2,22 @@
 
 type JoinRequestLinkPanelProps = {
   joinLink: string;
+  onCopied?: () => void;
+  showCopySuccessAlert?: boolean;
 };
 
 export function JoinRequestLinkPanel({
   joinLink,
+  onCopied,
+  showCopySuccessAlert = true,
 }: JoinRequestLinkPanelProps) {
   async function handleCopyJoinLink() {
     try {
       await navigator.clipboard.writeText(joinLink);
-      alert("가입 신청 링크를 복사했습니다.");
+      if (showCopySuccessAlert) {
+        alert("가입 신청 링크를 복사했습니다.");
+      }
+      onCopied?.();
     } catch {
       alert("가입 신청 링크 복사에 실패했습니다.");
     }
@@ -27,12 +34,13 @@ export function JoinRequestLinkPanel({
             가입 신청 공유 링크
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-500">
-            이 링크를 카카오톡 단톡방이나 공지에 올리면, 신규 회원이 직접 가입
-            신청서를 작성할 수 있습니다.
+            이 링크를 카카오톡 단체방이나 공지에 공유하면 신규 회원이 직접
+            가입 신청서를 작성할 수 있습니다.
           </p>
         </div>
 
         <button
+          data-tutorial-id="join-request-copy-button"
           onClick={() => {
             handleCopyJoinLink().catch(() => {
               alert("가입 신청 링크 복사에 실패했습니다.");

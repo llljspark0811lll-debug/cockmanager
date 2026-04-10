@@ -188,6 +188,8 @@ export default function DashboardPage() {
     useState<DashboardTutorialFinishMode>("prompt");
   const [tutorialMemberPracticePending, setTutorialMemberPracticePending] =
     useState(false);
+  const [tutorialJoinLinkPracticePending, setTutorialJoinLinkPracticePending] =
+    useState(false);
   const [tutorialInitialized, setTutorialInitialized] =
     useState(false);
 
@@ -618,6 +620,18 @@ export default function DashboardPage() {
       return;
     }
 
+    if (
+      currentStep?.id === "finish" &&
+      (tutorialFinishMode === "join-link-button" ||
+        tutorialFinishMode === "join-link-copy" ||
+        tutorialFinishMode === "join-link-done")
+    ) {
+      if (activeTab !== "requests") {
+        setActiveTab("requests");
+      }
+      return;
+    }
+
     if (currentStep?.tab && activeTab !== currentStep.tab) {
       setActiveTab(currentStep.tab);
     }
@@ -977,13 +991,10 @@ export default function DashboardPage() {
       }
 
       if (
-        tutorialOpen &&
         tutorialSteps[tutorialStepIndex]?.id === "finish" &&
         tutorialMemberPracticePending
       ) {
-        setTutorialMemberPracticePending(false);
-        setTutorialOpen(true);
-        setTutorialFinishMode("final");
+        moveTutorialToJoinLinkStep();
       }
     }
   }
@@ -1691,11 +1702,15 @@ export default function DashboardPage() {
     setTutorialOpen(false);
     setTutorialStepIndex(0);
     setTutorialFinishMode("prompt");
+    setTutorialMemberPracticePending(false);
+    setTutorialJoinLinkPracticePending(false);
   }
 
   function openTutorial() {
     setTutorialStepIndex(0);
     setTutorialFinishMode("prompt");
+    setTutorialMemberPracticePending(false);
+    setTutorialJoinLinkPracticePending(false);
     setTutorialOpen(true);
   }
 
@@ -1720,7 +1735,7 @@ export default function DashboardPage() {
   }
 
   function handleTutorialMemberPracticeNo() {
-    setTutorialFinishMode("final");
+    moveTutorialToJoinLinkStep();
   }
 
   function handleOpenTutorialMemberPractice() {
@@ -1744,11 +1759,77 @@ export default function DashboardPage() {
     setTutorialFinishMode("prompt");
   }
 
+  function handleOpenTutorialJoinLinkPractice() {
+    setActiveTab("requests");
+    setTutorialJoinLinkPracticePending(true);
+    setTutorialStepIndex(tutorialSteps.length - 1);
+    setTutorialFinishMode("join-link-copy");
+    setTutorialOpen(true);
+  }
+
+  function moveTutorialToJoinLinkStep() {
+    setTutorialMemberPracticePending(false);
+    setTutorialJoinLinkPracticePending(false);
+    setActiveTab("requests");
+    setTutorialStepIndex(tutorialSteps.length - 1);
+    setTutorialFinishMode("join-link-button");
+    setTutorialOpen(true);
+  }
+
+  function handleTutorialJoinLinkPracticeBack() {
+    if (
+      tutorialJoinLinkPracticePending ||
+      tutorialFinishMode === "join-link-copy"
+    ) {
+      setTutorialJoinLinkPracticePending(false);
+      setActiveTab("requests");
+      setTutorialOpen(true);
+      setTutorialFinishMode("join-link-button");
+      return;
+    }
+
+    setActiveTab("members");
+    setTutorialOpen(true);
+    setTutorialFinishMode("member-button");
+  }
+
+  function handleTutorialJoinLinkCopied() {
+    if (!tutorialJoinLinkPracticePending) {
+      return;
+    }
+
+    setTutorialJoinLinkPracticePending(false);
+    setActiveTab("requests");
+    setTutorialStepIndex(tutorialSteps.length - 1);
+    setTutorialOpen(true);
+    setTutorialFinishMode("join-link-done");
+  }
+
+  function handleTutorialSkip() {
+    const currentStep = tutorialSteps[tutorialStepIndex];
+
+    if (
+      currentStep?.id === "finish" &&
+      (tutorialFinishMode === "prompt" ||
+        tutorialFinishMode === "member-button")
+    ) {
+      moveTutorialToJoinLinkStep();
+      return;
+    }
+
+    closeTutorial();
+  }
+
   const tutorialTargetIdOverride =
     tutorialSteps[tutorialStepIndex]?.id === "finish"
       ? tutorialFinishMode === "member-button"
         ? "add-member-button"
-        : undefined
+        : tutorialFinishMode === "join-link-button"
+          ? "tab-requests"
+          : tutorialFinishMode === "join-link-copy" ||
+            tutorialFinishMode === "join-link-done"
+          ? "join-request-copy-button"
+          : undefined
       : undefined;
 
   function renderLoadingCard(message: string) {
@@ -1781,12 +1862,14 @@ export default function DashboardPage() {
         targetIdOverride={tutorialTargetIdOverride}
         onPrev={() => moveTutorialStep(-1)}
         onNext={() => moveTutorialStep(1)}
-        onSkip={closeTutorial}
+        onSkip={handleTutorialSkip}
         onComplete={closeTutorial}
         onFinishYes={handleTutorialMemberPracticeYes}
         onFinishNo={handleTutorialMemberPracticeNo}
         onOpenMemberPractice={handleOpenTutorialMemberPractice}
         onMemberPracticeBack={handleTutorialMemberPracticeBack}
+        onOpenJoinLinkPractice={handleOpenTutorialJoinLinkPractice}
+        onJoinLinkPracticeBack={handleTutorialJoinLinkPracticeBack}
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
@@ -1867,7 +1950,11 @@ export default function DashboardPage() {
             className="space-y-6"
             data-tutorial-id="requests-panel"
           >
-            <JoinRequestLinkPanel joinLink={publicJoinLink} />
+            <JoinRequestLinkPanel
+              joinLink={publicJoinLink}
+              onCopied={handleTutorialJoinLinkCopied}
+              showCopySuccessAlert={!tutorialJoinLinkPracticePending}
+            />
             <RequestsTable
             requests={requests}
             customFieldLabel={
