@@ -580,7 +580,7 @@ export function SessionsPanel({
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs sm:min-w-[520px] sm:text-sm">
+                    <table className="session-roster-table min-w-full table-fixed text-[11px] sm:min-w-[520px] sm:text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
                           <th className="px-3 py-3 font-semibold md:px-4 md:py-4">이름</th>
@@ -655,7 +655,7 @@ export function SessionsPanel({
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs sm:min-w-[520px] sm:text-sm">
+                    <table className="session-roster-table min-w-full table-fixed text-[11px] sm:min-w-[520px] sm:text-sm">
                       <thead className="bg-white text-left text-slate-500">
                         <tr>
                           <th className="px-3 py-3 font-semibold md:px-4 md:py-4">이름</th>

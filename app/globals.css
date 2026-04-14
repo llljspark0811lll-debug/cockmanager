@@ -48,3 +48,48 @@ html[data-in-app-browser="true"] .webview-safe-text {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+@media (max-width: 767px) {
+  .session-roster-table th:nth-child(1),
+  .session-roster-table td:nth-child(1) {
+    width: 78px;
+    white-space: nowrap;
+  }
+
+  .session-roster-table th:nth-child(2),
+  .session-roster-table td:nth-child(2) {
+    width: 60px;
+    white-space: nowrap;
+  }
+
+  .session-roster-table th:nth-child(4),
+  .session-roster-table td:nth-child(4) {
+    width: 52px;
+    white-space: nowrap;
+  }
+
+  .session-roster-table th,
+  .session-roster-table td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .session-roster-table td:nth-child(1),
+  .session-roster-table td:nth-child(4) {
+    word-break: keep-all;
+  }
+
+  .session-roster-table td:nth-child(2) span {
+    display: inline-flex;
+    white-space: nowrap;
+    padding: 0.25rem 0.5rem;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .session-roster-table td:nth-child(3) {
+    font-size: 11px;
+    line-height: 1.25rem;
+    word-break: keep-all;
+  }
+}

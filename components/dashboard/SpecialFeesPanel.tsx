@@ -334,7 +334,7 @@ export function SpecialFeesPanel({
                                 className={`rounded-full px-3 py-1 text-[11px] font-bold ${
                                   paid
                                     ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-slate-100 text-slate-500"
+                                    : "bg-rose-100 text-rose-700"
                                 }`}
                               >
                                 {paid ? "납부 완료" : "미납"}
@@ -390,7 +390,7 @@ export function SpecialFeesPanel({
                               className={`rounded-full px-3 py-1 text-xs font-bold ${
                                 paid
                                   ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-slate-100 text-slate-500"
+                                  : "bg-rose-100 text-rose-700"
                               }`}
                             >
                               {paid ? "납부 완료" : "미납"}
