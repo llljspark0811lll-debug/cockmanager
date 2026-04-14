@@ -63,7 +63,9 @@ export function DashboardHeader({
         </div>
 
         <p className="mt-2 text-sm text-slate-500">
-          회원, 회비, 일정, 출석을 한곳에서 관리합니다.
+          회원, 회비, 운동 일정, 출석을
+          <br />
+          한 곳에서 관리합니다.
         </p>
         <p className="mt-3 text-xs font-medium text-slate-400">
           구독 만료일 {subscriptionLabel}

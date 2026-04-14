@@ -212,9 +212,7 @@ export function FeesTable({
             연도별 회비 관리
           </h3>
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            기준 월을 직접 선택해서 해당 월 미납과 누적 미납 회원을
-            <br />
-            빠르게 확인할 수 있어요.
+            기준 월을 직접 선택해서 해당 월 미납과 누적 미납 회원을 빠르게 확인할 수 있어요.
           </p>
           </div>
 
