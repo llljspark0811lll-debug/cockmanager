@@ -31,7 +31,7 @@ function buildDefaultCourtCount(session: ClubSession) {
 function groupLabel(division: string) {
   if (division === "MEN") return "남복";
   if (division === "WOMEN") return "여복";
-  return "혼합 복식";
+  return "랜덤 복식";
 }
 
 function playerBadgeLabel(
@@ -337,7 +337,7 @@ export function SessionBracketPanel({
                   <br />
                   {bracket.config.separateByGender
                     ? "남복/여복 분리"
-                    : "혼합 복식"}
+                    : "랜덤 복식"}
                 </p>
               </div>
             </div>

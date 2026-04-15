@@ -22,11 +22,12 @@ export type SessionBracketGenerationInput = {
   courtCount: number;
   minGamesPerPlayer: number;
   separateByGender: boolean;
+  seed?: number;
 };
 
 type DivisionKey = "ALL" | "MEN" | "WOMEN";
-
 type InternalPlayer = SessionBracketPlayerEntry;
+type RandomFn = () => number;
 
 type PlayerState = {
   games: number;
@@ -55,6 +56,32 @@ const LEVEL_SCORE_MAP: Record<string, number> = {
   E: 2,
   초심: 1,
 };
+
+function createSeededRandom(seed: number): RandomFn {
+  let state = seed >>> 0;
+
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleArray<T>(items: T[], random: RandomFn) {
+  const shuffled = [...items];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const nextIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[nextIndex]] = [
+      shuffled[nextIndex]!,
+      shuffled[index]!,
+    ];
+  }
+
+  return shuffled;
+}
 
 function normalizeGender(value: string | null | undefined) {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -119,7 +146,7 @@ function buildPools(
     return [
       {
         key: "ALL" as const,
-        label: "통합 복식",
+        label: "혼합 복식",
         players,
       },
     ];
@@ -131,9 +158,9 @@ function buildPools(
 
   if (invalidPlayers.length > 0) {
     throw new Error(
-      `남복/여복 분리 생성을 하려면 모든 참가자의 성별이 필요합니다. ${invalidPlayers
+      `남복/여복 분리 생성은 모든 참가자의 성별 정보가 필요합니다. ${invalidPlayers
         .map((player) => player.name)
-        .join(", ")} 참가자의 성별을 먼저 확인해주세요.`
+        .join(", ")} 참가자의 성별을 먼저 확인해 주세요.`
     );
   }
 
@@ -159,7 +186,8 @@ function sortPlayersForSelection(
   players: InternalPlayer[],
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
-  minGamesPerPlayer: number
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>
 ) {
   return [...players].sort((left, right) => {
     const leftMustPlay = previousRested.has(left.playerId) ? 0 : 1;
@@ -193,6 +221,13 @@ function sortPlayersForSelection(
       return right.score - left.score;
     }
 
+    const leftRandom = randomOrder.get(left.playerId) ?? 0;
+    const rightRandom = randomOrder.get(right.playerId) ?? 0;
+
+    if (leftRandom !== rightRandom) {
+      return leftRandom - rightRandom;
+    }
+
     return left.name.localeCompare(right.name, "ko");
   });
 }
@@ -206,14 +241,16 @@ function getPoolMatchPriority(
   currentMatches: number,
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
-  minGamesPerPlayer: number
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>
 ) {
   const nextSelectedCount = (currentMatches + 1) * 4;
   const orderedPlayers = sortPlayersForSelection(
     pool.players,
     states,
     previousRested,
-    minGamesPerPlayer
+    minGamesPerPlayer,
+    randomOrder
   );
 
   if (orderedPlayers.length < nextSelectedCount) {
@@ -222,13 +259,16 @@ function getPoolMatchPriority(
 
   const selectedPlayers = orderedPlayers.slice(0, nextSelectedCount);
 
-  return selectedPlayers.reduce((total, player) => {
+  return selectedPlayers.reduce((total, player, index) => {
     const state = states.get(player.playerId)!;
     const unmetGames = Math.max(0, minGamesPerPlayer - state.games);
     const mustPlayBonus = previousRested.has(player.playerId)
       ? 2
       : 0;
-    return total + unmetGames * 10 + mustPlayBonus;
+    const randomBias =
+      (randomOrder.get(player.playerId) ?? 0) * (index + 1) * 0.01;
+
+    return total + unmetGames * 10 + mustPlayBonus + randomBias;
   }, 0);
 }
 
@@ -237,7 +277,8 @@ function allocateMatchesForRound(
   courtCount: number,
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
-  minGamesPerPlayer: number
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>
 ) {
   const allocations = new Map<DivisionKey, number>();
   let requiredMatches = 0;
@@ -266,7 +307,7 @@ function allocateMatchesForRound(
 
     if (required > getPoolMatchLimit(pool)) {
       throw new Error(
-        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해주세요.`
+        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요.`
       );
     }
 
@@ -276,7 +317,7 @@ function allocateMatchesForRound(
 
   if (requiredMatches > courtCount) {
     throw new Error(
-      "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트 수를 늘리거나 대진 생성 조건을 다시 확인해주세요."
+      "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트 수를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
     );
   }
 
@@ -299,7 +340,8 @@ function allocateMatchesForRound(
         currentMatches,
         states,
         previousRested,
-        minGamesPerPlayer
+        minGamesPerPlayer,
+        randomOrder
       );
 
       if (priority > bestPriority) {
@@ -327,7 +369,8 @@ function chooseSelectedPlayersForPool(
   matchCount: number,
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
-  minGamesPerPlayer: number
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>
 ) {
   if (matchCount <= 0) {
     return [];
@@ -337,7 +380,8 @@ function chooseSelectedPlayersForPool(
     pool.players,
     states,
     previousRested,
-    minGamesPerPlayer
+    minGamesPerPlayer,
+    randomOrder
   ).slice(0, matchCount * 4);
 }
 
@@ -370,13 +414,27 @@ function generateCombinations<T>(
   return result;
 }
 
+function getPairingRandomBias(
+  teamAPlayers: InternalPlayer[],
+  teamBPlayers: InternalPlayer[],
+  randomOrder: Map<string, number>
+) {
+  return (
+    (randomOrder.get(teamAPlayers[0]!.playerId) ?? 0) * 0.001 +
+    (randomOrder.get(teamAPlayers[1]!.playerId) ?? 0) * 0.002 +
+    (randomOrder.get(teamBPlayers[0]!.playerId) ?? 0) * 0.003 +
+    (randomOrder.get(teamBPlayers[1]!.playerId) ?? 0) * 0.004
+  );
+}
+
 function evaluateQuartetPairings(
   quartet: InternalPlayer[],
   division: DivisionKey,
   label: string,
   courtNumber: number,
   partnerHistory: Map<string, number>,
-  opponentHistory: Map<string, number>
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>
 ): MatchCandidate {
   const [p1, p2, p3, p4] = quartet;
   const pairings: [InternalPlayer[], InternalPlayer[]][] = [
@@ -406,6 +464,7 @@ function evaluateQuartetPairings(
       0
     );
     const balanceGap = Math.abs(teamATotal - teamBTotal);
+
     const partnerPenalty =
       (partnerHistory.get(
         keyForPair(
@@ -447,7 +506,12 @@ function evaluateQuartetPairings(
       balanceGap * 12 +
       partnerPenalty +
       opponentPenalty +
-      scoreSpread * 3;
+      scoreSpread * 3 +
+      getPairingRandomBias(
+        teamAPlayers,
+        teamBPlayers,
+        randomOrder
+      );
 
     const candidate: MatchCandidate = {
       score,
@@ -481,23 +545,24 @@ function buildRoundMatchesForPool(
   selectedPlayers: InternalPlayer[],
   firstCourtNumber: number,
   partnerHistory: Map<string, number>,
-  opponentHistory: Map<string, number>
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>,
+  random: RandomFn
 ) {
-  const orderedPlayers = [...selectedPlayers].sort((left, right) => {
-    if (left.score !== right.score) {
-      return right.score - left.score;
-    }
+  const orderedPlayers = shuffleArray(selectedPlayers, random);
 
-    return left.name.localeCompare(right.name, "ko");
-  });
   const matches: SessionBracketMatch[] = [];
   let nextCourtNumber = firstCourtNumber;
 
   while (orderedPlayers.length >= 4) {
-    const anchor = orderedPlayers[0]!;
-    const combos = generateCombinations(
-      orderedPlayers.slice(1),
-      3
+    const anchorIndex = Math.floor(random() * orderedPlayers.length);
+    const anchor = orderedPlayers[anchorIndex]!;
+    const combos = shuffleArray(
+      generateCombinations(
+        orderedPlayers.filter((_, index) => index !== anchorIndex),
+        3
+      ),
+      random
     );
 
     let bestCandidate: MatchCandidate | null = null;
@@ -510,7 +575,8 @@ function buildRoundMatchesForPool(
         pool.label,
         nextCourtNumber,
         partnerHistory,
-        opponentHistory
+        opponentHistory,
+        randomOrder
       );
 
       if (!bestCandidate || candidate.score < bestCandidate.score) {
@@ -520,12 +586,21 @@ function buildRoundMatchesForPool(
 
     if (!bestCandidate) {
       throw new Error(
-        `${pool.label} 대진표를 구성하지 못했습니다. 참가자 수와 조건을 다시 확인해주세요.`
+        `${pool.label} 대진표를 구성하지 못했습니다. 참가자 수와 조건을 다시 확인해 주세요.`
       );
     }
 
     const selectedIdSet = new Set(bestCandidate.playerIds);
-    matches.push(bestCandidate.match);
+    const flippedMatch =
+      random() < 0.5
+        ? bestCandidate.match
+        : {
+            ...bestCandidate.match,
+            teamA: bestCandidate.match.teamB,
+            teamB: bestCandidate.match.teamA,
+          };
+
+    matches.push(flippedMatch);
     nextCourtNumber += 1;
 
     for (let index = orderedPlayers.length - 1; index >= 0; index -= 1) {
@@ -535,7 +610,10 @@ function buildRoundMatchesForPool(
     }
   }
 
-  return matches;
+  return shuffleArray(matches, random).map((match, index) => ({
+    ...match,
+    courtNumber: firstCourtNumber + index,
+  }));
 }
 
 function registerMatchHistory(
@@ -596,7 +674,7 @@ function validateGenerationInput(
 ) {
   if (players.length < 4) {
     throw new Error(
-      "자동 대진표는 최소 4명 이상 참석 확정 인원이 있어야 생성할 수 있습니다."
+      "자동 대진표는 최소 4명 이상의 참석 확정 인원이 있어야 생성할 수 있습니다."
     );
   }
 
@@ -612,7 +690,7 @@ function validateGenerationInput(
 
   if (players.length > maxPlayersPerRound * 2) {
     throw new Error(
-      "현재 코트 수로는 두 경기 연속 쉬는 인원 없이 대진을 만들 수 없습니다. 코트를 늘리거나 참가 인원을 나눠서 운영해주세요."
+      "현재 코트 수로는 두 경기 연속 쉬는 인원 없이 대진표를 만들 수 없습니다. 코트를 늘리거나 참가 인원을 다시 운영해 주세요."
     );
   }
 }
@@ -660,6 +738,10 @@ function buildSummary(
 export function generateSessionBracket(
   input: SessionBracketGenerationInput
 ) {
+  const random = createSeededRandom(
+    Number.isFinite(input.seed) ? Number(input.seed) : Date.now()
+  );
+
   const config: SessionBracketConfig = {
     courtCount: Math.max(1, Math.floor(input.courtCount)),
     minGamesPerPlayer: Math.max(
@@ -669,9 +751,15 @@ export function generateSessionBracket(
     separateByGender: Boolean(input.separateByGender),
   };
 
-  const players = input.players.map(createPlayerEntry);
+  const players = shuffleArray(
+    input.players.map(createPlayerEntry),
+    random
+  );
   validateGenerationInput(players, config);
 
+  const randomOrder = new Map(
+    players.map((player) => [player.playerId, random()])
+  );
   const pools = buildPools(players, config.separateByGender);
   const playerEntryMap = getEntryMap(players);
   const states = new Map<string, PlayerState>(
@@ -713,7 +801,8 @@ export function generateSessionBracket(
       config.courtCount,
       states,
       previousRested,
-      config.minGamesPerPlayer
+      config.minGamesPerPlayer,
+      randomOrder
     );
     const roundMatches: SessionBracketMatch[] = [];
     const restedPlayerIds = new Set<string>();
@@ -726,7 +815,8 @@ export function generateSessionBracket(
         matchCount,
         states,
         previousRested,
-        config.minGamesPerPlayer
+        config.minGamesPerPlayer,
+        randomOrder
       );
       const selectedIdSet = new Set(
         selectedPlayers.map((player) => player.playerId)
@@ -744,7 +834,9 @@ export function generateSessionBracket(
         selectedPlayers,
         nextCourtNumber,
         partnerHistory,
-        opponentHistory
+        opponentHistory,
+        randomOrder,
+        random
       );
 
       roundMatches.push(...poolMatches);
@@ -761,6 +853,7 @@ export function generateSessionBracket(
 
     for (const player of players) {
       const state = states.get(player.playerId)!;
+
       if (restedPlayerIds.has(player.playerId)) {
         state.rests += 1;
       } else {
@@ -788,7 +881,7 @@ export function generateSessionBracket(
 
   if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
     throw new Error(
-      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수를 늘리거나 최소 경기 수를 낮춰주세요."
+      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수를 늘리거나 최소 경기 수를 낮춰 주세요."
     );
   }
 
@@ -797,7 +890,7 @@ export function generateSessionBracket(
 
     if (state.games > config.minGamesPerPlayer + 1) {
       warnings.push(
-        `${player.name} 님은 경기 수가 다른 인원보다 많게 배정되었습니다.`
+        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
       );
     }
   }

@@ -264,6 +264,7 @@ export async function POST(req: Request) {
       courtCount,
       minGamesPerPlayer,
       separateByGender,
+      seed: Date.now() + Math.floor(Math.random() * 1_000_000),
     });
 
     const savedBracket = await prisma.sessionBracket.upsert({

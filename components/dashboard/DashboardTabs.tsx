@@ -14,7 +14,7 @@ const tabs: Array<{
   { id: "requests", label: "가입 신청" },
   { id: "fees", label: "회비" },
   { id: "sessions", label: "운동 일정" },
-  { id: "attendance", label: "출석" },
+  { id: "attendance", label: "출석·대진" },
   { id: "deleted", label: "탈퇴 회원" },
   { id: "stats", label: "활동 통계" },
 ];

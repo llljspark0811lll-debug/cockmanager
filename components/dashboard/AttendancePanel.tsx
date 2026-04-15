@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
 import type { ClubSession } from "@/components/dashboard/types";
 import {
   formatDate,
@@ -58,10 +59,10 @@ export function AttendancePanel({
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-xl font-black text-slate-900">
-              출석 관리
+              출석·대진 관리
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              일정별 참석자와 게스트의 출석 상태를 빠르게 체크할 수
+              현장 출석 체크를 마친 뒤 바로 자동 대진표까지 이어서 생성할 수
               있어요.
             </p>
           </div>
@@ -74,7 +75,7 @@ export function AttendancePanel({
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400 md:w-[320px]"
           >
             <option value="" disabled>
-              출석을 관리할 운동 일정을 선택하세요
+              출석과 대진을 관리할 운동 일정을 선택해 주세요
             </option>
             {sessions.map((session) => (
               <option key={session.id} value={session.id}>
@@ -207,7 +208,9 @@ export function AttendancePanel({
                   <tr>
                     <th className="px-4 py-4 font-semibold">이름</th>
                     <th className="px-4 py-4 font-semibold">구분</th>
-                    <th className="px-4 py-4 font-semibold">연락처/메모</th>
+                    <th className="px-4 py-4 font-semibold">
+                      연락처 / 메모
+                    </th>
                     <th className="px-4 py-4 font-semibold">참여 상태</th>
                     <th className="px-4 py-4 font-semibold">출석 상태</th>
                     <th className="px-4 py-4 font-semibold">체크 시간</th>
@@ -323,6 +326,10 @@ export function AttendancePanel({
               </table>
             </div>
           </div>
+
+          {selectedSession ? (
+            <SessionBracketPanel session={selectedSession} />
+          ) : null}
         </>
       )}
     </div>

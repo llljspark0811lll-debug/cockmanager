@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ClubSession } from "@/components/dashboard/types";
-import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
 import {
   formatDate,
   getParticipantDisplayName,
@@ -712,8 +711,6 @@ export function SessionsPanel({
                     </table>
                   </div>
                 </section>
-
-                <SessionBracketPanel session={selectedSession} />
               </div>
             )}
           </>
