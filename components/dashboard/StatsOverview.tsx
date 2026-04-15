@@ -239,14 +239,14 @@ export function StatsOverview({
             </button>
           </div>
 
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px] items-center gap-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_88px]">
+          <div className="flex w-full items-center gap-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_88px]">
             <input
               type="date"
               value={customStartDate}
               onChange={(event) =>
                 setCustomStartDate(event.target.value)
               }
-              className="w-full min-w-0 max-w-full appearance-none rounded-xl border border-slate-200 bg-white px-2 py-2 text-[12px] text-slate-700 md:px-3 md:text-sm"
+              className="w-[calc((100%-96px)/2)] min-w-0 flex-none appearance-none rounded-xl border border-slate-200 bg-white px-2 py-2 text-[11px] text-slate-700 md:w-full md:px-3 md:text-sm"
             />
             <input
               type="date"
@@ -254,12 +254,12 @@ export function StatsOverview({
               onChange={(event) =>
                 setCustomEndDate(event.target.value)
               }
-              className="w-full min-w-0 max-w-full appearance-none rounded-xl border border-slate-200 bg-white px-2 py-2 text-[12px] text-slate-700 md:px-3 md:text-sm"
+              className="w-[calc((100%-96px)/2)] min-w-0 flex-none appearance-none rounded-xl border border-slate-200 bg-white px-2 py-2 text-[11px] text-slate-700 md:w-full md:px-3 md:text-sm"
             />
             <button
               onClick={handleLoadCustomStats}
               disabled={customLoading}
-              className="w-[80px] min-w-[80px] whitespace-nowrap rounded-xl bg-sky-600 px-2 py-2 text-[11px] font-bold leading-none text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-[88px] md:min-w-[88px] md:px-4 md:text-sm"
+              className="w-[80px] min-w-[80px] flex-none whitespace-nowrap rounded-xl bg-sky-600 px-2 py-2 text-[11px] font-bold leading-none text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 md:w-[88px] md:min-w-[88px] md:px-4 md:text-sm"
             >
               {customLoading ? "조회 중..." : "기간 조회"}
             </button>
