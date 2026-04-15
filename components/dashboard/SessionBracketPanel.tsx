@@ -5,10 +5,7 @@ import type {
   ClubSession,
   SessionBracket,
 } from "@/components/dashboard/types";
-import {
-  getLevelTextClasses,
-  normalizeGenderLabel,
-} from "@/components/dashboard/utils";
+import { normalizeGenderLabel } from "@/components/dashboard/utils";
 
 type SessionBracketPanelProps = {
   session: ClubSession;
@@ -392,16 +389,16 @@ export function SessionBracketPanel({
                           </div>
                         </div>
 
-                        <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center">
-                          <div className="rounded-2xl bg-sky-50 px-3 py-3">
+                        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] items-center gap-2 md:gap-3">
+                          <div className="min-w-0 rounded-xl bg-sky-50 px-2.5 py-2.5 md:rounded-2xl md:px-3 md:py-3">
                             <p className="text-xs font-bold text-sky-700">
-                              팀 A · 합계 {match.teamA.totalScore}
+                              팀 A
                             </p>
                             <div className="mt-2 space-y-1.5">
                               {match.teamA.players.map((player) => (
                                 <p
                                   key={player.playerId}
-                                  className="text-sm font-semibold text-slate-900"
+                                  className="truncate text-[15px] font-semibold leading-6 text-slate-900 md:text-sm"
                                 >
                                   {player.name}
                                   <span className="ml-2 text-xs font-medium text-slate-500">
@@ -413,19 +410,19 @@ export function SessionBracketPanel({
                             </div>
                           </div>
 
-                          <div className="text-center text-sm font-black text-slate-400">
+                          <div className="text-center text-xs font-black text-slate-400 md:text-sm">
                             VS
                           </div>
 
-                          <div className="rounded-2xl bg-emerald-50 px-3 py-3">
+                          <div className="min-w-0 rounded-xl bg-emerald-50 px-2.5 py-2.5 md:rounded-2xl md:px-3 md:py-3">
                             <p className="text-xs font-bold text-emerald-700">
-                              팀 B · 합계 {match.teamB.totalScore}
+                              팀 B
                             </p>
                             <div className="mt-2 space-y-1.5">
                               {match.teamB.players.map((player) => (
                                 <p
                                   key={player.playerId}
-                                  className="text-sm font-semibold text-slate-900"
+                                  className="truncate text-[15px] font-semibold leading-6 text-slate-900 md:text-sm"
                                 >
                                   {player.name}
                                   <span className="ml-2 text-xs font-medium text-slate-500">
@@ -478,30 +475,23 @@ export function SessionBracketPanel({
                     key={player.playerId}
                     className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-black text-slate-900">
                           {player.name}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 truncate text-xs text-slate-500">
                           {playerBadgeLabel(player)}
                         </p>
                       </div>
-                      <div
-                        className={`text-sm font-black ${getLevelTextClasses(
-                          player.level
-                        )}`}
-                      >
-                        {player.level}
+                      <div className="flex shrink-0 flex-col gap-2 text-xs font-bold">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
+                          경기 {player.games}회
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">
+                          휴식 {player.rests}회
+                        </span>
                       </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">
-                        경기 {player.games}회
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">
-                        휴식 {player.rests}회
-                      </span>
                     </div>
                   </div>
                 ))}
