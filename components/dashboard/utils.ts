@@ -244,7 +244,7 @@ export function getParticipantRemarkText(
       notes.push(`동반 회원 ${participant.hostMember.name}`);
     }
 
-    return notes.join(" · ") || "-";
+    return notes.join("\n") || "-";
   }
 
   return participant.member?.note?.trim() || "-";
