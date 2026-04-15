@@ -16,7 +16,7 @@ const tabs: Array<{
   { id: "sessions", label: "운동 일정" },
   { id: "attendance", label: "출석" },
   { id: "deleted", label: "탈퇴 회원" },
-  { id: "stats", label: "통계" },
+  { id: "stats", label: "활동 통계" },
 ];
 
 export function DashboardTabs({

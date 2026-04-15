@@ -115,7 +115,10 @@ export interface ClubInfo {
   pendingRequestCount: number;
 }
 
-export type DashboardStatsPeriodKey = "WEEK" | "MONTH";
+export type DashboardStatsPeriodKey =
+  | "WEEK"
+  | "MONTH"
+  | "CUSTOM";
 
 export interface DashboardStatsPeriod {
   startDate: string | Date;
@@ -140,7 +143,12 @@ export interface DashboardTopMemberStat {
 export interface DashboardStats {
   week: DashboardStatsPeriod;
   month: DashboardStatsPeriod;
-  topMembers: DashboardTopMemberStat[];
+  custom?: DashboardStatsPeriod | null;
+  topMembers: {
+    week: DashboardTopMemberStat[];
+    month: DashboardTopMemberStat[];
+    custom?: DashboardTopMemberStat[];
+  };
 }
 
 export interface MemberFormState {
