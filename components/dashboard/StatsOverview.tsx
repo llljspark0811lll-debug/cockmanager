@@ -239,30 +239,27 @@ export function StatsOverview({
             </button>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <input
               type="date"
               value={customStartDate}
               onChange={(event) =>
                 setCustomStartDate(event.target.value)
               }
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-[13px] text-slate-700 md:px-3 md:text-sm"
             />
-            <span className="hidden text-sm text-slate-400 md:block">
-              ~
-            </span>
             <input
               type="date"
               value={customEndDate}
               onChange={(event) =>
                 setCustomEndDate(event.target.value)
               }
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-2 text-[13px] text-slate-700 md:px-3 md:text-sm"
             />
             <button
               onClick={handleLoadCustomStats}
               disabled={customLoading}
-              className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold leading-tight text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[88px] md:px-4 md:text-sm md:whitespace-nowrap"
+              className="min-w-[76px] whitespace-nowrap rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold leading-none text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[88px] md:px-4 md:text-sm"
             >
               {customLoading ? "조회 중..." : "기간 조회"}
             </button>
