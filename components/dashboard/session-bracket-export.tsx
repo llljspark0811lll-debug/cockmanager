@@ -427,20 +427,26 @@ export async function buildBracketImageFiles(
 }
 
 export async function downloadFiles(files: File[]) {
-  // 모바일: Web Share API로 네이티브 공유 시트 호출 (갤러리 저장 가능)
-  // navigator.share가 AbortError를 throw하면 호출부(handleExport)에서 처리
-  const canWebShare =
+  const isMobile =
     typeof navigator !== "undefined" &&
-    typeof navigator.share === "function" &&
-    typeof navigator.canShare === "function" &&
-    navigator.canShare({ files });
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (canWebShare) {
-    await navigator.share({ files, title: files[0]?.name });
-    return;
+  // 모바일: Web Share API로 네이티브 갤러리 저장
+  // (iOS → "사진 저장", Android → 갤러리/파일 저장)
+  // navigator.share가 AbortError를 throw하면 호출부(handleExport)에서 처리
+  if (isMobile) {
+    const canWebShare =
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files });
+
+    if (canWebShare) {
+      await navigator.share({ files, title: files[0]?.name });
+      return;
+    }
   }
 
-  // PC / 폴백: 앵커 다운로드
+  // PC (기존 동작) + 모바일 Web Share 미지원 폴백: 앵커 다운로드
   files.forEach((file) => {
     const url = URL.createObjectURL(file);
     const anchor = document.createElement("a");
