@@ -367,56 +367,58 @@ function renderSvg(session: ClubSession, bracket: SessionBracket) {
   `;
 }
 
-async function svgToPngBlob(svgMarkup: string) {
-  const blob = new Blob([svgMarkup], {
-    type: "image/svg+xml;charset=utf-8",
+async function svgToPngBlob(
+  svgMarkup: string,
+  svgWidth: number,
+  svgHeight: number
+): Promise<Blob> {
+  // blob URL 대신 data URL 사용 — 모바일 WebView의 blob 렌더링 제한 우회
+  const dataUrl =
+    "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    // 생성자에 명시적 크기 전달 — DOM 미삽입 시 .width/.height가 0이 되는 문제 방지
+    const nextImage = new Image(svgWidth, svgHeight);
+    nextImage.onload = () => resolve(nextImage);
+    nextImage.onerror = () =>
+      reject(new Error("대진표 이미지를 렌더링하지 못했습니다."));
+    nextImage.src = dataUrl;
   });
-  const url = URL.createObjectURL(blob);
 
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const nextImage = new Image();
-      nextImage.onload = () => resolve(nextImage);
-      nextImage.onerror = () =>
-        reject(new Error("대진표 이미지를 렌더링하지 못했습니다."));
-      nextImage.src = url;
-    });
+  const canvas = document.createElement("canvas");
+  // naturalWidth가 0인 경우(일부 모바일 WebView) SVG 원본 크기로 폴백
+  canvas.width = image.naturalWidth > 0 ? image.naturalWidth : svgWidth;
+  canvas.height = image.naturalHeight > 0 ? image.naturalHeight : svgHeight;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
+  const context = canvas.getContext("2d");
 
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      throw new Error("이미지 캔버스를 준비하지 못했습니다.");
-    }
-
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(image, 0, 0);
-
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => {
-        if (result) {
-          resolve(result);
-          return;
-        }
-
-        reject(new Error("PNG 파일로 변환하지 못했습니다."));
-      }, "image/png");
-    });
-  } finally {
-    URL.revokeObjectURL(url);
+  if (!context) {
+    throw new Error("이미지 캔버스를 준비하지 못했습니다.");
   }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) {
+        resolve(result);
+        return;
+      }
+
+      reject(new Error("PNG 파일로 변환하지 못했습니다."));
+    }, "image/png");
+  });
 }
 
 export async function buildBracketImageFiles(
   session: ClubSession,
   bracket: SessionBracket
 ) {
+  const height = totalImageHeight(bracket);
   const svgMarkup = renderSvg(session, bracket);
-  const blob = await svgToPngBlob(svgMarkup);
+  const blob = await svgToPngBlob(svgMarkup, IMAGE_WIDTH, height);
   const fileName = `${sanitizeFileName(session.title)}-자동대진표.png`;
 
   return [
