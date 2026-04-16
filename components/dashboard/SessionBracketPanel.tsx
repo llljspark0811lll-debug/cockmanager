@@ -215,7 +215,7 @@ export function SessionBracketPanel({
     try {
       const files = await buildBracketImageFiles(session, bracket);
 
-      downloadFiles(files);
+      await downloadFiles(files);
       setExportMessage(
         files.length > 1
           ? `대진표 이미지 ${files.length}장을 저장했습니다.`

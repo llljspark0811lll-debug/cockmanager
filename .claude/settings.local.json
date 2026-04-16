@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /c/Users/user/badminton-club-web/app/**/*.tsx /c/Users/user/badminton-club-web/components/**/*.tsx /c/Users/user/badminton-club-web/lib/*.ts /c/Users/user/badminton-club-web/app/api/**/*.ts)"
+    ]
+  }
+}
