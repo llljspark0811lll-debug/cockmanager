@@ -48,11 +48,6 @@ async function findSessionByPublicToken(token: string) {
           },
         },
         participants: {
-          where: {
-            status: {
-              not: "CANCELED",
-            },
-          },
           select: {
             id: true,
             status: true,
@@ -60,6 +55,7 @@ async function findSessionByPublicToken(token: string) {
             guestAge: true,
             guestGender: true,
             guestLevel: true,
+            hostMemberId: true,
             member: {
               select: {
                 id: true,
@@ -89,15 +85,11 @@ async function findSessionByPublicToken(token: string) {
         },
       },
       participants: {
-        where: {
-          status: {
-            not: "CANCELED",
-          },
-        },
         select: {
           id: true,
           status: true,
           guestName: true,
+          hostMemberId: true,
           member: {
             select: {
               id: true,
@@ -136,6 +128,12 @@ export async function GET(
     );
     const waitlistedParticipants = session.participants.filter(
       (participant) => participant.status === "WAITLIST"
+    );
+    // 동반 게스트(hostMemberId 있음)는 제외 — 호스트 회원이 불참 명단에 이미 표시됨
+    const absentParticipants = session.participants.filter(
+      (participant) =>
+        participant.status === "CANCELED" &&
+        participant.hostMemberId === null
     );
 
     const toPublicParticipant = (
@@ -192,9 +190,17 @@ export async function GET(
       ).length,
       registeredParticipants: registeredParticipants.map(toPublicParticipant),
       waitlistedParticipants: waitlistedParticipants.map(toPublicParticipant),
+      absentParticipants: absentParticipants.map(toPublicParticipant),
     });
   } catch (error) {
     console.error(error);
+
+    if (hasMissingGuestProfileColumns(error)) {
+      return NextResponse.json(
+        { error: "운동 일정 정보를 불러오지 못했습니다." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       { error: "운동 일정 정보를 불러오지 못했습니다." },

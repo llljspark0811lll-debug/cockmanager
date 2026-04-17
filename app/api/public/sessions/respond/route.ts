@@ -191,6 +191,26 @@ export async function POST(req: Request) {
             await promoteWaitlistIfPossible(tx, session.id);
           }
         });
+      } else {
+        // 기존 참가 신청 없이 불참을 누른 경우 — 이미 CANCELED 레코드가 없으면 새로 생성
+        const existingCanceledRecord = session.participants.find(
+          (item) =>
+            item.memberId === member.id &&
+            item.hostMemberId === null &&
+            item.status === "CANCELED"
+        );
+
+        if (!existingCanceledRecord) {
+          await prisma.sessionParticipant.create({
+            data: {
+              sessionId: session.id,
+              memberId: member.id,
+              status: "CANCELED",
+              attendanceStatus: "PENDING",
+              checkedInAt: null,
+            },
+          });
+        }
       }
 
       return NextResponse.json({

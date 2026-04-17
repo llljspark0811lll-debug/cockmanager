@@ -7,6 +7,7 @@ import type {
 } from "@/components/dashboard/types";
 import {
   formatDate,
+  getCanceledParticipants,
   getLevelTextClasses,
   getParticipantDisplayName,
   getParticipantGenderLabel,
@@ -44,6 +45,7 @@ type SessionsPanelProps = {
     sessionId: number,
     status: ClubSession["status"]
   ) => Promise<void>;
+  onCancelParticipant: (participantId: number) => Promise<void>;
 };
 
 type ParticipantSummary = {
@@ -78,6 +80,7 @@ type ParticipantSectionProps = {
     React.SetStateAction<ParticipantFilterState>
   >;
   emptyMessage: string;
+  onCancelClick?: (participant: SessionParticipant) => void;
 };
 
 const SESSION_LIST_PAGE_SIZE = 5;
@@ -332,6 +335,7 @@ function ParticipantSection({
   filters,
   setFilters,
   emptyMessage,
+  onCancelClick,
 }: ParticipantSectionProps) {
   const filteredMemberCount = filteredParticipants.filter(
     (participant) => !isGuestParticipant(participant)
@@ -444,21 +448,26 @@ function ParticipantSection({
         <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
-              <th className="w-[20%] px-2 py-3 font-semibold md:px-4 md:py-4">
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onCancelClick ? "w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
-              <th className="w-[18%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
                 구분
               </th>
-              <th className="w-[14%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
                 성별
               </th>
-              <th className="w-[14%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
                 급수
               </th>
-              <th className="w-[36%] px-2 py-3 font-semibold md:px-4 md:py-4">
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onCancelClick ? "w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
+              {onCancelClick ? (
+                <th className="w-[17%] px-2 py-3 text-center font-semibold md:px-4 md:py-4">
+                  관리
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -512,6 +521,16 @@ function ParticipantSection({
                       {getParticipantRemarkText(participant)}
                     </span>
                   </td>
+                  {onCancelClick ? (
+                    <td className="px-2 py-3 text-center md:px-4 md:py-4">
+                      <button
+                        onClick={() => onCancelClick(participant)}
+                        className="rounded-xl border border-rose-200 bg-white px-2 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-50 md:px-3 md:py-1.5 md:text-xs"
+                      >
+                        참가 취소
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
@@ -519,7 +538,7 @@ function ParticipantSection({
             {filteredParticipants.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={onCancelClick ? 6 : 5}
                   className="px-3 py-10 text-center text-xs text-slate-400 md:px-4 md:py-12 md:text-sm"
                 >
                   {participants.length === 0
@@ -545,6 +564,7 @@ export function SessionsPanel({
   onUpdateSession,
   onDeleteSession,
   onUpdateSessionStatus,
+  onCancelParticipant,
 }: SessionsPanelProps) {
   const [form, setForm] = useState({
     ...initialForm,
@@ -560,7 +580,13 @@ export function SessionsPanel({
   const [waitlistedFilters, setWaitlistedFilters] = useState(
     initialParticipantFilters
   );
+  const [canceledFilters, setCanceledFilters] = useState(
+    initialParticipantFilters
+  );
   const [sessionListPage, setSessionListPage] = useState(1);
+  const [cancelTarget, setCancelTarget] =
+    useState<SessionParticipant | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -632,6 +658,9 @@ export function SessionsPanel({
   const waitlistedParticipants = selectedSession
     ? getWaitlistedParticipants(selectedSession)
     : [];
+  const canceledParticipants = selectedSession
+    ? getCanceledParticipants(selectedSession)
+    : [];
 
   const filteredRegisteredParticipants = filterParticipants(
     registeredParticipants,
@@ -641,12 +670,19 @@ export function SessionsPanel({
     waitlistedParticipants,
     waitlistedFilters
   );
+  const filteredCanceledParticipants = filterParticipants(
+    canceledParticipants,
+    canceledFilters
+  );
 
   const registeredSummary = getParticipantSummary(
     filteredRegisteredParticipants
   );
   const waitlistedSummary = getParticipantSummary(
     filteredWaitlistedParticipants
+  );
+  const canceledSummary = getParticipantSummary(
+    filteredCanceledParticipants
   );
 
   const registeredLevels = getSortedLevels(
@@ -664,6 +700,17 @@ export function SessionsPanel({
     Array.from(
       new Set(
         waitlistedParticipants
+          .map((participant) =>
+            getParticipantLevelLabel(participant)
+          )
+          .filter((level) => level && level !== "-")
+      )
+    )
+  );
+  const canceledLevels = getSortedLevels(
+    Array.from(
+      new Set(
+        canceledParticipants
           .map((participant) =>
             getParticipantLevelLabel(participant)
           )
@@ -743,6 +790,23 @@ export function SessionsPanel({
     }
   }
 
+  async function handleConfirmCancel() {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      await onCancelParticipant(cancelTarget.id);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "참가 취소를 처리하지 못했습니다."
+      );
+    } finally {
+      setCancelling(false);
+      setCancelTarget(null);
+    }
+  }
+
   async function handleCopyLink() {
     if (!publicSessionLink) {
       return;
@@ -767,6 +831,45 @@ export function SessionsPanel({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-6">
+      {/* 참가 취소 확인 모달 */}
+      {cancelTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-[1.5rem] bg-white p-6 shadow-xl">
+            <h3 className="text-base font-black text-slate-900">
+              참가 취소 확인
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              <span className="font-bold text-slate-900">
+                {getParticipantDisplayName(cancelTarget)}
+              </span>
+              님을 참가 취소하시겠습니까?
+            </p>
+            {cancelTarget.status === "REGISTERED" ? (
+              <p className="mt-1 text-sm text-amber-600">
+                확정 인원이 취소되면 대기 인원이 자동으로 참가 확정됩니다.
+              </p>
+            ) : null}
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => {
+                  handleConfirmCancel().catch(() => undefined);
+                }}
+                disabled={cancelling}
+                className="flex-1 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-rose-600 disabled:opacity-50"
+              >
+                {cancelling ? "취소 중..." : "참가 취소"}
+              </button>
+              <button
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelling}
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="min-w-0 space-y-6">
         <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center justify-between gap-3">
@@ -1143,6 +1246,7 @@ export function SessionsPanel({
                   filters={registeredFilters}
                   setFilters={setRegisteredFilters}
                   emptyMessage="아직 참석 신청한 사람이 없습니다."
+                  onCancelClick={setCancelTarget}
                 />
 
                 <ParticipantSection
@@ -1155,6 +1259,19 @@ export function SessionsPanel({
                   filters={waitlistedFilters}
                   setFilters={setWaitlistedFilters}
                   emptyMessage="현재 대기 인원이 없습니다."
+                  onCancelClick={setCancelTarget}
+                />
+
+                <ParticipantSection
+                  title="불참 명단"
+                  description="참가 취소된 회원과 게스트 명단입니다."
+                  participants={canceledParticipants}
+                  filteredParticipants={filteredCanceledParticipants}
+                  summary={canceledSummary}
+                  levels={canceledLevels}
+                  filters={canceledFilters}
+                  setFilters={setCanceledFilters}
+                  emptyMessage="불참 인원이 없습니다."
                 />
               </div>
             )}

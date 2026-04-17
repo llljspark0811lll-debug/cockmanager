@@ -1688,6 +1688,18 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCancelParticipant(participantId: number) {
+    await requestJson("/api/sessions/participants", {
+      method: "DELETE",
+      body: JSON.stringify({ participantId }),
+    });
+
+    if (selectedSessionId) {
+      await refreshSessionDetail(selectedSessionId);
+      await refreshSessions();
+    }
+  }
+
   function markTutorialAsCompleted() {
     if (clubInfo) {
       window.localStorage.setItem(
@@ -2061,6 +2073,7 @@ export default function DashboardPage() {
               onUpdateSession={handleUpdateSession}
               onDeleteSession={handleDeleteSession}
               onUpdateSessionStatus={handleUpdateSessionStatus}
+              onCancelParticipant={handleCancelParticipant}
             />
           )
         ) : null}

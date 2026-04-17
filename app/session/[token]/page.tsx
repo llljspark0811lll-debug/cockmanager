@@ -34,6 +34,7 @@ type SessionData = {
   waitlistGuestCount: number;
   registeredParticipants: Participant[];
   waitlistedParticipants: Participant[];
+  absentParticipants: Participant[];
 };
 
 type SessionComment = {
@@ -388,6 +389,13 @@ export default function PublicSessionPage() {
   );
   const [identifyLoading, setIdentifyLoading] = useState(false);
   const [identifyError, setIdentifyError] = useState("");
+  const [registrationMode, setRegistrationMode] = useState<"member" | "guest">("member");
+  const [guestName, setGuestName] = useState("");
+  const [guestAge, setGuestAge] = useState("");
+  const [guestGender, setGuestGender] = useState("");
+  const [guestLevel, setGuestLevel] = useState("");
+  const [guestSubmitLoading, setGuestSubmitLoading] = useState(false);
+  const [guestSubmitSuccessMessage, setGuestSubmitSuccessMessage] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitSuccessMessage, setSubmitSuccessMessage] = useState("");
   const [commentInput, setCommentInput] = useState("");
@@ -648,6 +656,49 @@ export default function PublicSessionPage() {
     }
   }
 
+  async function handleGuestRegister() {
+    try {
+      setGuestSubmitLoading(true);
+      setGuestSubmitSuccessMessage("");
+
+      const response = await fetch("/api/public/sessions/guest-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          name: guestName.trim(),
+          age: guestAge,
+          gender: guestGender,
+          level: guestLevel,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "게스트 신청을 처리하지 못했습니다.");
+      }
+
+      const message =
+        data.status === "WAITLIST"
+          ? "게스트 신청이 완료되었습니다. 현재 대기 인원으로 등록되었습니다."
+          : "게스트 신청이 완료되었습니다.";
+
+      setGuestSubmitSuccessMessage(message);
+      setGuestName("");
+      setGuestAge("");
+      setGuestGender("");
+      setGuestLevel("");
+      alert(message);
+      await fetchSessionData();
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "게스트 신청을 처리하지 못했습니다."
+      );
+    } finally {
+      setGuestSubmitLoading(false);
+    }
+  }
+
   async function handleCommentSubmit() {
     if (!identifiedMember) {
       setCommentSubmitError("본인 확인 후 댓글을 작성할 수 있습니다.");
@@ -784,12 +835,28 @@ export default function PublicSessionPage() {
       ),
     [session]
   );
+  const absentMembers = useMemo(
+    () =>
+      (session?.absentParticipants ?? []).filter(
+        (participant) => participant.type === "MEMBER"
+      ),
+    [session]
+  );
+  const absentGuests = useMemo(
+    () =>
+      (session?.absentParticipants ?? []).filter(
+        (participant) => participant.type === "GUEST"
+      ),
+    [session]
+  );
 
   const statusLabel =
     identifiedMember?.currentStatus === "REGISTERED"
       ? "현재 참석 신청이 완료된 상태입니다."
       : identifiedMember?.currentStatus === "WAITLIST"
       ? "현재 대기 인원으로 등록되어 있습니다."
+      : identifiedMember?.currentStatus === "CANCELED"
+      ? "현재 불참으로 설정되어 있습니다."
       : "아직 참석 신청 전입니다.";
   const commentPaginationItems = useMemo(
     () => getPaginationItems(commentsPage, commentsTotalPages),
@@ -904,6 +971,84 @@ export default function PublicSessionPage() {
           <div>
             <div>
               <h2 className="text-2xl font-black text-slate-900">참석 신청 / 취소</h2>
+
+              {/* 신청 방식 탭 토글 */}
+              <div className="mt-4 flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+                <button
+                  onClick={() => setRegistrationMode("member")}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
+                    registrationMode === "member"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  회원으로 신청하기
+                </button>
+                <button
+                  onClick={() => setRegistrationMode("guest")}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
+                    registrationMode === "guest"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  게스트로 신청하기
+                </button>
+              </div>
+
+              {registrationMode === "guest" ? (
+                <div className="mt-6 space-y-4">
+                  <p className="text-sm leading-6 text-slate-500">
+                    클럽 회원이 아니어도 게스트로 참석 신청할 수 있습니다. 신청 취소는 관리자를 통해 처리됩니다.
+                  </p>
+                  <input
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="이름"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                  />
+                  <input
+                    value={guestAge}
+                    onChange={(e) => setGuestAge(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                    inputMode="numeric"
+                    placeholder="나이"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                  />
+                  <select
+                    value={guestGender}
+                    onChange={(e) => setGuestGender(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                  >
+                    <option value="">성별 선택</option>
+                    {GENDERS.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={guestLevel}
+                    onChange={(e) => setGuestLevel(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                  >
+                    <option value="">급수 선택</option>
+                    {LEVELS.map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                  {guestSubmitSuccessMessage ? (
+                    <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">
+                      {guestSubmitSuccessMessage}
+                    </div>
+                  ) : null}
+                  <button
+                    onClick={() => { handleGuestRegister().catch(() => undefined); }}
+                    disabled={guestSubmitLoading}
+                    className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+                  >
+                    {guestSubmitLoading ? "처리 중..." : "참석 신청하기"}
+                  </button>
+                </div>
+              ) : (
+              <>
               <p className="mt-3 text-sm leading-6 text-slate-500">
                 처음 한 번만 이름과 전화번호 뒤 4자리로 본인 확인을 하면, 이후에는 같은 기기에서 자동으로 기억됩니다.
               </p>
@@ -1046,8 +1191,8 @@ export default function PublicSessionPage() {
                     <button onClick={() => { handleRespond("REGISTER").catch(() => undefined); }} disabled={submitLoading} className="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300">
                       {submitLoading ? "처리 중..." : "참석 신청하기"}
                     </button>
-                    <button onClick={() => { handleRespond("CANCEL").catch(() => undefined); }} disabled={submitLoading} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300">
-                      신청 취소하기
+                    <button onClick={() => { handleRespond("CANCEL").catch(() => undefined); }} disabled={submitLoading} className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:text-rose-300">
+                      불참
                     </button>
                   </div>
 
@@ -1106,6 +1251,8 @@ export default function PublicSessionPage() {
                     </div>
                   </div>
                 </div>
+              )}
+              </>
               )}
             </div>
 
@@ -1205,6 +1352,8 @@ export default function PublicSessionPage() {
         <ParticipantGroups title="게스트 참석 현황" participants={registeredGuests} emptyMessage="아직 등록된 게스트가 없습니다." />
         <ParticipantGroups title="대기 중인 회원 현황" participants={waitlistedMembers} emptyMessage="현재 대기 중인 회원이 없습니다." />
         <ParticipantGroups title="대기 중인 게스트 현황" participants={waitlistedGuests} emptyMessage="현재 대기 중인 게스트가 없습니다." />
+        <ParticipantGroups title="불참 회원 현황" participants={absentMembers} emptyMessage="불참 회원이 없습니다." />
+        <ParticipantGroups title="불참 게스트 현황" participants={absentGuests} emptyMessage="불참 게스트가 없습니다." />
       </div>
     </main>
   );
