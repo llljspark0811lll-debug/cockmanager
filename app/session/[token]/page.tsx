@@ -16,6 +16,7 @@ type Participant = {
 type SessionData = {
   id: number;
   publicToken: string;
+  notice: string;
   title: string;
   description: string | null;
   location: string | null;
@@ -1287,6 +1288,20 @@ export default function PublicSessionPage() {
               총 {commentsTotalCount}개
             </div>
           </div>
+
+          {session.notice ? (
+            <div className="mt-5 rounded-[1.5rem] border border-amber-300 bg-amber-50 px-5 py-4">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-black text-white">
+                  공지
+                </span>
+                <span className="text-xs font-bold text-amber-700">관리자 공지</span>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                {session.notice}
+              </p>
+            </div>
+          ) : null}
 
           {commentsLoading ? (
             <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-400">

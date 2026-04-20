@@ -86,6 +86,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        {/* React 하이드레이션 전에 PC에서 브라우저 기본 설치 프롬프트를 차단 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){window.addEventListener('beforeinstallprompt',function(e){if(!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)){e.preventDefault();}});})();`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

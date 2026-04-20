@@ -587,6 +587,9 @@ export function SessionsPanel({
   const [cancelTarget, setCancelTarget] =
     useState<SessionParticipant | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [noticeText, setNoticeText] = useState("");
+  const [noticeSaving, setNoticeSaving] = useState(false);
+  const [noticeSaved, setNoticeSaved] = useState(false);
 
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -629,6 +632,20 @@ export function SessionsPanel({
       Math.floor(selectedIndex / SESSION_LIST_PAGE_SIZE) + 1
     );
   }, [selectedSessionId, sessions]);
+
+  useEffect(() => {
+    if (!selectedSession) return;
+    setNoticeText("");
+    setNoticeSaved(false);
+    fetch(`/api/sessions/notice?sessionId=${selectedSession.id}`, {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.notice === "string") setNoticeText(data.notice);
+      })
+      .catch(() => undefined);
+  }, [selectedSession?.id]);
 
   const sessionListTotalPages = Math.max(
     1,
@@ -823,6 +840,29 @@ export function SessionsPanel({
       alert("참석 신청 링크를 복사했습니다.");
     } catch {
       alert("참석 신청 링크 복사에 실패했습니다.");
+    }
+  }
+
+  async function handleSaveNotice() {
+    if (!selectedSession) return;
+    setNoticeSaving(true);
+    setNoticeSaved(false);
+    try {
+      const res = await fetch("/api/sessions/notice", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionId: selectedSession.id, notice: noticeText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "공지를 저장하지 못했습니다.");
+      setNoticeSaved(true);
+      setTimeout(() => setNoticeSaved(false), 3000);
+      alert("공지가 저장되었습니다.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "공지를 저장하지 못했습니다.");
+    } finally {
+      setNoticeSaving(false);
     }
   }
 
@@ -1195,6 +1235,43 @@ export function SessionsPanel({
 
                 <div className="mt-3 break-all rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-[11px] leading-5 text-slate-500 sm:text-sm sm:leading-7 md:mt-4 md:px-4 md:py-3">
                   {publicSessionLink}
+                </div>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-3 md:p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 md:text-sm">
+                      관리자 공지
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-500 md:text-xs">
+                      운동 링크 댓글 섹션 최상단에 공지로 고정됩니다. 비우면 공지가 숨겨집니다.
+                    </p>
+                  </div>
+                  {noticeSaved ? (
+                    <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                      저장됨
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    value={noticeText}
+                    onChange={(e) => setNoticeText(e.target.value.slice(0, 500))}
+                    rows={3}
+                    placeholder="운동 관련 공지사항을 입력해주세요."
+                    className="w-full resize-none rounded-2xl border border-amber-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-amber-400"
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-slate-400">{noticeText.length}/500</span>
+                    <button
+                      onClick={() => { handleSaveNotice().catch(() => undefined); }}
+                      disabled={noticeSaving}
+                      className="rounded-2xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {noticeSaving ? "저장 중..." : "공지 저장"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

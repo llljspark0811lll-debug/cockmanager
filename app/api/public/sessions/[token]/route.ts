@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { ensureSessionNoticeColumn } from "@/lib/club-session-notice-schema";
 
 function getRegisteredParticipantsCount(
   participants: Array<{ status: string }>
@@ -114,6 +115,8 @@ export async function GET(
   try {
     const { token } = await context.params;
 
+    await ensureSessionNoticeColumn();
+
     const session = await findSessionByPublicToken(token);
 
     if (!session) {
@@ -122,6 +125,11 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const noticeRows = await prisma.$queryRaw<Array<{ notice: string }>>`
+      SELECT "notice" FROM "ClubSession" WHERE "id" = ${session.id}
+    `;
+    const notice = noticeRows[0]?.notice ?? "";
 
     const registeredParticipants = session.participants.filter(
       (participant) => participant.status === "REGISTERED"
@@ -164,6 +172,7 @@ export async function GET(
     return NextResponse.json({
       id: session.id,
       publicToken: session.publicToken,
+      notice,
       title: session.title,
       description: session.description,
       location: session.location,

@@ -333,35 +333,40 @@ export function StatsOverview({
 
             <div className="p-4">
               {periodTopMembers.length > 0 ? (
-                <div className="grid gap-3 xl:grid-cols-2">
-                  {periodTopMembers.map((member, index) => (
-                    <div
-                      key={member.memberId}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
-                            {index + 1}
-                          </span>
-                          <p className="truncate text-base font-black text-slate-900">
-                            {member.name}
-                          </p>
+                <div className="space-y-2.5">
+                  {periodTopMembers.map((member, index) => {
+                    const maxCount = periodTopMembers[0]?.attendanceCount ?? 1;
+                    const pct = Math.round((member.attendanceCount / Math.max(maxCount, 1)) * 100);
+                    const rankColors = [
+                      "bg-amber-400",
+                      "bg-slate-400",
+                      "bg-orange-400",
+                    ];
+                    const barColor = index < 3 ? rankColors[index] : "bg-sky-400";
+                    return (
+                      <div key={member.memberId} className="flex items-center gap-3">
+                        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white ${index < 3 ? rankColors[index] : "bg-slate-300"}`}>
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-black text-slate-900">
+                              {member.name}
+                            </p>
+                            <p className="shrink-0 text-sm font-black text-slate-700">
+                              {member.attendanceCount}회
+                            </p>
+                          </div>
+                          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={`h-full rounded-full transition-all ${barColor}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
                         </div>
-                        <p className="mt-2 text-xs text-slate-500">
-                          선택한 기간 참석 누적 기록
-                        </p>
                       </div>
-                      <div className="rounded-2xl bg-white px-4 py-2 text-right shadow-sm">
-                        <p className="text-[11px] font-semibold text-slate-400">
-                          참석 횟수
-                        </p>
-                        <p className="text-2xl font-black text-slate-900">
-                          {member.attendanceCount}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
