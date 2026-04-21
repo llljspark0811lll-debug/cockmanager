@@ -1,3 +1,5 @@
+import PwaInstallButton from "@/components/PwaInstallButton";
+
 type DashboardHeaderProps = {
   clubName: string;
   subscriptionEnd?: string | Date | null;
@@ -26,19 +28,22 @@ export function DashboardHeader({
           배드민턴 클럽 운영
         </p>
 
-        <div className="mt-2 flex flex-wrap items-center gap-3">
+        <div className="mt-2 flex flex-wrap items-start gap-3">
           <h1 className="text-3xl font-black text-slate-900">
-            {clubName} 
+            {clubName}
             <br />
             운영 대시보드
           </h1>
 
-          <button
-            onClick={onRestartTutorial}
-            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
-          >
-            사용 가이드
-          </button>
+          <div className="flex flex-col items-start gap-2">
+            <button
+              onClick={onRestartTutorial}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            >
+              사용 가이드
+            </button>
+            <PwaInstallButton />
+          </div>
 
           <button
             onClick={onOpenPersonalSettings}

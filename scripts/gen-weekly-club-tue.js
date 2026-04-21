@@ -11,28 +11,28 @@ const BASE = `${FONT}*{margin:0;padding:0;box-sizing:border-box;}html,body{width
 
 const slide = { name: "tue_meme", html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 ${BASE}
-body{background:#0F172A;display:flex;flex-direction:column;justify-content:space-between;
+body{background:#F0F4FF;display:flex;flex-direction:column;justify-content:space-between;
   align-items:center;padding:60px 80px;}
-.tag{background:rgba(250,204,21,0.15);border:2px solid rgba(250,204,21,0.4);color:#FACC15;
-  font-size:28px;font-weight:900;padding:13px 36px;border-radius:999px;letter-spacing:2px;}
+.tag{background:#1E3A8A;border:none;color:#fff;
+  font-size:36px;font-weight:900;padding:14px 44px;border-radius:999px;letter-spacing:2px;}
 .timeline{display:flex;flex-direction:column;gap:0;width:100%;}
 .week{display:flex;align-items:stretch;gap:20px;}
 .week-label{width:72px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:4px;}
-.week-badge{background:#334155;border-radius:10px;padding:6px 10px;font-size:16px;font-weight:900;color:#94A3B8;white-space:nowrap;}
-.week-line{flex:1;width:2px;background:#1E293B;margin:6px auto 0;}
-.tasks{flex:1;display:flex;flex-direction:column;gap:8px;padding-bottom:18px;}
-.task{border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;}
-.t-icon{font-size:22px;flex-shrink:0;}
-.t-text{font-size:19px;font-weight:700;}
-.task.red{background:#450A0A;border:1.5px solid #991B1B;}.task.red .t-text{color:#FCA5A5;}
-.task.orange{background:#431407;border:1.5px solid #9A3412;}.task.orange .t-text{color:#FDB97D;}
-.task.blue{background:#0C1A3A;border:1.5px solid #1E40AF;}.task.blue .t-text{color:#93C5FD;}
-.task.yellow{background:#422006;border:1.5px solid #92400E;}.task.yellow .t-text{color:#FCD34D;}
-.task.gray{background:#1E293B;border:1.5px solid #334155;}.task.gray .t-text{color:#CBD5E1;}
+.week-badge{background:#DBEAFE;border-radius:10px;padding:6px 10px;font-size:22px;font-weight:900;color:#1D4ED8;white-space:nowrap;}
+.week-line{flex:1;width:2px;background:#BFDBFE;margin:6px auto 0;}
+.tasks{flex:1;display:flex;flex-direction:column;gap:9px;padding-bottom:20px;}
+.task{border-radius:14px;padding:16px 22px;display:flex;align-items:center;gap:14px;}
+.t-icon{font-size:28px;flex-shrink:0;}
+.t-text{font-size:24px;font-weight:700;}
+.task.red{background:#FEE2E2;border:1.5px solid #FCA5A5;}.task.red .t-text{color:#991B1B;}
+.task.orange{background:#FFEDD5;border:1.5px solid #FDBA74;}.task.orange .t-text{color:#9A3412;}
+.task.blue{background:#DBEAFE;border:1.5px solid #93C5FD;}.task.blue .t-text{color:#1E40AF;}
+.task.yellow{background:#FEF3C7;border:1.5px solid #FCD34D;}.task.yellow .t-text{color:#92400E;}
+.task.gray{background:#E2E8F0;border:1.5px solid #CBD5E1;}.task.gray .t-text{color:#334155;}
 .punchline{text-align:center;}
-.punch-top{font-size:36px;font-weight:900;color:#FACC15;margin-bottom:8px;}
-.punch-big{font-size:56px;font-weight:900;color:#fff;line-height:1.2;}
-.punch-big em{color:#FACC15;font-style:normal;}
+.punch-top{font-size:36px;font-weight:900;color:#1D4ED8;margin-bottom:8px;}
+.punch-big{font-size:56px;font-weight:900;color:#0F172A;line-height:1.2;}
+.punch-big em{color:#1D4ED8;font-style:normal;}
 </style></head><body>
   <div class="tag">배드민턴 클럽/소모임 총무님</div>
   <div class="timeline">
