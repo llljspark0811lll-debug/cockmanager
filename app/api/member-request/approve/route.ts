@@ -8,6 +8,7 @@ import {
 } from "@/lib/member-identity";
 import { formatPhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -95,6 +96,13 @@ export async function POST(req: Request) {
       });
 
       return nextMember;
+    });
+
+    const club = await prisma.club.findUnique({ where: { id: memberRequest.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "MEMBER_REQUEST_APPROVE",
+      clubName: club?.name ?? String(memberRequest.clubId),
+      name: memberRequest.name,
     });
 
     return NextResponse.json({

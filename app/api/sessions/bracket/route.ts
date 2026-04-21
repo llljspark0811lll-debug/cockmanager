@@ -11,6 +11,7 @@ import {
 } from "@/lib/session-bracket";
 import { ensureSessionBracketTable } from "@/lib/session-bracket-schema";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 function normalizeSavedBracket(
@@ -292,6 +293,13 @@ export async function POST(req: Request) {
         rounds: generated.rounds as unknown as Prisma.InputJsonValue,
         summary: generated.summary as unknown as Prisma.InputJsonValue,
       },
+    });
+
+    const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "SESSION_BRACKET_CREATE",
+      clubName: club?.name ?? String(admin.clubId),
+      sessionTitle: session.title,
     });
 
     return NextResponse.json({

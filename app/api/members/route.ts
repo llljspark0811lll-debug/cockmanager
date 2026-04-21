@@ -6,6 +6,7 @@ import {
 import { findDuplicateActiveMember } from "@/lib/member-identity";
 import { formatPhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 async function findClubMember(
@@ -155,6 +156,13 @@ export async function POST(req: Request) {
       }
 
       return createdMember;
+    });
+
+    const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "MEMBER_DIRECT_CREATE",
+      clubName: club?.name ?? String(admin.clubId),
+      name: normalizedName,
     });
 
     return NextResponse.json(newMember);

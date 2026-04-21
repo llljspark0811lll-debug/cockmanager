@@ -8,6 +8,7 @@ import {
   rebalanceRegisteredParticipantsToCapacity,
 } from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 async function getSessionSummaries(clubId: number) {
@@ -240,6 +241,14 @@ export async function POST(req: Request) {
         status: true,
         createdAt: true,
       },
+    });
+
+    const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "SESSION_CREATE",
+      clubName: club?.name ?? String(admin.clubId),
+      title: session.title,
+      date: new Date(session.date).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" }),
     });
 
     return NextResponse.json({

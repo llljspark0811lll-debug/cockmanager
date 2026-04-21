@@ -6,6 +6,7 @@ import {
   promoteWaitlistIfPossible,
 } from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { sendTelegramAlert } from "@/lib/telegram";
 
 type GuestEntry = {
   name: string;
@@ -213,6 +214,15 @@ export async function POST(req: Request) {
         }
       }
 
+      prisma.club.findUnique({ where: { id: session.clubId }, select: { name: true } }).then((club) => {
+        void sendTelegramAlert({
+          event: "SESSION_RESPOND_CANCEL",
+          clubName: club?.name ?? String(session.clubId),
+          sessionTitle: session.title ?? String(session.id),
+          memberName: member.name,
+        });
+      });
+
       return NextResponse.json({
         success: true,
         status: "CANCELED",
@@ -397,6 +407,16 @@ export async function POST(req: Request) {
         throw error;
       }
     }
+
+    const club = await prisma.club.findUnique({ where: { id: session.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "SESSION_RESPOND_REGISTER",
+      clubName: club?.name ?? String(session.clubId),
+      sessionTitle: session.title ?? String(session.id),
+      memberName: member.name,
+      guestCount: guestEntries.length,
+      status: memberStatus,
+    });
 
     return NextResponse.json({
       success: true,

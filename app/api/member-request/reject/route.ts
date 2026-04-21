@@ -4,6 +4,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -34,6 +35,13 @@ export async function POST(req: Request) {
         status: "REJECTED",
         processedAt: new Date(),
       },
+    });
+
+    const club = await prisma.club.findUnique({ where: { id: memberRequest.clubId }, select: { name: true } });
+    void sendTelegramAlert({
+      event: "MEMBER_REQUEST_REJECT",
+      clubName: club?.name ?? String(memberRequest.clubId),
+      name: memberRequest.name,
     });
 
     return NextResponse.json({ success: true });

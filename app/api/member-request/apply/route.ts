@@ -1,6 +1,7 @@
 import { findDuplicateActiveMember, findDuplicatePendingRequest } from "@/lib/member-identity";
 import { formatPhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -84,6 +85,14 @@ export async function POST(req: Request) {
         note,
         clubId: club.id,
       },
+    });
+
+    void sendTelegramAlert({
+      event: "MEMBER_REQUEST_APPLY",
+      clubName: club.name,
+      name,
+      gender,
+      level,
     });
 
     return NextResponse.json({ success: true });
