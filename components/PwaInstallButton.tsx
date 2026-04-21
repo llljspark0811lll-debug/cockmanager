@@ -56,7 +56,7 @@ function showAndroidGuide() {
 
 function showIosGuide() {
   alert(
-    "하단 공유 버튼에서 Safari로 연 뒤 \n다시 한 번 하단 공유 버튼에서 '홈 화면에 추가'를 누르면\n\n콕매니저🏸를 앱처럼 바로 실행할 수 있습니다."
+    "하단 공유 버튼에서 Safari로 연 뒤\n다시 한 번 하단 공유 버튼에서\n'홈 화면에 추가'를 누르면\n\n콕매니저🏸를 앱처럼\n바로 실행할 수 있습니다."
   );
 }
 
