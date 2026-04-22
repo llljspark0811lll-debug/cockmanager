@@ -41,11 +41,11 @@ export default function AdminSignupPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error ?? "클럽 생성에 실패했습니다.");
+        alert(data.error ?? "클럽/소모임 생성에 실패했습니다.");
         return;
       }
 
-      alert("클럽 생성이 완료되었습니다.");
+      alert("클럽/소모임 생성이 완료되었습니다.");
       router.push("/admin/login");
     } finally {
       setLoading(false);
@@ -56,12 +56,12 @@ export default function AdminSignupPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-lg">
         <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">
-          새 클럽 만들기
+          새 클럽/소모임 만들기
         </h1>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <input
-            placeholder="클럽 이름"
+            placeholder="클럽/소모임 이름"
             className="w-full rounded-lg border p-3"
             value={form.clubName}
             onChange={(event) =>
@@ -129,7 +129,7 @@ export default function AdminSignupPage() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
-            {loading ? "클럽 생성 중..." : "클럽 생성"}
+            {loading ? "클럽/소모임 생성 중..." : "클럽/소모임 생성"}
           </button>
         </form>
       </div>
