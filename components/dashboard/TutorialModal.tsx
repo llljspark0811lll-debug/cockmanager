@@ -3,20 +3,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DashboardTab } from "@/components/dashboard/types";
 
-export type TutorialStep =
+type TutorialStep =
   | "welcome"
   | "seeding"
-  | "members"
-  | "sessions"
-  | "bracket"
+  | "membersTab"
+  | "membersList"
+  | "sessionsTab"
+  | "sessionsList"
+  | "attendanceTab"
+  | "attendanceList"
+  | "generate"
+  | "bracketView"
+  | "export"
   | "cleaning"
   | "done";
 
 type TutorialModalProps = {
   open: boolean;
+  bracketGenerated: boolean;
   onClose: () => void;
   onSwitchTab: (tab: DashboardTab) => void;
   onSelectSession: (sessionId: number) => void;
+  onSeeded: (sessionId: number) => Promise<void>;
+  onCompleted: () => Promise<void>;
 };
 
 type StepMeta = {
@@ -38,80 +47,153 @@ function useSpotlight(open: boolean, targetId?: string) {
     let cancelled = false;
     let retries = 0;
 
-    const update = () => {
+    // rect만 업데이트 (스크롤 이벤트용 — scrollIntoView 호출 없음)
+    const updateRect = () => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-tutorial-id="${targetId}"]`) as HTMLElement | null;
+      if (el) setRect(el.getBoundingClientRect());
+    };
+
+    // 최초 1회: 요소가 나타날 때까지 대기 후 scrollIntoView + rect 설정
+    const initScroll = () => {
       if (cancelled) return;
       const el = document.querySelector(`[data-tutorial-id="${targetId}"]`) as HTMLElement | null;
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        const isMobile = window.innerWidth < 768;
+        el.scrollIntoView({ behavior: "smooth", block: isMobile ? "center" : "nearest", inline: "center" });
+        // 모바일에서 카드(하단 고정)가 요소를 가리지 않도록 추가 여백
+        if (isMobile) {
+          window.setTimeout(() => {
+            window.scrollBy({ top: 120, behavior: "smooth" });
+          }, 400);
+        }
         setRect(el.getBoundingClientRect());
         return;
       }
       setRect(null);
-      if (retries < 15) {
-        retries++;
-        retryRef.current = window.setTimeout(update, 150);
+      if (retries < 20) {
+        retries += 1;
+        retryRef.current = window.setTimeout(initScroll, 150);
       }
     };
 
-    window.requestAnimationFrame(update);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
+    window.requestAnimationFrame(initScroll);
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
 
     return () => {
       cancelled = true;
       if (retryRef.current) window.clearTimeout(retryRef.current);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
     };
   }, [open, targetId]);
 
   return rect;
 }
 
-export function TutorialModal({ open, onClose, onSwitchTab, onSelectSession }: TutorialModalProps) {
+export function TutorialModal({
+  open,
+  bracketGenerated,
+  onClose,
+  onSwitchTab,
+  onSelectSession,
+  onSeeded,
+  onCompleted,
+}: TutorialModalProps) {
   const [step, setStep] = useState<TutorialStep>("welcome");
   const [sampleSessionId, setSampleSessionId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
   const stepMeta = useMemo<StepMeta>(() => {
     switch (step) {
       case "welcome":
         return {
-          title: "콕매니저 체험 모드",
-          description: "샘플 데이터로 콕매니저의 전체 흐름을 직접 체험해볼 수 있어요.\n회원 10명 + 운동 일정 + 자동 대진표까지 바로 만들어드립니다.\n\n언제든 건너뛰면 샘플 데이터는 자동으로 삭제됩니다.",
+          title: "콕매니저🏸 2분 체험을 시작할게요",
+          description:
+            "실제 운영 흐름을 한 번 끝까지 체험해보세요.\n\n테스트 회원 10명과 게스트 4명이 참석한 운동을 만들고, 마지막에는 직접 자동 대진표 생성 버튼을 눌러보게 됩니다.",
         };
       case "seeding":
         return {
-          title: "샘플 데이터 생성 중...",
-          description: "회원 10명과 운동 일정, 자동 대진표를 만들고 있어요.\n잠깐만 기다려주세요!",
+          title: "체험용 데이터를 준비하고 있어요",
+          description:
+            "회원, 운동일정, 참석 명단을 자동으로 구성하는 중입니다.\n완료 후에는 샘플 데이터가 모두 삭제되고 깨끗한 상태로 시작합니다.",
         };
-      case "members":
+      case "membersTab":
         return {
-          title: "① 회원 관리",
-          description: "샘플 회원 10명이 등록됐어요.\n이름·성별·급수가 자동으로 정리된 걸 확인해보세요.\n\n실제 운영 시에는 가입 링크를 공유하면 회원이 직접 등록합니다.",
+          title: "회원 탭에서 클럽 회원을 관리합니다",
+          description:
+            "회원 탭은 클럽 회원 명단을 모아두는 공간입니다.\n실제 운영에서는 가입 링크로 들어온 회원이나 관리자가 직접 등록한 회원이 이곳에 쌓입니다.",
           targetId: "tab-members",
         };
-      case "sessions":
+      case "membersList":
         return {
-          title: "② 운동 일정 & 참석",
-          description: "샘플 운동 일정이 생성됐어요.\n참석 회원 10명이 자동 등록된 마감 일정입니다.\n\n일정 카드를 클릭하면 참석자 명단과 대진표를 볼 수 있어요.",
+          title: "체험용 회원 10명을 만들었습니다",
+          description:
+            "테스트 회원 목록을 직접 훑어보세요.\n이름, 성별, 급수, 메모가 실제 회원처럼 정리되어 있습니다.\n\n확인했다면 이 회원들로 운동일정을 만들어볼게요.",
+          targetId: "members-panel",
+        };
+      case "sessionsTab":
+        return {
+          title: "운동일정을 만들면 참석 신청을 받을 수 있어요",
+          description:
+            "운동일정 탭에서는 정기운동, 번개운동 같은 일정을 만들고 참석 링크를 공유합니다.\n회원이 직접 신청하면 참석, 대기, 게스트 정보가 자동으로 모입니다.",
           targetId: "tab-sessions",
         };
-      case "bracket":
+      case "sessionsList":
         return {
-          title: "③ 자동 대진표",
-          description: "급수·성별 균형을 맞춰 대진표가 이미 생성되어 있어요!\n\n아래 일정 카드를 클릭하고 대진표 탭에서 확인해보세요.\n이미지로 저장해서 단톡방에 바로 공유할 수 있습니다.",
-          targetId: "sample-session-card",
+          title: "테스트 운동일정이 생성되었습니다",
+          description:
+            "테스트 운동일정 1개가 마감된 상태로 준비되어 있습니다.\n회원 10명과 게스트 4명이 이미 참석 신청한 상태라 바로 자동대진으로 넘어갈 수 있어요.\n\n목록을 스크롤로 확인한 뒤 자동대진 탭으로 이동해볼게요.",
+          targetId: "sessions-panel",
+        };
+      case "attendanceTab":
+        return {
+          title: "자동대진 탭에서 최종 참석자를 확인합니다",
+          description:
+            "자동대진 탭은 마감된 운동의 최종 참석 명단을 기준으로 대진표를 만드는 곳입니다.\n총무가 명단을 다시 옮기지 않아도, 신청된 인원이 그대로 대진표 명단이 됩니다.",
+          targetId: "tab-attendance",
+        };
+      case "attendanceList":
+        return {
+          title: "최종 참석 인원을 확인합니다",
+          description:
+            "지금은 회원 10명과 게스트 4명, 총 14명이 참석한 상태입니다.\n참석자 목록을 스크롤로 확인해보세요.\n\n확인 후 2코트, 1인 최소 4경기 조건으로 대진표를 만들어보겠습니다.",
+          targetId: "attendance-participant-summary",
+        };
+      case "generate":
+        return {
+          title: "이제 자동 대진표를 직접 만들어보세요",
+          description:
+            "체험 조건은 2코트, 1인 최소 4경기, 남복/여복 분리 없음으로 맞춰두었습니다.\n\n아래의 자동 대진표 생성 버튼을 눌러보세요. 생성이 끝나면 다음 안내로 이어집니다.",
+          targetId: "bracket-generate-button",
+        };
+      case "bracketView":
+        return {
+          title: "라운드별 대진 구성을 확인하세요",
+          description:
+            "급수·성별 균형을 맞춰 라운드마다 경기가 자동으로 배정됐어요.\n팀 A / 팀 B 선수 이름을 눌러 같은 경기 안에서 자리를 바꿀 수도 있습니다.\n\n수정이 끝났으면 이미지로 저장해 단톡방에 바로 공유해보세요.",
+          targetId: "bracket-rounds",
+        };
+      case "export":
+        return {
+          title: "완성된 대진표는 이미지로 저장합니다",
+          description:
+            "이미지 저장 버튼을 누르면 라운드별 대진표가 이미지 파일로 저장돼요.\n저장한 이미지를 단톡방에 공유하면 끝!\n\n체험을 마치면 샘플 데이터는 자동으로 정리됩니다.",
+          targetId: "bracket-export-button",
         };
       case "cleaning":
         return {
-          title: "샘플 데이터 삭제 중...",
-          description: "체험에 사용된 샘플 데이터를 정리하고 있어요.",
+          title: "샘플 데이터를 정리하고 있어요",
+          description:
+            "체험용 회원, 운동일정, 참석 명단, 대진표를 삭제하고 실제 운영을 시작할 준비를 합니다.",
         };
       case "done":
         return {
-          title: "체험 완료!",
-          description: "이제 실제 클럽 운영을 시작해보세요.\n\n가입 링크를 공유해서 회원을 모으거나\n직접 회원을 등록하고 운동 일정을 만들어보세요 🏸\n\n언제든 사용자 가이드 버튼으로 다시 체험할 수 있어요.",
+          title: "체험이 끝났습니다",
+          description:
+            "이제 클럽 데이터는 초기 상태로 돌아왔습니다.\n회원 등록, 운동일정 생성, 자동대진까지 어떤 흐름인지 확인했으니 실제 클럽 운영을 시작해보세요.",
         };
     }
   }, [step]);
@@ -121,47 +203,152 @@ export function TutorialModal({ open, onClose, onSwitchTab, onSelectSession }: T
     stepMeta.targetId
   );
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
 
-  // 탭 자동 전환
   useEffect(() => {
     if (!open) return;
-    if (step === "members") onSwitchTab("members");
-    if (step === "sessions" || step === "bracket") onSwitchTab("sessions");
-  }, [open, step, onSwitchTab]);
+
+    if (step === "membersTab" || step === "membersList") {
+      onSwitchTab("members");
+    }
+    if (step === "sessionsTab" || step === "sessionsList") {
+      onSwitchTab("sessions");
+    }
+    if (
+      step === "attendanceTab" ||
+      step === "attendanceList" ||
+      step === "generate" ||
+      step === "bracketView" ||
+      step === "export"
+    ) {
+      onSwitchTab("attendance");
+      if (sampleSessionId) onSelectSession(sampleSessionId);
+    }
+  }, [open, step, sampleSessionId, onSwitchTab, onSelectSession]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const allowedTargetIds =
+      step === "generate"
+        ? ["bracket-generate-button"]
+        : step === "bracketView"
+          ? ["bracket-rounds"]
+          : step === "export"
+            ? ["bracket-export-button"]
+            : [];
+
+    const isAllowedTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      if (cardRef.current?.contains(target)) return true;
+      // 프로그래밍 방식 앵커 다운로드 (PC)
+      if (target instanceof HTMLAnchorElement && target.hasAttribute("download")) return true;
+      // 카카오톡 인앱 이미지 오버레이
+      if (target.closest("[data-download-ui]")) return true;
+
+      return allowedTargetIds.some((targetId) =>
+        target.closest(`[data-tutorial-id="${targetId}"]`)
+      );
+    };
+
+    const blockPageAction = (event: Event) => {
+      if (isAllowedTarget(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const blockPageKey = (event: KeyboardEvent) => {
+      if (isAllowedTarget(event.target)) return;
+      if (["Enter", " ", "Spacebar"].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const actionEvents = [
+      "click",
+      "dblclick",
+      "submit",
+      "input",
+      "change",
+    ] as const;
+
+    actionEvents.forEach((eventName) => {
+      document.addEventListener(eventName, blockPageAction, true);
+    });
+    document.addEventListener("keydown", blockPageKey, true);
+
+    return () => {
+      actionEvents.forEach((eventName) => {
+        document.removeEventListener(eventName, blockPageAction, true);
+      });
+      document.removeEventListener("keydown", blockPageKey, true);
+    };
+  }, [open, step]);
+
+  useEffect(() => {
+    if (open && step === "generate" && bracketGenerated) {
+      setStep("bracketView");
+    }
+  }, [bracketGenerated, open, step]);
 
   async function handleStart() {
     setStep("seeding");
     setErrorMsg("");
+
     try {
-      const res = await fetch("/api/tutorial/seed", { method: "POST", credentials: "include" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "샘플 생성 실패");
+      const response = await fetch("/api/tutorial/seed", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await response.json()) as {
+        sessionId?: number;
+        error?: string;
+      };
+
+      if (!response.ok || !data.sessionId) {
+        throw new Error(data.error ?? "샘플 데이터를 만들지 못했습니다.");
+      }
+
       setSampleSessionId(data.sessionId);
-      setStep("members");
-    } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      await onSeeded(data.sessionId);
+      setStep("membersTab");
+    } catch (error) {
+      setErrorMsg(
+        error instanceof Error
+          ? error.message
+          : "튜토리얼을 시작하지 못했습니다."
+      );
       setStep("welcome");
     }
   }
 
-  async function handleCleanup() {
+  async function handleComplete() {
     setStep("cleaning");
-    try {
-      await fetch("/api/tutorial/cleanup", { method: "POST", credentials: "include" });
-    } catch {
-      // 실패해도 계속 진행
-    }
-    setStep("done");
-  }
+    setErrorMsg("");
 
-  async function handleSkip() {
-    await handleCleanup();
+    try {
+      const response = await fetch("/api/tutorial/cleanup", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+
+      if (!response.ok) {
+        throw new Error(data?.error ?? "샘플 데이터를 정리하지 못했습니다.");
+      }
+
+      await onCompleted();
+      setStep("done");
+    } catch (error) {
+      setErrorMsg(
+        error instanceof Error
+          ? error.message
+          : "샘플 데이터를 정리하지 못했습니다."
+      );
+      setStep("export");
+    }
   }
 
   function handleClose() {
@@ -171,16 +358,11 @@ export function TutorialModal({ open, onClose, onSwitchTab, onSelectSession }: T
     onClose();
   }
 
-  function handleSessionClick() {
-    if (sampleSessionId) onSelectSession(sampleSessionId);
-  }
-
   if (!open) return null;
 
   const isLoading = step === "seeding" || step === "cleaning";
-  const isDone = step === "done";
   const isWelcome = step === "welcome";
-
+  const isDone = step === "done";
   const spotlightPad = 10;
   const spotlightStyle = targetRect
     ? {
@@ -191,131 +373,210 @@ export function TutorialModal({ open, onClose, onSwitchTab, onSelectSession }: T
       }
     : null;
 
+  const progressSteps: TutorialStep[] = [
+    "membersTab",
+    "membersList",
+    "sessionsTab",
+    "sessionsList",
+    "attendanceTab",
+    "attendanceList",
+    "generate",
+    "bracketView",
+    "export",
+  ];
+
   return (
     <div className="pointer-events-none fixed inset-0 z-[90]">
-      {/* 딤 */}
       <div className="pointer-events-none absolute inset-0 bg-slate-950/60" />
 
-      {/* 스포트라이트 */}
       {spotlightStyle ? (
         <div
-          className="pointer-events-none absolute rounded-2xl border-2 border-sky-400/80 shadow-[0_0_0_9999px_rgba(2,6,23,0.6)]"
+          className="pointer-events-none absolute rounded-[1.5rem] border-2 border-sky-300 bg-transparent shadow-[0_0_0_9999px_rgba(2,6,23,0.55)]"
           style={spotlightStyle}
         />
       ) : null}
 
-      {/* 카드 */}
-      <div className="pointer-events-auto absolute bottom-4 left-1/2 z-[91] w-[min(92vw,26rem)] -translate-x-1/2 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.25)] sm:bottom-auto sm:left-auto sm:right-6 sm:top-1/2 sm:-translate-y-1/2 sm:translate-x-0">
-
-        {/* 헤더 */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            {!isDone && !isWelcome && !isLoading && (
-              <p className="text-xs font-bold uppercase tracking-widest text-sky-600">
-                사용자 가이드
-              </p>
-            )}
-            <h2 className="mt-1 text-xl font-black text-slate-900">
-              {stepMeta.title}
-            </h2>
-          </div>
-          {!isLoading && !isDone && (
-            <button
-              onClick={handleSkip}
-              className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            >
-              건너뛰기
-            </button>
-          )}
+      <div
+        ref={cardRef}
+        className="pointer-events-auto absolute bottom-4 left-1/2 z-[91] w-[min(92vw,27rem)] -translate-x-1/2 rounded-[1.25rem] border border-white/70 bg-white/95 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:-translate-y-1/2 md:translate-x-0"
+      >
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
+            콕매니저 첫 체험
+          </p>
+          <h2 className="mt-2 text-xl font-black leading-7 text-slate-900">
+            {stepMeta.title}
+          </h2>
         </div>
 
-        {/* 설명 */}
         <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
           {stepMeta.description}
         </p>
 
-        {/* 로딩 스피너 */}
-        {isLoading && (
-          <div className="mt-4 flex justify-center">
+        {isLoading ? (
+          <div className="mt-5 flex justify-center">
             <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-sky-500" />
           </div>
-        )}
+        ) : null}
 
-        {/* 에러 */}
-        {errorMsg && (
-          <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
+        {errorMsg ? (
+          <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
             {errorMsg}
           </p>
-        )}
+        ) : null}
 
-        {/* 액션 버튼 */}
-        {!isLoading && (
+        {!isLoading ? (
           <div className="mt-5 flex items-center justify-between gap-3">
-            {isWelcome && (
+            {isWelcome ? (
+              <button
+                onClick={() => {
+                  handleStart().catch(() => undefined);
+                }}
+                className="ml-auto rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+              >
+                체험 시작하기
+              </button>
+            ) : step === "membersTab" ? (
+              <button
+                onClick={() => setStep("membersList")}
+                className="ml-auto rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+              >
+                회원 목록 보기
+              </button>
+            ) : step === "membersList" ? (
               <>
                 <button
-                  onClick={handleClose}
+                  onClick={() => setStep("membersTab")}
                   className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
                 >
-                  닫기
+                  이전
                 </button>
                 <button
-                  onClick={handleStart}
-                  className="rounded-2xl bg-sky-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+                  onClick={() => setStep("sessionsTab")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
                 >
-                  체험 시작하기 🏸
+                  운동일정으로 이동
                 </button>
               </>
-            )}
-
-            {step === "members" && (
+            ) : step === "sessionsTab" ? (
               <>
-                <button onClick={handleSkip} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">건너뛰기</button>
-                <button onClick={() => setStep("sessions")} className="rounded-2xl bg-sky-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-sky-700">다음 →</button>
-              </>
-            )}
-
-            {step === "sessions" && (
-              <>
-                <button onClick={() => setStep("members")} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">← 이전</button>
-                <button onClick={() => setStep("bracket")} className="rounded-2xl bg-sky-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-sky-700">다음 →</button>
-              </>
-            )}
-
-            {step === "bracket" && (
-              <>
-                <button onClick={() => setStep("sessions")} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">← 이전</button>
                 <button
-                  onClick={() => { handleSessionClick(); handleCleanup(); }}
-                  className="rounded-2xl bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+                  onClick={() => setStep("membersList")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
                 >
-                  일정 열기 & 완료
+                  이전
+                </button>
+                <button
+                  onClick={() => setStep("sessionsList")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  운동일정 목록 보기
                 </button>
               </>
-            )}
-
-            {isDone && (
+            ) : step === "sessionsList" ? (
+              <>
+                <button
+                  onClick={() => setStep("sessionsTab")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={() => setStep("attendanceTab")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  자동대진으로 이동
+                </button>
+              </>
+            ) : step === "attendanceTab" ? (
+              <>
+                <button
+                  onClick={() => setStep("sessionsList")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={() => setStep("attendanceList")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  참석 명단 보기
+                </button>
+              </>
+            ) : step === "attendanceList" ? (
+              <>
+                <button
+                  onClick={() => setStep("attendanceTab")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={() => setStep("generate")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  대진표 만들기
+                </button>
+              </>
+            ) : step === "generate" ? (
+              <div className="ml-auto rounded-2xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-500">
+                생성 버튼을 눌러주세요
+              </div>
+            ) : step === "bracketView" ? (
+              <>
+                <button
+                  onClick={() => setStep("generate")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={() => setStep("export")}
+                  className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
+                >
+                  이미지 저장하기 →
+                </button>
+              </>
+            ) : step === "export" ? (
+              <>
+                <button
+                  onClick={() => setStep("generate")}
+                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+                >
+                  이전
+                </button>
+                <button
+                  onClick={() => {
+                    handleComplete().catch(() => undefined);
+                  }}
+                  className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  체험 완료하기
+                </button>
+              </>
+            ) : isDone ? (
               <button
                 onClick={handleClose}
-                className="ml-auto rounded-2xl bg-slate-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+                className="ml-auto rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
               >
-                시작하기 🏸
+                실제 운영 시작하기
               </button>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
 
-        {/* 단계 점 */}
-        {!isWelcome && !isLoading && !isDone && (
+        {!isWelcome && !isLoading && !isDone ? (
           <div className="mt-5 flex justify-center gap-1.5">
-            {(["members", "sessions", "bracket"] as TutorialStep[]).map((s) => (
+            {progressSteps.map((item) => (
               <div
-                key={s}
-                className={`h-1.5 rounded-full transition-all ${step === s ? "w-5 bg-sky-500" : "w-1.5 bg-slate-200"}`}
+                key={item}
+                className={`h-1.5 rounded-full transition-all ${
+                  step === item ? "w-5 bg-sky-500" : "w-1.5 bg-slate-200"
+                }`}
               />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { requireAuthAdmin, unauthorizedResponse } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { getCalculatedSubscriptionStatus } from "@/lib/subscription";
+import { ensureTutorialColumns } from "@/lib/tutorial-schema";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -11,7 +12,9 @@ export async function GET() {
       return unauthorizedResponse();
     }
 
-    const [club, currentAdmin, pendingRequestCount] =
+    await ensureTutorialColumns();
+
+    const [club, currentAdmin, pendingRequestCount, tutorialRows] =
       await Promise.all([
         prisma.club.findUnique({
           where: { id: admin.clubId },
@@ -37,6 +40,11 @@ export async function GET() {
             status: "PENDING",
           },
         }),
+        prisma.$queryRaw<{ tutorialCompleted: boolean }[]>`
+          SELECT "tutorialCompleted"
+          FROM "Club"
+          WHERE id = ${admin.clubId}
+        `,
       ]);
 
     if (!club) {
@@ -62,6 +70,7 @@ export async function GET() {
         currentAdmin?.customFieldLabel ?? "소속클럽",
       adminEmail: currentAdmin?.email ?? "",
       pendingRequestCount,
+      tutorialCompleted: tutorialRows[0]?.tutorialCompleted ?? false,
     });
   } catch (error) {
     console.error(error);

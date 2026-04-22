@@ -176,6 +176,7 @@ export interface ClubInfo {
   customFieldLabel: string;
   adminEmail: string;
   pendingRequestCount: number;
+  tutorialCompleted: boolean;
 }
 
 export type DashboardStatsPeriodKey =

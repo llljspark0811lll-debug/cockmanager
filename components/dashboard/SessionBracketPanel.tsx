@@ -14,6 +14,8 @@ import {
 
 type SessionBracketPanelProps = {
   session: ClubSession;
+  tutorialDefaultsActive?: boolean;
+  onBracketGenerated?: () => void;
 };
 
 type BracketApiResponse = {
@@ -49,6 +51,8 @@ function playerBadgeLabel(
 
 export function SessionBracketPanel({
   session,
+  tutorialDefaultsActive = false,
+  onBracketGenerated,
 }: SessionBracketPanelProps) {
   const [courtCount, setCourtCount] = useState(
     buildDefaultCourtCount(session)
@@ -87,8 +91,8 @@ export function SessionBracketPanel({
   const canGenerate = session.status === "CLOSED" && registeredCount >= 4;
 
   useEffect(() => {
-    setCourtCount(buildDefaultCourtCount(session));
-    setMinGamesPerPlayer(2);
+    setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
+    setMinGamesPerPlayer(tutorialDefaultsActive ? 4 : 2);
     setSeparateByGender(false);
     setFixedPairs([]);
     setPendingPairPlayerId(null);
@@ -99,7 +103,7 @@ export function SessionBracketPanel({
     setExportMessage("");
     setExportError("");
     setExportingMode(null);
-  }, [session.id]);
+  }, [session.id, tutorialDefaultsActive]);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,14 +140,22 @@ export function SessionBracketPanel({
 
         setBracket(data.bracket);
         if (data.bracket) {
-          setCourtCount(data.bracket.config.courtCount);
+          setCourtCount(
+            tutorialDefaultsActive ? 2 : data.bracket.config.courtCount
+          );
           setMinGamesPerPlayer(
-            data.bracket.config.minGamesPerPlayer
+            tutorialDefaultsActive
+              ? 4
+              : data.bracket.config.minGamesPerPlayer
           );
           setSeparateByGender(
-            data.bracket.config.separateByGender
+            tutorialDefaultsActive
+              ? false
+              : data.bracket.config.separateByGender
           );
-          setFixedPairs(data.bracket.config.fixedPairs ?? []);
+          setFixedPairs(
+            tutorialDefaultsActive ? [] : data.bracket.config.fixedPairs ?? []
+          );
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -166,7 +178,7 @@ export function SessionBracketPanel({
     return () => {
       cancelled = true;
     };
-  }, [canGenerate, session.id]);
+  }, [canGenerate, session.id, tutorialDefaultsActive]);
 
   const playerStats = useMemo(
     () => bracket?.summary.playerStats ?? [],
@@ -254,6 +266,7 @@ export function SessionBracketPanel({
 
       setBracket(data.bracket);
       setSwapSelection(null);
+      onBracketGenerated?.();
     } catch (generateError) {
       setError(
         generateError instanceof Error
@@ -537,6 +550,7 @@ export function SessionBracketPanel({
               handleGenerateBracket().catch(() => undefined);
             }}
             disabled={!canGenerate || loading}
+            data-tutorial-id="bracket-generate-button"
             className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {loading
@@ -550,6 +564,7 @@ export function SessionBracketPanel({
               handleExport().catch(() => undefined);
             }}
             disabled={!bracket || loading || exportingMode !== null}
+            data-tutorial-id="bracket-export-button"
             className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             {exportingMode === "download"
@@ -624,7 +639,7 @@ export function SessionBracketPanel({
               </div>
             ) : null}
 
-            <div className="space-y-4">
+            <div className="space-y-4" data-tutorial-id="bracket-rounds">
               {swapSelection && (
                 <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5">
                   <span className="text-xs font-bold text-sky-700">
@@ -809,4 +824,3 @@ export function SessionBracketPanel({
     </>
   );
 }
-

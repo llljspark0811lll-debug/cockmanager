@@ -19,6 +19,8 @@ type AttendancePanelProps = {
   selectedSessionId: number | null;
   loadingSelectedSession: boolean;
   onSelectSession: (id: number) => void;
+  tutorialDefaultsActive?: boolean;
+  onBracketGenerated?: () => void;
 };
 
 type ParticipantSortOption = "name" | "gender" | "level" | "recent";
@@ -120,6 +122,8 @@ export function AttendancePanel({
   selectedSessionId,
   loadingSelectedSession,
   onSelectSession,
+  tutorialDefaultsActive = false,
+  onBracketGenerated,
 }: AttendancePanelProps) {
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -254,7 +258,10 @@ export function AttendancePanel({
           참석 명단을 불러오는 중입니다.
         </div>
       ) : selectedSession ? (
-        <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+        <section
+          className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
+          data-tutorial-id="attendance-participant-summary"
+        >
           <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 md:px-4 md:py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -433,7 +440,11 @@ export function AttendancePanel({
       ) : null}
 
       {selectedSession ? (
-        <SessionBracketPanel session={selectedSession} />
+        <SessionBracketPanel
+          session={selectedSession}
+          tutorialDefaultsActive={tutorialDefaultsActive}
+          onBracketGenerated={onBracketGenerated}
+        />
       ) : null}
     </div>
   );

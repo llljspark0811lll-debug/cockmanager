@@ -146,12 +146,14 @@ function buildBracketPlayers(
 ) {
   const players: SessionBracketPlayerInput[] = [];
 
+  const stripSamplePrefix = (name: string) => name.replace(/^\[체험\]\s*/, "").replace(/^\[체험\s*게스트\]\s*/, "");
+
   for (const participant of participants) {
     if (participant.member) {
       players.push({
         playerId: `member-${participant.member.id}`,
         participantId: participant.id,
-        name: participant.member.name,
+        name: stripSamplePrefix(participant.member.name),
         gender: participant.member.gender,
         level: participant.member.level,
         isGuest: false,
@@ -164,11 +166,11 @@ function buildBracketPlayers(
       players.push({
         playerId: `guest-${participant.id}`,
         participantId: participant.id,
-        name: participant.guestName,
+        name: stripSamplePrefix(participant.guestName),
         gender: participant.guestGender ?? "",
         level: participant.guestLevel ?? "",
         isGuest: true,
-        hostName: participant.hostMember?.name ?? null,
+        hostName: participant.hostMember ? stripSamplePrefix(participant.hostMember.name) : null,
       });
     }
   }

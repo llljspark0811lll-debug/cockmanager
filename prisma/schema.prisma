@@ -14,6 +14,7 @@ model Club {
   publicJoinToken    String   @unique @default(cuid())
   subscriptionStatus String   @default("TRIAL")
   subscriptionEnd    DateTime?
+  tutorialCompleted  Boolean  @default(false)
   createdAt          DateTime @default(now())
 
   admins        Admin[]
@@ -55,6 +56,7 @@ model Member {
   deleted                Boolean  @default(false)
   deletedAt              DateTime?
   withdrawnAt            DateTime?
+  isSample               Boolean  @default(false)
 
   clubId Int
   club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
@@ -161,6 +163,7 @@ model ClubSession {
   endTime     String
   capacity    Int?
   status      String   @default("OPEN")
+  isSample    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   clubId Int

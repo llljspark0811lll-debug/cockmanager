@@ -26,13 +26,18 @@ export async function POST() {
         DELETE FROM "Member"
         WHERE "clubId" = ${admin.clubId} AND "isSample" = true
       `;
+      await tx.$executeRaw`
+        UPDATE "Club"
+        SET "tutorialCompleted" = true
+        WHERE id = ${admin.clubId}
+      `;
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[tutorial/cleanup]", error);
     return NextResponse.json(
-      { error: "샘플 데이터 삭제에 실패했습니다." },
+      { error: "샘플 데이터를 정리하는 데 실패했습니다." },
       { status: 500 }
     );
   }

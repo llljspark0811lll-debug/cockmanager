@@ -457,6 +457,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 function showImageOverlay(dataUrl: string) {
   const overlay = document.createElement("div");
+  overlay.setAttribute("data-download-ui", "true");
   overlay.style.cssText = [
     "position:fixed;inset:0;z-index:99999",
     "background:rgba(0,0,0,0.92)",

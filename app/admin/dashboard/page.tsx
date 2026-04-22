@@ -23,6 +23,7 @@ import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
 import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
+import { TutorialModal } from "@/components/dashboard/TutorialModal";
 import type {
   ClubInfo,
   ClubSession,
@@ -190,7 +191,11 @@ export default function DashboardPage() {
     useState(false);
   const [tutorialJoinLinkPracticePending, setTutorialJoinLinkPracticePending] =
     useState(false);
-  const [tutorialInitialized, setTutorialInitialized] =
+  const [firstExperienceOpen, setFirstExperienceOpen] =
+    useState(false);
+  const [firstExperienceInitialized, setFirstExperienceInitialized] =
+    useState(false);
+  const [tutorialBracketGenerated, setTutorialBracketGenerated] =
     useState(false);
 
   const paymentMode = getPaymentMode();
@@ -596,21 +601,17 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!clubInfo || tutorialInitialized || isExpired) {
+    if (!clubInfo || firstExperienceInitialized || isExpired) {
       return;
     }
 
-    const storageKey = `kokmanager-dashboard-tutorial:${clubInfo.id}`;
-    const hasSeenTutorial =
-      window.localStorage.getItem(storageKey) === "done";
-
-    if (!hasSeenTutorial) {
-      setTutorialStepIndex(0);
-      setTutorialOpen(true);
+    if (!clubInfo.tutorialCompleted) {
+      setTutorialBracketGenerated(false);
+      setFirstExperienceOpen(true);
     }
 
-    setTutorialInitialized(true);
-  }, [clubInfo, isExpired, tutorialInitialized]);
+    setFirstExperienceInitialized(true);
+  }, [clubInfo, firstExperienceInitialized, isExpired]);
 
   useEffect(() => {
     if (!tutorialOpen) {
@@ -1714,6 +1715,31 @@ export default function DashboardPage() {
     setTutorialOpen(true);
   }
 
+  async function handleFirstExperienceSeeded(sessionId: number) {
+    setTutorialBracketGenerated(false);
+    setSelectedSessionId(sessionId);
+    setActiveTab("members");
+    await refreshMembers();
+    await refreshSessions();
+    setSelectedSessionId(sessionId);
+    await refreshSessionDetail(sessionId, { silent: true });
+  }
+
+  async function handleFirstExperienceCompleted() {
+    setTutorialBracketGenerated(false);
+    setSelectedSessionId(null);
+    await Promise.all([
+      refreshClubInfo(),
+      refreshMembers(),
+      refreshSessions(),
+    ]);
+  }
+
+  function closeFirstExperience() {
+    setFirstExperienceOpen(false);
+    setTutorialBracketGenerated(false);
+  }
+
   function moveTutorialStep(direction: -1 | 1) {
     setTutorialStepIndex((current) => {
       const next = Math.min(
@@ -1870,6 +1896,15 @@ export default function DashboardPage() {
         onMemberPracticeBack={handleTutorialMemberPracticeBack}
         onOpenJoinLinkPractice={handleOpenTutorialJoinLinkPractice}
         onJoinLinkPracticeBack={handleTutorialJoinLinkPracticeBack}
+      />
+      <TutorialModal
+        open={firstExperienceOpen}
+        bracketGenerated={tutorialBracketGenerated}
+        onClose={closeFirstExperience}
+        onSwitchTab={setActiveTab}
+        onSelectSession={setSelectedSessionId}
+        onSeeded={handleFirstExperienceSeeded}
+        onCompleted={handleFirstExperienceCompleted}
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
@@ -2051,18 +2086,20 @@ export default function DashboardPage() {
               "운동 일정을 불러오는 중입니다."
             )
           ) : (
-            <SessionsPanel
-              sessions={sessions}
-              selectedSessionId={selectedSessionId}
-              publicSessionBaseUrl={publicSessionBaseUrl}
-              loadingSelectedSession={loadingSessionDetail}
-              onSelectSession={handleSelectSession}
-              onCreateSession={handleCreateSession}
-              onUpdateSession={handleUpdateSession}
-              onDeleteSession={handleDeleteSession}
-              onUpdateSessionStatus={handleUpdateSessionStatus}
-              onCancelParticipant={handleCancelParticipant}
-            />
+            <div data-tutorial-id="sessions-panel">
+              <SessionsPanel
+                sessions={sessions}
+                selectedSessionId={selectedSessionId}
+                publicSessionBaseUrl={publicSessionBaseUrl}
+                loadingSelectedSession={loadingSessionDetail}
+                onSelectSession={handleSelectSession}
+                onCreateSession={handleCreateSession}
+                onUpdateSession={handleUpdateSession}
+                onDeleteSession={handleDeleteSession}
+                onUpdateSessionStatus={handleUpdateSessionStatus}
+                onCancelParticipant={handleCancelParticipant}
+              />
+            </div>
           )
         ) : null}
 
@@ -2077,6 +2114,10 @@ export default function DashboardPage() {
               selectedSessionId={selectedSessionId}
               loadingSelectedSession={loadingSessionDetail}
               onSelectSession={handleSelectSession}
+              tutorialDefaultsActive={firstExperienceOpen}
+              onBracketGenerated={() => {
+                setTutorialBracketGenerated(true);
+              }}
             />
           )
         ) : null}

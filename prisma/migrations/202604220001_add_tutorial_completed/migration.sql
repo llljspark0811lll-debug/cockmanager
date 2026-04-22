@@ -1,0 +1,2 @@
+ALTER TABLE "Club"
+ADD COLUMN IF NOT EXISTS "tutorialCompleted" BOOLEAN NOT NULL DEFAULT false;
