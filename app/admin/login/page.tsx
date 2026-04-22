@@ -88,7 +88,7 @@ export default function AdminLoginPage() {
         </h1>
 
         <p className="mb-6 text-center text-sm text-gray-500">
-          클럽 관리자 전용 로그인 페이지입니다.
+          클럽/소모임 관리자 전용 로그인 페이지입니다.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -130,7 +130,7 @@ export default function AdminLoginPage() {
           className="mt-6 cursor-pointer text-center text-sm text-gray-500 hover:underline"
           onClick={() => router.push("/admin/signup")}
         >
-          클럽이 없나요? 새로 만들기
+          클럽/소모임이 없나요? 새로 만들기
         </p>
         <p
           className="mt-3 cursor-pointer text-center text-sm text-gray-500 hover:underline"

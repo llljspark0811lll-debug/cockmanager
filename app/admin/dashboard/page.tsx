@@ -912,7 +912,7 @@ export default function DashboardPage() {
 
   async function handlePayment() {
     if (!clubInfo) {
-      alert("클럽 정보를 불러오는 중입니다.");
+      alert("클럽/소모임 정보를 불러오는 중입니다.");
       return;
     }
 

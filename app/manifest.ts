@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "콕매니저🏸",
     short_name: "콕매니저🏸",
-    description: "배드민턴 클럽 운영 관리 프로그램",
+    description: "배드민턴 클럽/소모임 운영 관리 프로그램",
     start_url: "/admin/login",
     scope: "/",
     display: "standalone",

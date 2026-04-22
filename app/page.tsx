@@ -47,7 +47,7 @@ export default function Home() {
                 onClick={() => router.push("/admin/signup")}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 text-base font-bold text-slate-900 transition hover:bg-slate-50"
               >
-                클럽 생성하기
+                클럽/소모임 생성하기
               </button>
             </div>
 
@@ -116,7 +116,7 @@ export default function Home() {
                 바로 시작하세요
               </p>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                클럽을 만들고 관리자 계정으로 로그인하면
+                클럽/소모임을 만들고 관리자 계정으로 로그인하면
                 <br />
                 회원, 일정, 회비를 바로 관리할 수 있습니다.
               </p>
@@ -134,18 +134,18 @@ export default function Home() {
                 onClick={() => router.push("/admin/signup")}
                 className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-base font-bold text-white transition hover:bg-white/10"
               >
-                클럽 생성하기
+                클럽/소모임 생성하기
               </button>
             </div>
 
             <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-white/5 px-6 py-6">
               <p className="text-sm font-semibold text-white">
-                이런 클럽에 잘 맞습니다
+                이런 클럽/소모임에 잘 맞습니다
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-                <li>참석 조사와 명단 정리가 번거로운 클럽</li>
-                <li>월회비와 수시회비를 함께 관리하는 클럽</li>
-                <li>총무가 카카오톡과 엑셀을 같이 쓰고 있는 클럽</li>
+                <li>참석 조사와 명단 정리가 번거로운 클럽/소모임</li>
+                <li>월회비와 수시회비를 함께 관리하는 클럽/소모임</li>
+                <li>총무가 카카오톡과 엑셀을 같이 쓰고 있는 클럽/소모임</li>
               </ul>
             </div>
           </aside>

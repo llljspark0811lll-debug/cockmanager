@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "클럽 이름, 관리자 아이디, 관리자 이메일, 비밀번호, 비밀번호 확인을 입력해주세요.",
+            "클럽/소모임 이름, 관리자 아이디, 관리자 이메일, 비밀번호, 비밀번호 확인을 입력해주세요.",
         },
         { status: 400 }
       );
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      message: "클럽이 생성되었습니다.",
+      message: "클럽/소모임이 생성되었습니다.",
       clubId: result.id,
     });
   } catch (error) {

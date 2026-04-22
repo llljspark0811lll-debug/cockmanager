@@ -28,7 +28,7 @@ export async function GET(
 
     if (!club) {
       return NextResponse.json(
-        { error: "클럽 정보를 찾을 수 없습니다." },
+        { error: "클럽/소모임 정보를 찾을 수 없습니다." },
         { status: 404 }
       );
     }
@@ -42,7 +42,7 @@ export async function GET(
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "클럽 정보를 불러오지 못했습니다." },
+      { error: "클럽/소모임 정보를 불러오지 못했습니다." },
       { status: 500 }
     );
   }

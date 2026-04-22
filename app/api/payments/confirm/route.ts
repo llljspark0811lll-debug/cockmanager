@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     if (!currentClub) {
       return NextResponse.json(
-        { error: "클럽을 찾을 수 없습니다." },
+        { error: "클럽/소모임을 찾을 수 없습니다." },
         { status: 404 }
       );
     }
