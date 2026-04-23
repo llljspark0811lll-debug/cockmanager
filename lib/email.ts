@@ -3,6 +3,7 @@ type SendEmailInput = {
   subject: string;
   html: string;
   text: string;
+  replyTo?: string;
 };
 
 const RESEND_API_URL = "https://api.resend.com/emails";
@@ -29,6 +30,7 @@ export async function sendEmail(input: SendEmailInput) {
       subject: input.subject,
       html: input.html,
       text: input.text,
+      ...(input.replyTo ? { reply_to: input.replyTo } : {}),
     }),
   });
 

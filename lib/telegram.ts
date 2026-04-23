@@ -14,7 +14,8 @@ export type TelegramAlertInput =
   | { event: "SESSION_CREATE"; clubName: string; title: string; date: string }
   | { event: "SESSION_RESPOND_REGISTER"; clubName: string; sessionTitle: string; memberName: string; guestCount: number; status: string }
   | { event: "SESSION_RESPOND_CANCEL"; clubName: string; sessionTitle: string; memberName: string }
-  | { event: "SESSION_BRACKET_CREATE"; clubName: string; sessionTitle: string };
+  | { event: "SESSION_BRACKET_CREATE"; clubName: string; sessionTitle: string }
+  | { event: "SUPPORT_INQUIRY"; clubName: string; adminEmail: string; category: string; preview: string };
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,15 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         "🔀 대진표 생성",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
+      ].join("\n");
+
+    case "SUPPORT_INQUIRY":
+      return [
+        "📩 고객 문의",
+        `클럽: ${input.clubName}`,
+        `이메일: ${input.adminEmail}`,
+        `유형: ${input.category}`,
+        `내용: ${input.preview}`,
       ].join("\n");
   }
 }

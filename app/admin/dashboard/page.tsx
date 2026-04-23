@@ -24,6 +24,7 @@ import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
 import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
 import { TutorialModal } from "@/components/dashboard/TutorialModal";
+import { SupportModal } from "@/components/dashboard/SupportModal";
 import type {
   ClubInfo,
   ClubSession,
@@ -184,6 +185,7 @@ export default function DashboardPage() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [tutorialStepIndex, setTutorialStepIndex] = useState(0);
   const [tutorialFinishMode, setTutorialFinishMode] =
     useState<DashboardTutorialFinishMode>("prompt");
@@ -1906,6 +1908,10 @@ export default function DashboardPage() {
         onSeeded={handleFirstExperienceSeeded}
         onCompleted={handleFirstExperienceCompleted}
       />
+      <SupportModal
+        open={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
 
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-[2rem] border border-white/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
@@ -1915,6 +1921,7 @@ export default function DashboardPage() {
             onAddMember={openCreateMemberModal}
             onOpenPersonalSettings={openPersonalSettingsModal}
             onRestartTutorial={openTutorial}
+            onOpenSupport={() => setSupportModalOpen(true)}
             onLogout={() => {
               if (!confirm("로그아웃하시겠습니까?")) {
                 return;

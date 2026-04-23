@@ -7,6 +7,7 @@ type DashboardHeaderProps = {
   onLogout: () => void;
   onOpenPersonalSettings: () => void;
   onRestartTutorial: () => void;
+  onOpenSupport: () => void;
 };
 
 export function DashboardHeader({
@@ -16,6 +17,7 @@ export function DashboardHeader({
   onLogout,
   onOpenPersonalSettings,
   onRestartTutorial,
+  onOpenSupport,
 }: DashboardHeaderProps) {
   const subscriptionLabel = subscriptionEnd
     ? new Date(subscriptionEnd).toLocaleDateString("ko-KR")
@@ -41,6 +43,12 @@ export function DashboardHeader({
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
             >
               사용 가이드
+            </button>
+            <button
+              onClick={onOpenSupport}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            >
+              문의 / 피드백
             </button>
             <PwaInstallButton />
           </div>
