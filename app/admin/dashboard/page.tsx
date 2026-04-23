@@ -2098,6 +2098,7 @@ export default function DashboardPage() {
                 onDeleteSession={handleDeleteSession}
                 onUpdateSessionStatus={handleUpdateSessionStatus}
                 onCancelParticipant={handleCancelParticipant}
+                onRefreshSession={(id) => refreshSessionDetail(id, { silent: true })}
               />
             </div>
           )

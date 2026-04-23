@@ -5,6 +5,7 @@ import type {
   ClubSession,
   SessionParticipant,
 } from "@/components/dashboard/types";
+import { AdminRegisterModal } from "@/components/dashboard/AdminRegisterModal";
 import {
   formatDate,
   getCanceledParticipants,
@@ -46,6 +47,7 @@ type SessionsPanelProps = {
     status: ClubSession["status"]
   ) => Promise<void>;
   onCancelParticipant: (participantId: number) => Promise<void>;
+  onRefreshSession: (sessionId: number) => Promise<void>;
 };
 
 type ParticipantSummary = {
@@ -565,7 +567,9 @@ export function SessionsPanel({
   onDeleteSession,
   onUpdateSessionStatus,
   onCancelParticipant,
+  onRefreshSession,
 }: SessionsPanelProps) {
+  const [adminRegisterOpen, setAdminRegisterOpen] = useState(false);
   const [form, setForm] = useState({
     ...initialForm,
     date: getTodayDateInputValue(),
@@ -877,6 +881,18 @@ export function SessionsPanel({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)] xl:gap-6">
+      {selectedSession ? (
+        <AdminRegisterModal
+          open={adminRegisterOpen}
+          sessionId={selectedSession.id}
+          participants={selectedSession.participants ?? []}
+          onClose={() => setAdminRegisterOpen(false)}
+          onSuccess={() => {
+            onRefreshSession(selectedSession.id).catch(() => undefined);
+          }}
+        />
+      ) : null}
+
       {/* 참가 취소 확인 모달 */}
       {cancelTarget ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -1158,6 +1174,29 @@ export function SessionsPanel({
                   <p className="mt-1 break-words text-xs leading-5 text-slate-400 md:text-sm">
                     {selectedSession.description || "설명 없음"}
                   </p>
+
+                  <div className="mt-3">
+                    {selectedSession.status === "OPEN" ? (
+                      <button
+                        onClick={() => setAdminRegisterOpen(true)}
+                        className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100 md:text-sm md:px-5 md:py-2.5"
+                      >
+                        + 참석자 직접 등록
+                      </button>
+                    ) : (
+                      <div className="group relative inline-block">
+                        <button
+                          disabled
+                          className="cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-400 md:text-sm md:px-5 md:py-2.5"
+                        >
+                          + 참석자 직접 등록
+                        </button>
+                        <div className="pointer-events-none absolute left-0 top-full z-10 mt-1.5 hidden w-64 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs leading-5 text-slate-600 shadow-lg group-hover:block">
+                          마감 상태의 일정은 참석자를 추가할 수 없습니다. 모집 중으로 상태 변경을 먼저 해주세요.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
