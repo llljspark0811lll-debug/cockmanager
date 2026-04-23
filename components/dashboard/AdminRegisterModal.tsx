@@ -215,7 +215,7 @@ export function AdminRegisterModal({
         <div className="flex items-center justify-between border-b border-slate-100 px-6 pb-4 pt-6">
           <div>
             <h2 className="text-lg font-black text-slate-900">참석자 직접 등록</h2>
-            <p className="mt-0.5 text-xs text-slate-500">회원은 DB 정보 그대로 등록됩니다</p>
+            <p className="mt-0.5 text-xs text-slate-500">회원은 등록된 정보 그대로 등록됩니다</p>
           </div>
           <button
             onClick={onClose}
