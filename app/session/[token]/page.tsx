@@ -518,7 +518,9 @@ export default function PublicSessionPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "회원 확인에 실패했습니다.");
+        const err = new Error(data.error || "회원 확인에 실패했습니다.");
+        (err as Error & { status: number }).status = response.status;
+        throw err;
       }
 
       localStorage.setItem(getStorageKey(), data.rememberToken);
@@ -537,13 +539,19 @@ export default function PublicSessionPage() {
       });
       setIdentifyError("");
     } catch (error) {
+      const status = (error as Error & { status?: number }).status ?? 0;
+      // silent 모드: 일시적 오류(5xx, 네트워크)는 저장된 토큰을 유지
+      // 인증 거부(4xx)일 때만 토큰 삭제
+      const shouldClearToken = !options?.silent || (status >= 400 && status < 500);
+      if (shouldClearToken) {
+        localStorage.removeItem(getStorageKey());
+        setIdentifiedMember(null);
+      }
       if (!options?.silent) {
         setIdentifyError(
           error instanceof Error ? error.message : "회원 확인에 실패했습니다."
         );
       }
-      localStorage.removeItem(getStorageKey());
-      setIdentifiedMember(null);
     } finally {
       setIdentifyLoading(false);
     }
