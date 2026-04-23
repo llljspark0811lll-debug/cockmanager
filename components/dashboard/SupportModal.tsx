@@ -82,7 +82,7 @@ export function SupportModal({ open, onClose }: SupportModalProps) {
         {/* 헤더 */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 pb-4 pt-6">
           <div>
-            <h2 className="text-lg font-black text-slate-900">문의 / 피드백</h2>
+            <h2 className="text-lg font-black text-slate-900">문의 / 요청</h2>
             <p className="mt-0.5 text-xs text-slate-500">
               보내주신 내용을 확인 후 이메일로 답변드립니다 (1–2 영업일)
             </p>

@@ -48,7 +48,7 @@ export function DashboardHeader({
               onClick={onOpenSupport}
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
             >
-              문의 / 피드백
+              문의 / 요청
             </button>
             <PwaInstallButton />
           </div>
@@ -76,9 +76,7 @@ export function DashboardHeader({
         </div>
 
         <p className="mt-2 text-sm text-slate-500">
-          회원, 회비, 운동 일정, 출석을
-          <br />
-          한 곳에서 관리합니다.
+          회원, 회비, 통계, 운동 일정, 대진표를 한 곳에서 관리합니다.
         </p>
         {/*
         <p className="mt-3 text-xs font-medium text-slate-400">
