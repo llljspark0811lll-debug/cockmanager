@@ -11,6 +11,7 @@ type PersonalSettingsModalProps = {
   onChangeCurrentPassword: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
+  onDeleteAccount: () => void;
 };
 
 export function PersonalSettingsModal({
@@ -24,6 +25,7 @@ export function PersonalSettingsModal({
   onChangeCurrentPassword,
   onClose,
   onSubmit,
+  onDeleteAccount,
 }: PersonalSettingsModalProps) {
   if (!open) {
     return null;
@@ -108,6 +110,22 @@ export function PersonalSettingsModal({
             >
               {saving ? "저장 중..." : "변경 저장"}
             </button>
+          </div>
+
+          {/* 위험 영역 */}
+          <div className="border-t border-dashed border-rose-200 bg-rose-50/60 px-6 py-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-black text-rose-700">계정 탈퇴</p>
+                <p className="mt-0.5 text-xs text-rose-400">클럽과 모든 데이터가 영구 삭제됩니다</p>
+              </div>
+              <button
+                onClick={onDeleteAccount}
+                className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-xs font-bold text-rose-600 transition hover:border-rose-400 hover:bg-rose-600 hover:text-white"
+              >
+                탈퇴하기
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -25,6 +25,7 @@ import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
 import { TutorialModal } from "@/components/dashboard/TutorialModal";
 import { SupportModal } from "@/components/dashboard/SupportModal";
+import { DeleteAccountModal } from "@/components/dashboard/DeleteAccountModal";
 import type {
   ClubInfo,
   ClubSession,
@@ -160,6 +161,7 @@ export default function DashboardPage() {
     useState("");
   const [savingPersonalSettings, setSavingPersonalSettings] =
     useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [approvingRequestIds, setApprovingRequestIds] =
     useState<number[]>([]);
   const [processingAllRequests, setProcessingAllRequests] =
@@ -2193,6 +2195,17 @@ export default function DashboardPage() {
           handleSavePersonalSettings().catch((error: Error) => {
             alert(error.message);
           });
+        }}
+        onDeleteAccount={() => {
+          setShowPersonalSettingsModal(false);
+          setDeleteAccountOpen(true);
+        }}
+      />
+      <DeleteAccountModal
+        open={deleteAccountOpen}
+        onClose={() => setDeleteAccountOpen(false)}
+        onDeleted={() => {
+          router.push("/admin/login");
         }}
       />
     </main>

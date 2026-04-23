@@ -242,24 +242,24 @@ body{background:#FEF9EE;display:flex;flex-direction:column;justify-content:space
 // ── 일: 숫자 카드 (월간 총무 업무 시간) ──────────────────────────────────
 { name: "sun_numbers", html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 ${BASE}
-body{background:#0F172A;display:flex;flex-direction:column;justify-content:space-between;
+body{background:#EFF6FF;display:flex;flex-direction:column;justify-content:space-between;
   align-items:center;padding:72px 80px;}
 .top{text-align:center;}
-.kicker{font-size:20px;font-weight:700;color:#64748B;letter-spacing:3px;margin-bottom:20px;}
-.title{font-size:48px;font-weight:900;color:#fff;line-height:1.25;}
-.title em{color:#FACC15;font-style:normal;}
+.kicker{font-size:20px;font-weight:700;color:#0369A1;letter-spacing:3px;margin-bottom:20px;}
+.title{font-size:48px;font-weight:900;color:#0F172A;line-height:1.25;}
+.title em{color:#0284C7;font-style:normal;}
 .stats{display:flex;flex-direction:column;gap:16px;width:100%;}
 .row{display:flex;gap:16px;}
-.stat{flex:1;background:#1E293B;border-radius:22px;padding:28px 24px;}
+.stat{flex:1;background:#FFFFFF;border:1.5px solid #BAE6FD;border-radius:22px;padding:28px 24px;}
 .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .stat-icon{font-size:28px;}
-.stat-label{font-size:16px;font-weight:700;color:#475569;letter-spacing:1px;}
+.stat-label{font-size:16px;font-weight:700;color:#0369A1;letter-spacing:1px;}
 .stat-num{font-size:58px;font-weight:900;line-height:1;margin-bottom:8px;}
-.s1 .stat-num{color:#C084FC;}
-.s2 .stat-num{color:#F97316;}
-.s3 .stat-num{color:#60A5FA;}
-.s4 .stat-num{color:#34D399;}
-.stat-desc{font-size:15px;color:#475569;line-height:1.5;}
+.s1 .stat-num{color:#7C3AED;}
+.s2 .stat-num{color:#EA580C;}
+.s3 .stat-num{color:#2563EB;}
+.s4 .stat-num{color:#059669;}
+.stat-desc{font-size:15px;color:#64748B;line-height:1.5;}
 .total{background:linear-gradient(135deg,#FACC15,#F59E0B);border-radius:22px;
   padding:28px 36px;width:100%;display:flex;align-items:center;justify-content:space-between;}
 .total-left{}
@@ -272,7 +272,7 @@ body{background:#0F172A;display:flex;flex-direction:column;justify-content:space
 </style></head><body>
   <div class="top">
     <div class="kicker">NUMBERS</div>
-    <div class="title">동호회 총무님이<br>한 달에 쓰는 <em>시간</em></div>
+    <div class="title">배드민턴 총무님이<br>한 달에 쓰는 <em>시간</em></div>
   </div>
   <div class="stats">
     <div class="row">
