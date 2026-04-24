@@ -14,6 +14,14 @@ export {
 
 const LEVEL_ORDER = ["S", "A", "B", "C", "D", "E", "초심"];
 
+function ageGroupLabel(age: number): string {
+  if (age <= 29) return "10/20대";
+  if (age <= 39) return "30대";
+  if (age <= 49) return "40대";
+  if (age <= 59) return "50대";
+  return "60대";
+}
+
 export function formatDate(
   value: string | Date | null | undefined
 ) {
@@ -201,7 +209,7 @@ export function getParticipantMetaText(
         ? normalizeGenderLabel(participant.guestGender)
         : "",
       participant.guestLevel?.trim() ?? "",
-      participant.guestAge ? `${participant.guestAge}세` : "",
+      participant.guestAge ? ageGroupLabel(participant.guestAge) : "",
     ].filter(Boolean);
 
     return guestMeta.length > 0
@@ -245,7 +253,7 @@ export function getParticipantRemarkText(
     const notes = [];
 
     if (participant.guestAge) {
-      notes.push(`${participant.guestAge}세`);
+      notes.push(ageGroupLabel(participant.guestAge));
     }
 
     if (participant.hostMember?.name) {
