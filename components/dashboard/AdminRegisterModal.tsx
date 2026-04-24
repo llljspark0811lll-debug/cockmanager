@@ -110,7 +110,7 @@ export function AdminRegisterModal({
   const activeParticipantMemberIds = useMemo(() => {
     const ids = new Set<number>();
     for (const p of participants) {
-      if (p.memberId && (p.status === "REGISTERED" || p.status === "WAITLIST")) {
+      if (p.memberId && (p.status === "REGISTERED" || p.status === "WAITLIST" || p.status === "CANCELED")) {
         ids.add(p.memberId);
       }
     }
