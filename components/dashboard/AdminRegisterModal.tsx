@@ -355,12 +355,12 @@ export function AdminRegisterModal({
               {/* 연령대 */}
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-700">연령대</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {AGE_GROUPS.map(({ label, value }) => (
                     <button
                       key={value}
                       onClick={() => setGuestAge(guestAge === value ? "" : value)}
-                      className={`rounded-2xl border px-4 py-2 text-sm font-bold transition ${
+                      className={`rounded-2xl border py-2 text-sm font-bold transition text-center ${
                         guestAge === value
                           ? "bg-sky-600 text-white border-sky-600"
                           : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"

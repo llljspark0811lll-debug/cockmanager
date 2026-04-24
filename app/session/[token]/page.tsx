@@ -1085,29 +1085,27 @@ export default function PublicSessionPage() {
                   <p className="text-sm leading-6 text-slate-500">
                     회원이 아니어도 게스트로 참석 신청할 수 있습니다. 신청 취소는 관리자를 통해 처리됩니다.
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      placeholder="이름"
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
-                    />
-                    <div className="grid grid-cols-5 gap-1">
-                      {[{ label: "10/20대", value: "20" }, { label: "30대", value: "30" }, { label: "40대", value: "40" }, { label: "50대", value: "50" }, { label: "60대", value: "60" }].map(({ label, value }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setGuestAge(guestAge === value ? "" : value)}
-                          className={`rounded-2xl border py-3 text-sm font-bold transition text-center ${
-                            guestAge === value
-                              ? "bg-sky-500 text-white border-sky-500"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                  <input
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="이름"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                  />
+                  <div className="grid grid-cols-5 gap-1">
+                    {[{ label: "10/20대", value: "20" }, { label: "30대", value: "30" }, { label: "40대", value: "40" }, { label: "50대", value: "50" }, { label: "60대", value: "60" }].map(({ label, value }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setGuestAge(guestAge === value ? "" : value)}
+                        className={`rounded-2xl border py-3 text-xs font-bold transition text-center ${
+                          guestAge === value
+                            ? "bg-sky-500 text-white border-sky-500"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <select
@@ -1263,16 +1261,14 @@ export default function PublicSessionPage() {
                               </button>
                             </div>
                             <div className="mt-3 space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
-                                <input value={guest.name} onChange={(event) => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, name: event.target.value } : item) } : previous)} placeholder="게스트 이름" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400" />
-                                <div className="grid grid-cols-5 gap-1">
-                                  {[{ label: "10/20대", value: "20" }, { label: "30대", value: "30" }, { label: "40대", value: "40" }, { label: "50대", value: "50" }, { label: "60대", value: "60" }].map(({ label, value }) => (
-                                    <button key={value} type="button"
-                                      onClick={() => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, age: item.age === value ? "" : value } : item) } : previous)}
-                                      className={`rounded-2xl border py-3 text-sm font-bold transition text-center ${guest.age === value ? "bg-sky-500 text-white border-sky-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
-                                    >{label}</button>
-                                  ))}
-                                </div>
+                              <input value={guest.name} onChange={(event) => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, name: event.target.value } : item) } : previous)} placeholder="게스트 이름" className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400" />
+                              <div className="grid grid-cols-5 gap-1">
+                                {[{ label: "10/20대", value: "20" }, { label: "30대", value: "30" }, { label: "40대", value: "40" }, { label: "50대", value: "50" }, { label: "60대", value: "60" }].map(({ label, value }) => (
+                                  <button key={value} type="button"
+                                    onClick={() => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, age: item.age === value ? "" : value } : item) } : previous)}
+                                    className={`rounded-2xl border py-3 text-xs font-bold transition text-center ${guest.age === value ? "bg-sky-500 text-white border-sky-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+                                  >{label}</button>
+                                ))}
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <select value={guest.gender} onChange={(event) => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, gender: event.target.value } : item) } : previous)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400">
