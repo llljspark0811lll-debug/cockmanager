@@ -3,14 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { sendTelegramNewClubAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
+const ADMIN_USERNAME_REGEX = /^[A-Za-z0-9]+$/;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { clubName, username, email, password, confirmPassword } =
       body;
+    const trimmedUsername = String(username ?? "").trim();
     console.log("[signup] New club signup requested", {
       clubName: String(clubName ?? "").trim(),
-      username: String(username ?? "").trim(),
+      username: trimmedUsername,
       email: String(email ?? "").trim().toLowerCase(),
     });
 
@@ -44,8 +47,17 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!ADMIN_USERNAME_REGEX.test(trimmedUsername)) {
+      return NextResponse.json(
+        {
+          error: "관리자 아이디는 영문과 숫자만 사용할 수 있습니다.",
+        },
+        { status: 400 }
+      );
+    }
+
     const existingAdmin = await prisma.admin.findUnique({
-      where: { username: String(username).trim() },
+      where: { username: trimmedUsername },
     });
 
     if (existingAdmin) {
@@ -77,7 +89,7 @@ export async function POST(req: Request) {
 
       await tx.admin.create({
         data: {
-          username: String(username).trim(),
+          username: trimmedUsername,
           email: String(email).trim().toLowerCase(),
           password: hashedPassword,
           clubId: club.id,

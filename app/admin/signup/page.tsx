@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const ADMIN_USERNAME_REGEX = /^[A-Za-z0-9]+$/;
+
 export default function AdminSignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -26,6 +28,11 @@ export default function AdminSignupPage() {
 
     if (form.password.length < 6) {
       alert("비밀번호는 6자 이상으로 입력해주세요.");
+      return;
+    }
+
+    if (!ADMIN_USERNAME_REGEX.test(form.username.trim())) {
+      alert("관리자 아이디는 영문과 숫자만 사용할 수 있습니다.");
       return;
     }
 
@@ -75,6 +82,7 @@ export default function AdminSignupPage() {
             placeholder="관리자 아이디"
             className="w-full rounded-lg border p-3"
             value={form.username}
+            inputMode="text"
             onChange={(event) =>
               setForm({
                 ...form,
@@ -82,6 +90,9 @@ export default function AdminSignupPage() {
               })
             }
           />
+          <p className="-mt-2 text-xs leading-5 text-slate-500">
+            관리자 아이디는 영문과 숫자만 사용할 수 있습니다.
+          </p>
           <input
             type="password"
             placeholder="비밀번호"

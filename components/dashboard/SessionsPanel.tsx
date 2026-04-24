@@ -870,6 +870,18 @@ export function SessionsPanel({
     }
   }
 
+  async function handleUpdateStatus(
+    sessionId: number,
+    status: ClubSession["status"]
+  ) {
+    await onUpdateSessionStatus(sessionId, status);
+    alert(
+      status === "OPEN"
+        ? "운동 일정이 모집중으로 변경되었습니다."
+        : "운동 일정이 마감으로 변경되었습니다."
+    );
+  }
+
   function startEditingSelectedSession() {
     if (!selectedSession) {
       return;
@@ -1211,7 +1223,7 @@ export function SessionsPanel({
                       <button
                         key={status}
                         onClick={() =>
-                          onUpdateSessionStatus(
+                          handleUpdateStatus(
                             selectedSession.id,
                             status
                           ).catch((error: Error) => {
