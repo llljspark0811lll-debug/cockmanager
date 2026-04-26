@@ -7,7 +7,7 @@ const ffmpeg = require("ffmpeg-static");
 const ROOT = process.cwd();
 const TEMP_DIR = path.join(ROOT, "tmp", "reel-0");
 const OUTPUT_DIR = path.join(ROOT, "exports");
-const OUTPUT_VIDEO = path.join(OUTPUT_DIR, "reel-0-kokmanager.mp4");
+const OUTPUT_VIDEO = path.join(OUTPUT_DIR, "reel-0-cockmanager.mp4");
 const CONCAT_FILE = path.join(TEMP_DIR, "slides.txt");
 
 const WIDTH = 1080;
@@ -88,7 +88,7 @@ function makeSvgOverlay({ label, title, body }) {
     <rect x="86" y="532" width="${SCREENSHOT_WIDTH + 68}" height="${SCREENSHOT_HEIGHT + 68}" rx="40" fill="#ffffff" filter="url(#shadow)"/>
 
     <rect x="96" y="1300" width="888" height="360" rx="36" fill="#0b1020" filter="url(#soft)"/>
-    <text x="144" y="1396" fill="#7bb9ff" font-size="28" font-weight="800" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif" letter-spacing="4">KOK MANAGER</text>
+    <text x="144" y="1396" fill="#7bb9ff" font-size="28" font-weight="800" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif" letter-spacing="4">COCKMANAGER</text>
     <text x="144" y="1468" fill="#ffffff" font-size="56" font-weight="900" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif">총무 운영을 더 간단하게</text>
     <text x="144" y="1548" fill="#d6dcef" font-size="34" font-weight="500" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif">
       ${body

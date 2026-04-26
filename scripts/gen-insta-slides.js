@@ -195,7 +195,7 @@ const slides = [
         <button class="mock-btn">가입 신청하기</button>
         <div class="link-box">
           <div class="link-chip">링크</div>
-          kokmanager.com/join/abc123
+          cockmanager.kr/join/abc123
         </div>
       </div>
     </div>

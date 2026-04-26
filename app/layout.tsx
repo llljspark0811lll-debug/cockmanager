@@ -22,12 +22,12 @@ function getMetadataBase() {
     process.env.APP_BASE_URL ||
     (process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : "https://badminton-club-web.vercel.app");
+      : "https://cockmanager.kr");
 
   try {
     return new URL(configuredUrl);
   } catch {
-    return new URL("https://badminton-club-web.vercel.app");
+    return new URL("https://cockmanager.kr");
   }
 }
 

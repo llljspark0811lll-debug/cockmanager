@@ -1,11 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc -l /c/Users/user/badminton-club-web/app/**/*.tsx /c/Users/user/badminton-club-web/components/**/*.tsx /c/Users/user/badminton-club-web/lib/*.ts /c/Users/user/badminton-club-web/app/api/**/*.ts)",
+      "Bash(wc -l /c/Users/user/cockmanager/app/**/*.tsx /c/Users/user/cockmanager/components/**/*.tsx /c/Users/user/cockmanager/lib/*.ts /c/Users/user/cockmanager/app/api/**/*.ts)",
       "Bash(npx tsc *)",
       "Bash(curl -s \"http://localhost:3000/api/public/sessions/cmng89i6m0001l80412knw3f8\")",
-      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/badminton-club-web/scripts/gen-insta-v2.js\")",
-      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/badminton-club-web/scripts/gen-insta-slides.js\")"
+      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/cockmanager/scripts/gen-insta-v2.js\")",
+      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/cockmanager/scripts/gen-insta-slides.js\")"
     ]
   }
 }

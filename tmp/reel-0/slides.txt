@@ -1,11 +1,11 @@
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-01.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-01.png'
 duration 3
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-02.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-02.png'
 duration 3
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-03.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-03.png'
 duration 3
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-04.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-04.png'
 duration 3
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-05.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-05.png'
 duration 3
-file 'C:/Users/user/badminton-club-web/tmp/reel-0/slide-05.png'
+file 'C:/Users/user/cockmanager/tmp/reel-0/slide-05.png'

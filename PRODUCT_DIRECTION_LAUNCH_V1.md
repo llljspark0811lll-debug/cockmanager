@@ -1,4 +1,4 @@
-# Badminton Club SaaS: Launch V1 Direction
+# Cockmanager: Launch V1 Direction
 
 ## Product Position
 

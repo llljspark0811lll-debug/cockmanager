@@ -1696,7 +1696,7 @@ export default function DashboardPage() {
   function markTutorialAsCompleted() {
     if (clubInfo) {
       window.localStorage.setItem(
-        `kokmanager-dashboard-tutorial:${clubInfo.id}`,
+        `cockmanager-dashboard-tutorial:${clubInfo.id}`,
         "done"
       );
     }
