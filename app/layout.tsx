@@ -89,14 +89,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <head>
-        {/* 브라우저 기본 PWA 설치 프롬프트를 전체 차단 (커스텀 버튼만 허용) */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallEvent=e;});})();`,
-          }}
-        />
-      </head>
+      <head />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

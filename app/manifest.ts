@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "배드민턴 클럽/소모임 운영 관리 프로그램",
     start_url: "/admin/login",
     scope: "/",
-    display: "standalone",
+    display: "browser",
     orientation: "portrait",
     background_color: "#f8fbff",
     theme_color: "#111827",
