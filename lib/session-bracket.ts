@@ -237,13 +237,64 @@ function getPoolMatchLimit(pool: Pool) {
   return Math.floor(pool.players.length / 4);
 }
 
+function getPoolRecoveryMatchFloor(pool: Pool) {
+  const matchLimit = getPoolMatchLimit(pool);
+
+  if (matchLimit <= 0) {
+    return 0;
+  }
+
+  const maxSelectableNextRound = matchLimit * 4;
+  const unrecoverableCarryCount =
+    pool.players.length - maxSelectableNextRound;
+
+  if (unrecoverableCarryCount <= 0) {
+    return 0;
+  }
+
+  return Math.ceil(unrecoverableCarryCount / 4);
+}
+
+function getPoolAverageGames(
+  pool: Pool,
+  states: Map<string, PlayerState>
+) {
+  if (pool.players.length === 0) {
+    return 0;
+  }
+
+  const totalGames = pool.players.reduce((total, player) => {
+    return total + (states.get(player.playerId)?.games ?? 0);
+  }, 0);
+
+  return totalGames / pool.players.length;
+}
+
+function getOverallAverageGames(
+  pools: Pool[],
+  states: Map<string, PlayerState>
+) {
+  const players = pools.flatMap((pool) => pool.players);
+
+  if (players.length === 0) {
+    return 0;
+  }
+
+  const totalGames = players.reduce((total, player) => {
+    return total + (states.get(player.playerId)?.games ?? 0);
+  }, 0);
+
+  return totalGames / players.length;
+}
+
 function getPoolMatchPriority(
   pool: Pool,
   currentMatches: number,
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
   minGamesPerPlayer: number,
-  randomOrder: Map<string, number>
+  randomOrder: Map<string, number>,
+  overallAverageGames: number
 ) {
   const nextSelectedCount = (currentMatches + 1) * 4;
   const orderedPlayers = sortPlayersForSelection(
@@ -259,18 +310,30 @@ function getPoolMatchPriority(
   }
 
   const selectedPlayers = orderedPlayers.slice(0, nextSelectedCount);
+  const poolAverageGames = getPoolAverageGames(pool, states);
+  const gameGap = overallAverageGames - poolAverageGames;
 
   return selectedPlayers.reduce((total, player, index) => {
     const state = states.get(player.playerId)!;
     const unmetGames = Math.max(0, minGamesPerPlayer - state.games);
     const mustPlayBonus = previousRested.has(player.playerId)
-      ? 2
+      ? 6
       : 0;
+    const lowGamesBonus = Math.max(
+      0,
+      overallAverageGames - state.games
+    );
     const randomBias =
       (randomOrder.get(player.playerId) ?? 0) * (index + 1) * 0.01;
 
-    return total + unmetGames * 10 + mustPlayBonus + randomBias;
-  }, 0);
+    return (
+      total +
+      unmetGames * 10 +
+      mustPlayBonus +
+      lowGamesBonus * 4 +
+      randomBias
+    );
+  }, gameGap * 40 - currentMatches * 12);
 }
 
 function allocateMatchesForRound(
@@ -283,6 +346,10 @@ function allocateMatchesForRound(
 ) {
   const allocations = new Map<DivisionKey, number>();
   let requiredMatches = 0;
+  const overallAverageGames = getOverallAverageGames(
+    pools,
+    states
+  );
 
   for (const pool of pools) {
     if (pool.players.length > 0 && pool.players.length < 4) {
@@ -304,7 +371,16 @@ function allocateMatchesForRound(
     const mustPlayCount = pool.players.filter((player) =>
       previousRested.has(player.playerId)
     ).length;
-    const required = mustPlayCount === 0 ? 0 : Math.ceil(mustPlayCount / 4);
+    const requiredFromPreviousRest =
+      mustPlayCount === 0
+        ? 0
+        : Math.ceil(mustPlayCount / 4);
+    const requiredForRecovery =
+      getPoolRecoveryMatchFloor(pool);
+    const required = Math.max(
+      requiredFromPreviousRest,
+      requiredForRecovery
+    );
 
     if (required > getPoolMatchLimit(pool)) {
       throw new Error(
@@ -342,7 +418,8 @@ function allocateMatchesForRound(
         states,
         previousRested,
         minGamesPerPlayer,
-        randomOrder
+        randomOrder,
+        overallAverageGames
       );
 
       if (priority > bestPriority) {
