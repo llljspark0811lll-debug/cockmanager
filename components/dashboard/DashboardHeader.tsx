@@ -1,4 +1,3 @@
-
 type DashboardHeaderProps = {
   clubName: string;
   subscriptionEnd?: string | Date | null;
@@ -36,13 +35,13 @@ export function DashboardHeader({
         </div>
 
         <p className="mt-2 text-sm text-slate-500">
-          회원, 회비, 통계, 운동 일정, 대진표를 한 곳에서 관리합니다.
+          회원, 회비, 통계, 운동 일정, 자동 대진표를 한 곳에서 관리합니다.
         </p>
         {/*
         <p className="mt-3 text-xs font-medium text-slate-400">
           구독 만료일 {subscriptionLabel}
         </p>
-        */}        
+        */}
       </div>
 
       <div className="flex w-full items-center gap-1.5 md:w-auto md:gap-2">
@@ -84,6 +83,59 @@ export function DashboardHeader({
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-.33-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.33H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1-.33 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 .33 1 1.65 1.65 0 0 0 1 .6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.24.31.44.65.6 1a1.65 1.65 0 0 0 1 .33H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1 .33 1.65 1.65 0 0 0-.51.34z" />
           </svg>
         </button>
+        <a
+          href="https://www.instagram.com/cock_manager_official/"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="콕매니저 인스타그램"
+          title="콕매니저 인스타그램"
+          className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white transition hover:border-rose-200 hover:bg-rose-50 md:h-11 md:w-11"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-5 w-5"
+            fill="none"
+          >
+            <defs>
+              <linearGradient
+                id="instagramOutlineGradient"
+                x1="0%"
+                y1="100%"
+                x2="100%"
+                y2="0%"
+              >
+                <stop offset="0%" stopColor="#feda75" />
+                <stop offset="35%" stopColor="#fa7e1e" />
+                <stop offset="65%" stopColor="#d62976" />
+                <stop offset="100%" stopColor="#962fbf" />
+              </linearGradient>
+            </defs>
+            <rect
+              x="3"
+              y="3"
+              width="18"
+              height="18"
+              rx="5"
+              ry="5"
+              stroke="url(#instagramOutlineGradient)"
+              strokeWidth="2"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="4"
+              stroke="url(#instagramOutlineGradient)"
+              strokeWidth="2"
+            />
+            <circle
+              cx="17.5"
+              cy="6.5"
+              r="1.2"
+              fill="url(#instagramOutlineGradient)"
+            />
+          </svg>
+        </a>
       </div>
     </div>
   );
