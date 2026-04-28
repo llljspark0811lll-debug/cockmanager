@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ClubSession,
   SessionBracket,
@@ -68,6 +68,7 @@ export function SessionBracketPanel({
   );
   const [exportMessage, setExportMessage] = useState("");
   const [exportError, setExportError] = useState("");
+  const [swapNotice, setSwapNotice] = useState("");
   const [exportingMode, setExportingMode] = useState<
     "download" | null
   >(null);
@@ -81,6 +82,7 @@ export function SessionBracketPanel({
     playerIndex: number;
   };
   const [swapSelection, setSwapSelection] = useState<SwapSelection | null>(null);
+  const swapNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const registeredCount =
     session.registeredCount ??
@@ -102,8 +104,17 @@ export function SessionBracketPanel({
     setLoaded(false);
     setExportMessage("");
     setExportError("");
+    setSwapNotice("");
     setExportingMode(null);
   }, [session.id, tutorialDefaultsActive]);
+
+  useEffect(() => {
+    return () => {
+      if (swapNoticeTimeoutRef.current) {
+        clearTimeout(swapNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +248,7 @@ export function SessionBracketPanel({
     setError("");
     setExportMessage("");
     setExportError("");
+    setSwapNotice("");
 
     try {
       const response = await fetch("/api/sessions/bracket", {
@@ -287,6 +299,8 @@ export function SessionBracketPanel({
   ) {
     if (!bracket) return;
 
+    setSwapNotice("");
+
     // 같은 선수 → 선택 해제
     if (
       swapSelection?.roundIndex === roundIndex &&
@@ -298,27 +312,42 @@ export function SessionBracketPanel({
       return;
     }
 
-    // 다른 경기 선수 클릭 → 선택 대상 변경
-    if (
-      !swapSelection ||
-      swapSelection.roundIndex !== roundIndex ||
-      swapSelection.matchIndex !== matchIndex
-    ) {
+    // 첫 번째 선수 선택
+    if (!swapSelection) {
       setSwapSelection({ roundIndex, matchIndex, team, playerIndex });
       return;
     }
 
-    // 같은 경기 다른 선수 → 스왑
+    // 다른 라운드 선수 클릭 → 안내만 표시하고 첫 선택 유지
+    if (swapSelection.roundIndex !== roundIndex) {
+      const message =
+        "다른 라운드 선수와는 위치를 바꿀 수 없습니다.\n같은 라운드에서 선택해 주세요.";
+      if (swapNoticeTimeoutRef.current) {
+        clearTimeout(swapNoticeTimeoutRef.current);
+      }
+      setSwapNotice(message);
+      swapNoticeTimeoutRef.current = setTimeout(() => {
+        setSwapNotice("");
+        swapNoticeTimeoutRef.current = null;
+      }, 3000);
+      return;
+    }
+
+    // 같은 라운드 다른 선수 → 스왑
     const newBracket = JSON.parse(JSON.stringify(bracket)) as SessionBracket;
-    const match = newBracket.rounds[roundIndex].matches[matchIndex];
-    const fromTeam = swapSelection.team === "A" ? match.teamA : match.teamB;
-    const toTeam = team === "A" ? match.teamA : match.teamB;
+    const fromMatch =
+      newBracket.rounds[swapSelection.roundIndex].matches[swapSelection.matchIndex];
+    const toMatch = newBracket.rounds[roundIndex].matches[matchIndex];
+    const fromTeam =
+      swapSelection.team === "A" ? fromMatch.teamA : fromMatch.teamB;
+    const toTeam = team === "A" ? toMatch.teamA : toMatch.teamB;
     const fromPlayer = fromTeam.players[swapSelection.playerIndex];
     const toPlayer = toTeam.players[playerIndex];
     fromTeam.players[swapSelection.playerIndex] = toPlayer;
     toTeam.players[playerIndex] = fromPlayer;
     setBracket(newBracket);
     setSwapSelection(null);
+    setSwapNotice("");
   }
 
   async function handleExport() {
@@ -643,7 +672,7 @@ export function SessionBracketPanel({
               {swapSelection && (
                 <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5">
                   <span className="text-xs font-bold text-sky-700">
-                    ✦ 바꿀 선수를 같은 경기에서 선택하세요
+                    ✦ 바꿀 선수를 같은 라운드에서 선택하세요
                   </span>
                   <button
                     type="button"
@@ -689,9 +718,8 @@ export function SessionBracketPanel({
                         </div>
 
                         {(() => {
-                          const isThisMatchSelected =
-                            swapSelection?.roundIndex === roundIndex &&
-                            swapSelection?.matchIndex === matchIndex;
+                          const isThisRoundSelected =
+                            swapSelection?.roundIndex === roundIndex;
 
                           const renderTeam = (team: "A" | "B") => {
                             const teamData = team === "A" ? match.teamA : match.teamB;
@@ -712,7 +740,7 @@ export function SessionBracketPanel({
                                       swapSelection?.matchIndex === matchIndex &&
                                       swapSelection?.team === team &&
                                       swapSelection?.playerIndex === playerIndex;
-                                    const isSwappable = isThisMatchSelected && !isSelected;
+                                    const isSwappable = isThisRoundSelected && !isSelected;
                                     return (
                                       <button
                                         key={player.playerId}
@@ -817,6 +845,12 @@ export function SessionBracketPanel({
           <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
             아직 저장된 자동 대진표가 없습니다. 설정을 확인한 뒤 생성 버튼을
             눌러 주세요.
+          </div>
+        ) : null}
+
+        {swapNotice ? (
+          <div className="pointer-events-none fixed bottom-5 right-5 z-50 max-w-[calc(100vw-2.5rem)] animate-pulse whitespace-pre-line rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700 shadow-lg md:bottom-6 md:right-6 md:max-w-sm">
+            {swapNotice}
           </div>
         ) : null}
       </div>
