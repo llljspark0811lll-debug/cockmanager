@@ -4,6 +4,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 const feeSelect = {
@@ -24,14 +25,12 @@ type FeeRow = {
 
 type MemberRow = {
   id: number;
+  name: string;
 };
 
-async function getValidMember(
-  memberId: number,
-  clubId: number
-) {
+async function getValidMember(memberId: number, clubId: number) {
   const rows = await prisma.$queryRaw<MemberRow[]>`
-    SELECT "id"
+    SELECT "id", "name"
     FROM "Member"
     WHERE "id" = ${memberId}
       AND "clubId" = ${clubId}
@@ -44,17 +43,14 @@ async function getValidMember(
 export async function GET(req: Request) {
   try {
     const admin = await requireAuthAdmin();
-
-    if (!admin) {
-      return unauthorizedResponse();
-    }
+    if (!admin) return unauthorizedResponse();
 
     const { searchParams } = new URL(req.url);
     const year = Number(searchParams.get("year"));
 
     if (!Number.isFinite(year)) {
       return NextResponse.json(
-        { error: "연도를 올바르게 입력해주세요." },
+        { error: "연도를 올바르게 입력해 주세요." },
         { status: 400 }
       );
     }
@@ -84,10 +80,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const admin = await requireAuthAdmin();
-
-    if (!admin) {
-      return unauthorizedResponse();
-    }
+    if (!admin) return unauthorizedResponse();
 
     const body = await req.json();
     const memberId = Number(body.memberId);
@@ -95,32 +88,40 @@ export async function POST(req: Request) {
     const month = Number(body.month);
     const paid = Boolean(body.paid);
 
-    if (
-      !Number.isFinite(memberId) ||
-      !Number.isFinite(year) ||
-      !Number.isFinite(month)
-    ) {
+    if (!Number.isFinite(memberId) || !Number.isFinite(year) || !Number.isFinite(month)) {
       return NextResponse.json(
         { error: "필수 데이터가 누락되었습니다." },
         { status: 400 }
       );
     }
 
+    const member = await getValidMember(memberId, admin.clubId);
+    if (!member) {
+      return notFoundResponse("회비를 수정할 회원을 찾을 수 없습니다.");
+    }
+
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+    const clubName = club?.name ?? String(admin.clubId);
+
     if (!paid) {
-      const member = await getValidMember(memberId, admin.clubId);
-
-      if (!member) {
-        return notFoundResponse(
-          "회비를 수정할 회원을 찾을 수 없습니다."
-        );
-      }
-
       await prisma.$executeRaw`
         DELETE FROM "Fee"
         WHERE "memberId" = ${member.id}
           AND "year" = ${year}
           AND "month" = ${month}
       `;
+
+      void sendTelegramAlert({
+        event: "MONTHLY_FEE_TOGGLE",
+        clubName,
+        memberName: member.name,
+        year,
+        month,
+        paid: false,
+      });
 
       return NextResponse.json({
         id: 0,
@@ -132,17 +133,9 @@ export async function POST(req: Request) {
     }
 
     const fees = await prisma.$queryRaw<FeeRow[]>`
-      WITH valid_member AS (
-        SELECT "id"
-        FROM "Member"
-        WHERE "id" = ${memberId}
-          AND "clubId" = ${admin.clubId}
-          AND "deleted" = false
-      ),
-      upserted AS (
+      WITH upserted AS (
         INSERT INTO "Fee" ("memberId", "year", "month", "paid")
-        SELECT "id", ${year}, ${month}, true
-        FROM valid_member
+        VALUES (${member.id}, ${year}, ${month}, true)
         ON CONFLICT ("memberId", "year", "month")
         DO UPDATE SET "paid" = EXCLUDED."paid"
         RETURNING "id", "memberId", "year", "month", "paid"
@@ -152,12 +145,18 @@ export async function POST(req: Request) {
     `;
 
     const fee = fees[0];
-
     if (!fee) {
-      return notFoundResponse(
-        "회비를 수정할 회원을 찾을 수 없습니다."
-      );
+      return notFoundResponse("회비를 수정할 회원을 찾을 수 없습니다.");
     }
+
+    void sendTelegramAlert({
+      event: "MONTHLY_FEE_TOGGLE",
+      clubName,
+      memberName: member.name,
+      year,
+      month,
+      paid: true,
+    });
 
     return NextResponse.json(fee);
   } catch (error) {
@@ -172,10 +171,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const admin = await requireAuthAdmin();
-
-    if (!admin) {
-      return unauthorizedResponse();
-    }
+    if (!admin) return unauthorizedResponse();
 
     const body = await req.json();
     const memberId = Number(body.memberId);
@@ -189,37 +185,40 @@ export async function PUT(req: Request) {
       );
     }
 
+    const member = await getValidMember(memberId, admin.clubId);
+    if (!member) {
+      return notFoundResponse("회비를 수정할 회원을 찾을 수 없습니다.");
+    }
+
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+    const clubName = club?.name ?? String(admin.clubId);
+
     if (!paid) {
-      const member = await getValidMember(memberId, admin.clubId);
-
-      if (!member) {
-        return notFoundResponse(
-          "회비를 수정할 회원을 찾을 수 없습니다."
-        );
-      }
-
       await prisma.$executeRaw`
         DELETE FROM "Fee"
         WHERE "memberId" = ${member.id}
           AND "year" = ${year}
       `;
 
+      void sendTelegramAlert({
+        event: "YEARLY_FEE_TOGGLE",
+        clubName,
+        memberName: member.name,
+        year,
+        paid: false,
+      });
+
       return NextResponse.json([]);
     }
 
     const fees = await prisma.$queryRaw<FeeRow[]>`
-      WITH valid_member AS (
-        SELECT "id"
-        FROM "Member"
-        WHERE "id" = ${memberId}
-          AND "clubId" = ${admin.clubId}
-          AND "deleted" = false
-      ),
-      upserted AS (
+      WITH upserted AS (
         INSERT INTO "Fee" ("memberId", "year", "month", "paid")
-        SELECT vm."id", ${year}, gs.month, true
-        FROM valid_member vm
-        CROSS JOIN generate_series(1, 12) AS gs(month)
+        SELECT ${member.id}, ${year}, gs.month, true
+        FROM generate_series(1, 12) AS gs(month)
         ON CONFLICT ("memberId", "year", "month")
         DO UPDATE SET "paid" = EXCLUDED."paid"
         RETURNING "id", "memberId", "year", "month", "paid"
@@ -230,10 +229,16 @@ export async function PUT(req: Request) {
     `;
 
     if (fees.length === 0) {
-      return notFoundResponse(
-        "회비를 수정할 회원을 찾을 수 없습니다."
-      );
+      return notFoundResponse("회비를 수정할 회원을 찾을 수 없습니다.");
     }
+
+    void sendTelegramAlert({
+      event: "YEARLY_FEE_TOGGLE",
+      clubName,
+      memberName: member.name,
+      year,
+      paid: true,
+    });
 
     return NextResponse.json(fees);
   } catch (error) {

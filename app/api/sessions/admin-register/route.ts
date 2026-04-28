@@ -4,10 +4,9 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
-import {
-  getNextRegistrationStatus,
-} from "@/lib/session-registration";
+import { getNextRegistrationStatus } from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -27,6 +26,7 @@ export async function POST(req: Request) {
       where: { id: sessionId, clubId: admin.clubId },
       select: {
         id: true,
+        title: true,
         capacity: true,
         status: true,
         participants: {
@@ -39,16 +39,21 @@ export async function POST(req: Request) {
 
     if (session.status !== "OPEN") {
       return NextResponse.json(
-        { error: "마감 상태의 일정은 참석자를 추가할 수 없습니다." },
+        { error: "마감 상태의 일정에는 참석자를 추가할 수 없습니다." },
         { status: 400 }
       );
     }
 
     const registeredCount = session.participants.filter(
-      (p) => p.status === "REGISTERED"
+      (participant) => participant.status === "REGISTERED"
     ).length;
     const nextStatus = getNextRegistrationStatus(session.capacity, registeredCount);
     const hasGuestCols = await hasSessionParticipantGuestProfileColumns();
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+    const clubName = club?.name ?? String(admin.clubId);
 
     if (type === "member") {
       const memberId = Number(body.memberId);
@@ -59,13 +64,14 @@ export async function POST(req: Request) {
       const member = await prisma.member.findFirst({
         where: { id: memberId, clubId: admin.clubId, deleted: false },
       });
+
       if (!member) return notFoundResponse("회원을 찾을 수 없습니다.");
 
-      const existing = session.participants.find((p) => p.memberId === memberId);
+      const existing = session.participants.find((participant) => participant.memberId === memberId);
 
       if (existing && existing.status !== "CANCELED") {
         return NextResponse.json(
-          { error: "이미 참석 신청된 회원입니다." },
+          { error: "이미 참석 요청된 회원입니다." },
           { status: 400 }
         );
       }
@@ -73,7 +79,11 @@ export async function POST(req: Request) {
       if (existing) {
         await prisma.sessionParticipant.update({
           where: { id: existing.id },
-          data: { status: nextStatus, attendanceStatus: "PENDING", checkedInAt: null },
+          data: {
+            status: nextStatus,
+            attendanceStatus: "PENDING",
+            checkedInAt: null,
+          },
         });
       } else if (hasGuestCols) {
         await prisma.sessionParticipant.create({
@@ -85,10 +95,18 @@ export async function POST(req: Request) {
         });
       }
 
+      void sendTelegramAlert({
+        event: "SESSION_ADMIN_REGISTER",
+        clubName,
+        sessionTitle: session.title,
+        participantName: member.name,
+        participantType: "member",
+        status: nextStatus,
+      });
+
       return NextResponse.json({ success: true, status: nextStatus });
     }
 
-    // guest
     const guestName = String(body.guestName ?? "").trim();
     const guestGender = String(body.guestGender ?? "").trim();
     const guestLevel = String(body.guestLevel ?? "").trim();
@@ -97,7 +115,7 @@ export async function POST(req: Request) {
     const hostMemberId = body.hostMemberId ? Number(body.hostMemberId) : null;
 
     if (!guestName) {
-      return NextResponse.json({ error: "게스트 이름을 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "게스트 이름을 입력해 주세요." }, { status: 400 });
     }
 
     if (hasGuestCols) {
@@ -123,6 +141,15 @@ export async function POST(req: Request) {
         )
       `;
     }
+
+    void sendTelegramAlert({
+      event: "SESSION_ADMIN_REGISTER",
+      clubName,
+      sessionTitle: session.title,
+      participantName: guestName,
+      participantType: "guest",
+      status: nextStatus,
+    });
 
     return NextResponse.json({ success: true, status: nextStatus });
   } catch (error) {

@@ -25,6 +25,21 @@ type BracketApiResponse = {
   bracket: SessionBracket | null;
 };
 
+async function notifyAdminActivity(payload: Record<string, unknown>) {
+  try {
+    await fetch("/api/admin/activity", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Ignore telemetry failures so the editing flow stays responsive.
+  }
+}
+
 function buildDefaultCourtCount(session: ClubSession) {
   const participantCount =
     session.registeredCount ??
@@ -348,6 +363,15 @@ export function SessionBracketPanel({
     setBracket(newBracket);
     setSwapSelection(null);
     setSwapNotice("");
+    void notifyAdminActivity({
+      event: "SESSION_BRACKET_SWAP",
+      sessionTitle: session.title,
+      roundNumber: newBracket.rounds[roundIndex].roundNumber,
+      fromCourtNumber: fromMatch.courtNumber,
+      toCourtNumber: toMatch.courtNumber,
+      fromPlayerName: fromPlayer.name,
+      toPlayerName: toPlayer.name,
+    });
   }
 
   async function handleExport() {
