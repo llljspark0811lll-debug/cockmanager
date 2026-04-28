@@ -16,9 +16,7 @@ export default function AdminSignupPage() {
   });
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (form.password !== form.confirmPassword) {
@@ -27,7 +25,7 @@ export default function AdminSignupPage() {
     }
 
     if (form.password.length < 6) {
-      alert("비밀번호는 6자 이상으로 입력해주세요.");
+      alert("비밀번호는 6자 이상으로 입력해 주세요.");
       return;
     }
 
@@ -53,7 +51,7 @@ export default function AdminSignupPage() {
       }
 
       alert("클럽/소모임 생성이 완료되었습니다.");
-      router.push("/admin/login");
+      router.push("/admin/dashboard");
     } finally {
       setLoading(false);
     }
@@ -131,7 +129,7 @@ export default function AdminSignupPage() {
               }
             />
             <p className="text-xs leading-5 text-slate-500">
-              아이디/비밀번호 찾기와 비밀번호 재설정 메일을 받는 주소입니다.
+              아이디/비밀번호 찾기와 비밀번호 재설정 메일을 받을 주소입니다.
             </p>
           </div>
 
