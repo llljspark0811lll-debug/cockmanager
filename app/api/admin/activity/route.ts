@@ -7,6 +7,11 @@ type ActivityBody =
   | { event: "ADMIN_MEMBERS_TAB_CLICK" }
   | { event: "ADMIN_FEES_TAB_CLICK" }
   | {
+      event: "SESSION_BRACKET_EXPORT";
+      sessionTitle: string;
+      imageCount: number;
+    }
+  | {
       event: "SESSION_BRACKET_SWAP";
       sessionTitle: string;
       roundNumber: number;
@@ -34,6 +39,13 @@ export async function POST(req: Request) {
       payload = { event: "ADMIN_MEMBERS_TAB_CLICK", clubName };
     } else if (body.event === "ADMIN_FEES_TAB_CLICK") {
       payload = { event: "ADMIN_FEES_TAB_CLICK", clubName };
+    } else if (body.event === "SESSION_BRACKET_EXPORT") {
+      payload = {
+        event: "SESSION_BRACKET_EXPORT",
+        clubName,
+        sessionTitle: String(body.sessionTitle ?? ""),
+        imageCount: Number(body.imageCount),
+      };
     } else if (body.event === "SESSION_BRACKET_SWAP") {
       payload = {
         event: "SESSION_BRACKET_SWAP",

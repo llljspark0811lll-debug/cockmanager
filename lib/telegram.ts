@@ -29,6 +29,12 @@ export type TelegramAlertInput =
       toCourtNumber: number;
       fromPlayerName: string;
       toPlayerName: string;
+    }
+  | {
+      event: "SESSION_BRACKET_EXPORT";
+      clubName: string;
+      sessionTitle: string;
+      imageCount: number;
     };
 
 function getTelegramConfig() {
@@ -163,6 +169,14 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `라운드: ${input.roundNumber}`,
         `변경: ${input.fromPlayerName} ↔ ${input.toPlayerName}`,
         `코트: ${input.fromCourtNumber}번 ↔ ${input.toCourtNumber}번`,
+      ].join("\n");
+
+    case "SESSION_BRACKET_EXPORT":
+      return [
+        "자동대진 이미지 저장",
+        `클럽: ${input.clubName}`,
+        `일정: ${input.sessionTitle}`,
+        `저장 이미지: ${input.imageCount}장`,
       ].join("\n");
   }
 }
