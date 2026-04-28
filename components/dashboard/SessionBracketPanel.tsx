@@ -487,6 +487,10 @@ export function SessionBracketPanel({
           쉬었던 인원은 다음 라운드에 우선 배정합니다.
         </div>
 
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-bold leading-6 text-sky-700">
+          선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다.
+        </div>
+
         {canGenerate && registeredParticipants.length >= 2 ? (
           <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
             <div>
