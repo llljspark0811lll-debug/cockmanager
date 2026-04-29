@@ -1,3 +1,5 @@
+import PwaInstallButton from "@/components/PwaInstallButton";
+
 type DashboardHeaderProps = {
   clubName: string;
   subscriptionEnd?: string | Date | null;
@@ -37,6 +39,9 @@ export function DashboardHeader({
         <p className="mt-2 text-sm text-slate-500">
           회원, 회비, 통계, 운동 일정, 자동 대진표를 한 곳에서 관리합니다.
         </p>
+        <div className="mt-3">
+          <PwaInstallButton />
+        </div>
         {/*
         <p className="mt-3 text-xs font-medium text-slate-400">
           구독 만료일 {subscriptionLabel}
