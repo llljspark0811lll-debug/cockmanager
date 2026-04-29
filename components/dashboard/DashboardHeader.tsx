@@ -52,21 +52,21 @@ export function DashboardHeader({
       <div className="flex w-full flex-nowrap items-stretch gap-1 md:w-auto md:items-center md:gap-2">
           <button
             onClick={onRestartTutorial}
-            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-1.5 text-[10px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
             aria-label="사용가이드"
           >
             사용가이드
           </button>
           <button
             onClick={onOpenSupport}
-            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-1.5 text-[10px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
             aria-label="문의/요청"
           >
             문의/요청
           </button>
           <button
             onClick={onLogout}
-            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-1.5 text-[10px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
           >
             로그아웃
           </button>
