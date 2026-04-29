@@ -49,24 +49,24 @@ export function DashboardHeader({
         */}
       </div>
 
-      <div className="flex w-full flex-nowrap items-center gap-1 md:w-auto md:gap-2">
+      <div className="flex w-full flex-nowrap items-stretch gap-1 md:w-auto md:items-center md:gap-2">
           <button
             onClick={onRestartTutorial}
-            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
             aria-label="사용가이드"
           >
             사용가이드
           </button>
           <button
             onClick={onOpenSupport}
-            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
             aria-label="문의/요청"
           >
             문의/요청
           </button>
           <button
             onClick={onLogout}
-            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-2 text-[11px] font-semibold leading-none tracking-[-0.03em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:h-auto md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
           >
             로그아웃
           </button>
@@ -79,7 +79,7 @@ export function DashboardHeader({
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              className="h-4 w-4"
+              className="h-[15px] w-[15px] md:h-4 md:w-4"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -101,7 +101,7 @@ export function DashboardHeader({
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              className="h-5 w-5"
+              className="h-[18px] w-[18px] md:h-5 md:w-5"
               fill="none"
             >
               <defs>
