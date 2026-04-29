@@ -49,28 +49,29 @@ export function DashboardHeader({
         */}
       </div>
 
-      <div className="w-full space-y-1.5 md:flex md:w-auto md:items-center md:gap-2 md:space-y-0">
-        <div className="grid grid-cols-3 gap-1.5 md:flex md:w-auto md:gap-2">
+      <div className="flex w-full flex-nowrap items-center gap-1 md:w-auto md:gap-2">
           <button
             onClick={onRestartTutorial}
-            className="min-w-0 rounded-2xl border border-slate-200 bg-white px-1.5 py-2 text-[11px] font-semibold leading-tight text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm"
+            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            aria-label="사용 가이드"
           >
-            사용 가이드
+            <span className="md:hidden">가이드</span>
+            <span className="hidden md:inline">사용 가이드</span>
           </button>
           <button
             onClick={onOpenSupport}
-            className="min-w-0 rounded-2xl border border-slate-200 bg-white px-1.5 py-2 text-[11px] font-semibold leading-tight text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm"
+            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
+            aria-label="문의 / 요청"
           >
-            문의 / 요청
+            <span className="md:hidden">문의</span>
+            <span className="hidden md:inline">문의 / 요청</span>
           </button>
           <button
             onClick={onLogout}
-            className="min-w-0 rounded-2xl border border-slate-200 bg-white px-1.5 py-2 text-[11px] font-semibold leading-tight text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm"
+            className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-1 py-2 text-[10px] font-semibold leading-none tracking-[-0.02em] text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 md:flex-none md:px-4 md:py-2.5 md:text-sm md:leading-normal md:tracking-normal"
           >
             로그아웃
           </button>
-        </div>
-        <div className="flex justify-end gap-1.5 md:gap-2">
           <button
             onClick={onOpenPersonalSettings}
             aria-label="개인 설정"
@@ -144,7 +145,6 @@ export function DashboardHeader({
               />
             </svg>
           </a>
-        </div>
       </div>
     </div>
   );
