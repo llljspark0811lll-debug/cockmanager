@@ -64,17 +64,51 @@ function playerBadgeLabel(
   return `${guestText} · ${gender} · ${player.level}`;
 }
 
+function getParticipantGenderGroup(participant: SessionParticipant) {
+  const raw = String(
+    participant.member?.gender ?? participant.guestGender ?? ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (
+    raw === "남" ||
+    raw === "남자" ||
+    raw === "m" ||
+    raw === "male"
+  ) {
+    return "MEN";
+  }
+
+  if (
+    raw === "여" ||
+    raw === "여자" ||
+    raw === "f" ||
+    raw === "female"
+  ) {
+    return "WOMEN";
+  }
+
+  return "OTHER";
+}
+
 export function SessionBracketPanel({
   session,
   tutorialDefaultsActive = false,
   onBracketGenerated,
 }: SessionBracketPanelProps) {
+  const [generationMode, setGenerationMode] = useState<
+    "STANDARD" | "TEAM_BATTLE"
+  >("STANDARD");
   const [courtCount, setCourtCount] = useState(
     buildDefaultCourtCount(session)
   );
   const [minGamesPerPlayer, setMinGamesPerPlayer] = useState(2);
-  const [separateByGender, setSeparateByGender] =
-    useState(false);
+  const [separateByGender, setSeparateByGender] = useState(false);
+  const [teamLabels, setTeamLabels] = useState({ A: "팀A", B: "팀B" });
+  const [teamAssignments, setTeamAssignments] = useState<
+    Record<string, "A" | "B">
+  >({});
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -108,9 +142,12 @@ export function SessionBracketPanel({
   const canGenerate = session.status === "CLOSED" && registeredCount >= 4;
 
   useEffect(() => {
+    setGenerationMode("STANDARD");
     setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
     setMinGamesPerPlayer(tutorialDefaultsActive ? 4 : 2);
     setSeparateByGender(false);
+    setTeamLabels({ A: "팀A", B: "팀B" });
+    setTeamAssignments({});
     setFixedPairs([]);
     setPendingPairPlayerId(null);
     setSwapSelection(null);
@@ -141,14 +178,16 @@ export function SessionBracketPanel({
       }
 
       setLoading(true);
+      setLoaded(false);
       setError("");
+      setBracket(null);
 
       try {
-        const response = await fetch(
-          `/api/sessions/bracket?sessionId=${session.id}`,
-          {
-            credentials: "include",
-          }
+          const response = await fetch(
+          `/api/sessions/bracket?sessionId=${session.id}&generationMode=${generationMode}`,
+           {
+             credentials: "include",
+           }
         );
         const data = (await response.json()) as BracketApiResponse & {
           error?: string;
@@ -182,6 +221,33 @@ export function SessionBracketPanel({
           setFixedPairs(
             tutorialDefaultsActive ? [] : data.bracket.config.fixedPairs ?? []
           );
+          setTeamLabels(
+            tutorialDefaultsActive
+              ? { A: "팀A", B: "팀B" }
+              : {
+                  A: data.bracket.config.teamLabels?.A?.trim() || "팀A",
+                  B: data.bracket.config.teamLabels?.B?.trim() || "팀B",
+                }
+          );
+          setTeamAssignments(
+            tutorialDefaultsActive
+              ? {}
+              : data.bracket.config.teamAssignments ?? {}
+          );
+        } else {
+          setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
+          setMinGamesPerPlayer(tutorialDefaultsActive ? 4 : 2);
+          setSeparateByGender(false);
+          setFixedPairs([]);
+          setPendingPairPlayerId(null);
+          setSwapSelection(null);
+          setExportMessage("");
+          setExportError("");
+          setSwapNotice("");
+          if (generationMode === "TEAM_BATTLE") {
+            setTeamLabels({ A: "팀A", B: "팀B" });
+            setTeamAssignments({});
+          }
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -204,7 +270,7 @@ export function SessionBracketPanel({
     return () => {
       cancelled = true;
     };
-  }, [canGenerate, session.id, tutorialDefaultsActive]);
+  }, [canGenerate, generationMode, session.id, tutorialDefaultsActive]);
 
   const playerStats = useMemo(
     () => bracket?.summary.playerStats ?? [],
@@ -215,6 +281,119 @@ export function SessionBracketPanel({
     () => (session.participants ?? []).filter((p) => p.status === "REGISTERED"),
     [session.participants]
   );
+
+  const teamGroupedParticipants = useMemo(
+    () => ({
+      A: registeredParticipants.filter(
+        (participant) => getParticipantTeam(participant) === "A"
+      ),
+      B: registeredParticipants.filter(
+        (participant) => getParticipantTeam(participant) === "B"
+      ),
+    }),
+    [registeredParticipants, teamAssignments]
+  );
+
+  const fixedPairsByTeam = useMemo(() => {
+    const initial = {
+      A: [] as Array<{
+        index: number;
+        aId: string;
+        bId: string;
+        aName: string;
+        bName: string;
+      }>,
+      B: [] as Array<{
+        index: number;
+        aId: string;
+        bId: string;
+        aName: string;
+        bName: string;
+      }>,
+    };
+
+    fixedPairs.forEach(([aId, bId], index) => {
+      const aParticipant = registeredParticipants.find(
+        (p) => getParticipantPlayerId(p) === aId
+      );
+      const bParticipant = registeredParticipants.find(
+        (p) => getParticipantPlayerId(p) === bId
+      );
+      const team = aParticipant ? getParticipantTeam(aParticipant) : undefined;
+      if (team !== "A" && team !== "B") {
+        return;
+      }
+
+      initial[team].push({
+        index,
+        aId,
+        bId,
+        aName: aParticipant ? getParticipantName(aParticipant) : aId,
+        bName: bParticipant ? getParticipantName(bParticipant) : bId,
+      });
+    });
+
+    return initial;
+  }, [fixedPairs, registeredParticipants, teamAssignments]);
+
+  const teamBattleSummaries = useMemo(() => {
+    const emptyLevels = { S: 0, A: 0, B: 0, C: 0, D: 0, E: 0, 초심: 0 };
+    const initial = {
+      A: {
+        members: [] as Array<{ id: string; name: string; gender: string; level: string }>,
+        total: 0,
+        men: 0,
+        women: 0,
+        levels: { ...emptyLevels },
+      },
+      B: {
+        members: [] as Array<{ id: string; name: string; gender: string; level: string }>,
+        total: 0,
+        men: 0,
+        women: 0,
+        levels: { ...emptyLevels },
+      },
+    };
+
+    for (const participant of registeredParticipants) {
+      const playerId = getParticipantPlayerId(participant);
+      const team = teamAssignments[playerId];
+      if (!team) continue;
+
+      const gender = normalizeGenderLabel(
+        participant.member?.gender ?? participant.guestGender ?? ""
+      );
+      const level = participant.member?.level ?? participant.guestLevel ?? "초심";
+      const normalizedLevel =
+        level === "S" ||
+        level === "A" ||
+        level === "B" ||
+        level === "C" ||
+        level === "D" ||
+        level === "E"
+          ? level
+          : "초심";
+      const summary = initial[team];
+
+      summary.members.push({
+        id: playerId,
+        name: getParticipantName(participant),
+        gender,
+        level: normalizedLevel,
+      });
+      summary.total += 1;
+      const genderGroup = getParticipantGenderGroup(participant);
+      if (genderGroup === "MEN") summary.men += 1;
+      if (genderGroup === "WOMEN") summary.women += 1;
+      summary.levels[normalizedLevel] += 1;
+    }
+
+    for (const team of [initial.A, initial.B]) {
+      team.members.sort((left, right) => left.name.localeCompare(right.name, "ko"));
+    }
+
+    return initial;
+  }, [registeredParticipants, teamAssignments]);
 
   const pairedPlayerIds = useMemo(() => {
     const ids = new Set<string>();
@@ -235,6 +414,38 @@ export function SessionBracketPanel({
     return participant.member?.name ?? participant.guestName ?? "?";
   }
 
+  function getParticipantTeam(participant: SessionParticipant) {
+    return teamAssignments[getParticipantPlayerId(participant)];
+  }
+
+  function updateTeamAssignment(
+    playerId: string,
+    nextTeam: "A" | "B"
+  ) {
+    setTeamAssignments((prev) => ({
+      ...prev,
+      [playerId]: nextTeam,
+    }));
+    setFixedPairs((prev) =>
+      prev.filter(([a, b]) => {
+        const leftTeam = a === playerId ? nextTeam : teamAssignments[a];
+        const rightTeam = b === playerId ? nextTeam : teamAssignments[b];
+        return !leftTeam || !rightTeam || leftTeam === rightTeam;
+      })
+    );
+  }
+
+  function showTransientNotice(message: string) {
+    if (swapNoticeTimeoutRef.current) {
+      clearTimeout(swapNoticeTimeoutRef.current);
+    }
+    setSwapNotice(message);
+    swapNoticeTimeoutRef.current = setTimeout(() => {
+      setSwapNotice("");
+      swapNoticeTimeoutRef.current = null;
+    }, 3000);
+  }
+
   function handleParticipantCardClick(playerId: string) {
     if (pendingPairPlayerId === null) {
       setPendingPairPlayerId(playerId);
@@ -243,6 +454,17 @@ export function SessionBracketPanel({
     if (pendingPairPlayerId === playerId) {
       setPendingPairPlayerId(null);
       return;
+    }
+    if (generationMode === "TEAM_BATTLE") {
+      const firstTeam = teamAssignments[pendingPairPlayerId];
+      const secondTeam = teamAssignments[playerId];
+      if (firstTeam && secondTeam && firstTeam !== secondTeam) {
+        showTransientNotice(
+          "팀 대항 자동대진에서는 같은 팀 안에서만 고정 파트너를 설정할 수 있습니다."
+        );
+        setPendingPairPlayerId(null);
+        return;
+      }
     }
     const first = pendingPairPlayerId;
     setFixedPairs((prev) => {
@@ -277,6 +499,9 @@ export function SessionBracketPanel({
           courtCount,
           minGamesPerPlayer,
           separateByGender,
+          generationMode,
+          teamAssignments,
+          teamLabels,
           fixedPairs,
         }),
       });
@@ -337,14 +562,28 @@ export function SessionBracketPanel({
     if (swapSelection.roundIndex !== roundIndex) {
       const message =
         "다른 라운드 선수와는 위치를 바꿀 수 없습니다.\n같은 라운드에서 선택해 주세요.";
-      if (swapNoticeTimeoutRef.current) {
-        clearTimeout(swapNoticeTimeoutRef.current);
-      }
-      setSwapNotice(message);
-      swapNoticeTimeoutRef.current = setTimeout(() => {
-        setSwapNotice("");
-        swapNoticeTimeoutRef.current = null;
-      }, 3000);
+      showTransientNotice(message);
+      return;
+    }
+
+    if (
+      bracket.config.generationMode === "TEAM_BATTLE" &&
+      swapSelection.team !== team
+    ) {
+      const message =
+        "팀 대항 자동대진에서는 같은 팀 슬롯끼리만 위치를 바꿀 수 있습니다.";
+      showTransientNotice(message);
+      return;
+    }
+
+    if (
+      bracket.config.generationMode === "TEAM_BATTLE" &&
+      bracket.rounds[swapSelection.roundIndex].matches[swapSelection.matchIndex]
+        .division !== bracket.rounds[roundIndex].matches[matchIndex].division
+    ) {
+      const message =
+        "팀 대항 자동대진에서는 같은 복식 구분 안에서만 위치를 바꿀 수 있습니다.";
+      showTransientNotice(message);
       return;
     }
 
@@ -452,7 +691,76 @@ export function SessionBracketPanel({
           </div>
         ) : null}
 
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <span className="text-xs font-bold text-slate-500">
+              대진 생성 방식
+            </span>
+            <div className="grid gap-2 md:grid-cols-2">
+              {[
+                {
+                  value: "STANDARD" as const,
+                  title: "일반 자동대진",
+                  description: "전체 참가자를 기준으로 자동 대진을 생성합니다.",
+                },
+                {
+                  value: "TEAM_BATTLE" as const,
+                  title: "팀 대항 자동대진",
+                  description: "A팀 vs B팀 구도를 유지한 채 자동 대진을 생성합니다.",
+                },
+              ].map((option) => {
+                const active = generationMode === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setGenerationMode(option.value)}
+                    disabled={!canGenerate || loading || tutorialDefaultsActive}
+                    className={[
+                      "rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:bg-slate-50",
+                      active
+                        ? "border-sky-300 bg-sky-50 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.15)]"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={[
+                          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition",
+                          active
+                            ? "border-sky-500 bg-sky-500"
+                            : "border-slate-300 bg-white",
+                        ].join(" ")}
+                      >
+                        <span
+                          className={[
+                            "h-1.5 w-1.5 rounded-full transition",
+                            active ? "bg-white" : "bg-transparent",
+                          ].join(" ")}
+                        />
+                      </span>
+                      <div className="min-w-0">
+                        <p
+                          className={[
+                            "text-sm font-black",
+                            active ? "text-sky-700" : "text-slate-900",
+                          ].join(" ")}
+                        >
+                          {option.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {option.description}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
         <div className="grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))]">
+
           <label className="space-y-1.5">
             <span className="text-xs font-bold text-slate-500">
               사용할 코트 수
@@ -510,15 +818,196 @@ export function SessionBracketPanel({
             남복 / 여복 분리 생성
           </label>
         </div>
-
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium leading-6 text-slate-500">
-          같은 파트너와 같은 상대 반복은 최대한 줄이고, 직전 라운드를
-          쉬었던 인원은 다음 라운드에 우선 배정합니다.
         </div>
 
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-bold leading-6 text-sky-700">
-          선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다.
+          {generationMode === "TEAM_BATTLE"
+            ? "선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다. 팀 대항 자동대진에서는 같은 팀 안에서만 위치를 바꿀 수 있습니다."
+            : "선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다."}
+          
         </div>
+
+        {generationMode === "TEAM_BATTLE" ? (
+          <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="space-y-1.5">
+                <span className="text-xs font-bold text-slate-500">
+                  A팀 이름
+                </span>
+                <input
+                  value={teamLabels.A}
+                  onChange={(event) =>
+                    setTeamLabels((prev) => ({
+                      ...prev,
+                      A: event.target.value,
+                    }))
+                  }
+                  disabled={!canGenerate || loading}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-xs font-bold text-slate-500">
+                  B팀 이름
+                </span>
+                <input
+                  value={teamLabels.B}
+                  onChange={(event) =>
+                    setTeamLabels((prev) => ({
+                      ...prev,
+                      B: event.target.value,
+                    }))
+                  }
+                  disabled={!canGenerate || loading}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50"
+                />
+              </label>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-700">팀 배정</p>
+              <p className="mt-1 text-xs text-slate-400">
+                참가자를 {teamLabels.A || "팀A"} / {teamLabels.B || "팀B"}로 나눠 주세요. 팀 대항 자동대진은 같은 팀끼리 붙지 않고, 팀 간 밸런스를 최대한 맞춰 생성됩니다.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {registeredParticipants.map((participant) => {
+                const playerId = getParticipantPlayerId(participant);
+                const team = getParticipantTeam(participant);
+                const name = getParticipantName(participant);
+                return (
+                  <div
+                    key={playerId}
+                    className="flex w-full min-w-0 items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 sm:w-auto sm:justify-start"
+                  >
+                    <span className="truncate text-xs font-bold text-slate-700">
+                      {name}
+                    </span>
+                    <div className="flex shrink-0 items-center rounded-full bg-slate-100 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => updateTeamAssignment(playerId, "A")}
+                        disabled={loading}
+                        className={[
+                          "rounded-full px-2 py-1 text-[10px] font-bold transition sm:px-2.5 sm:text-[11px]",
+                          team === "A"
+                            ? "bg-rose-500 text-white"
+                            : "text-slate-500 hover:bg-white hover:text-slate-700",
+                        ].join(" ")}
+                      >
+                        {teamLabels.A || "팀A"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateTeamAssignment(playerId, "B")}
+                        disabled={loading}
+                        className={[
+                          "rounded-full px-2 py-1 text-[10px] font-bold transition sm:px-2.5 sm:text-[11px]",
+                          team === "B"
+                            ? "bg-sky-500 text-white"
+                            : "text-slate-500 hover:bg-white hover:text-slate-700",
+                        ].join(" ")}
+                      >
+                        {teamLabels.B || "팀B"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {([
+                {
+                  key: "A" as const,
+                  title: teamLabels.A || "팀A",
+                  tone: "rose",
+                },
+                {
+                  key: "B" as const,
+                  title: teamLabels.B || "팀B",
+                  tone: "sky",
+                },
+              ] as const).map((team) => {
+                const summary = teamBattleSummaries[team.key];
+                const toneClasses =
+                  team.tone === "rose"
+                    ? {
+                        border: "border-rose-200",
+                        bg: "bg-rose-50",
+                        badge: "bg-rose-100 text-rose-700",
+                        title: "text-rose-700",
+                      }
+                    : {
+                        border: "border-sky-200",
+                        bg: "bg-sky-50",
+                        badge: "bg-sky-100 text-sky-700",
+                        title: "text-sky-700",
+                      };
+
+                return (
+                  <div
+                    key={team.key}
+                    className={`rounded-2xl border ${toneClasses.border} ${toneClasses.bg} p-4`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-sm font-black ${toneClasses.title}`}>
+                        {team.title}
+                      </p>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${toneClasses.badge}`}
+                      >
+                        총 {summary.total}명
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                        남자 {summary.men}명
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                        여자 {summary.women}명
+                      </span>
+                      {(["S", "A", "B", "C", "D", "E", "초심"] as const).map(
+                        (level) => (
+                          <span
+                            key={level}
+                            className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600"
+                          >
+                            {level} {summary.levels[level]}명
+                          </span>
+                        )
+                      )}
+                    </div>
+
+                    <div className="mt-3 rounded-2xl bg-white/80 px-3 py-3">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
+                        팀 배정됨
+                      </p>
+                      {summary.members.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {summary.members.map((member) => (
+                            <span
+                              key={member.id}
+                              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700"
+                            >
+                              {member.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs font-medium text-slate-400">
+                          아직 배정된 참가자가 없습니다.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {canGenerate && registeredParticipants.length >= 2 ? (
           <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
@@ -527,80 +1016,206 @@ export function SessionBracketPanel({
               <p className="mt-1 text-xs text-slate-400">
                 {pendingPairPlayerId
                   ? "파트너로 묶을 두 번째 참가자를 클릭하세요."
-                  : "매 라운드 같은 팀으로 묶을 첫 번째 참가자를 클릭하세요."}
+                  : generationMode === "TEAM_BATTLE"
+                    ? "매 라운드 같은 팀으로 묶을 첫 번째 참가자를 클릭하세요. 팀 대항 모드에서는 같은 팀 안에서만 설정할 수 있습니다."
+                    : "매 라운드 같은 팀으로 묶을 첫 번째 참가자를 클릭하세요."}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {registeredParticipants.map((participant) => {
-                const pid = getParticipantPlayerId(participant);
-                const name = getParticipantName(participant);
-                const isPending = pendingPairPlayerId === pid;
-                const isPaired = pairedPlayerIds.has(pid);
-                return (
-                  <button
-                    key={pid}
-                    type="button"
-                    onClick={() => handleParticipantCardClick(pid)}
-                    disabled={loading}
-                    className={[
-                      "rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed",
-                      isPending
-                        ? "border-sky-400 bg-sky-100 text-sky-700"
-                        : isPaired
-                          ? "border-violet-200 bg-violet-50 text-violet-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
-                    ].join(" ")}
+            {generationMode === "TEAM_BATTLE" ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {([
+                  {
+                    key: "A" as const,
+                    title: teamLabels.A || "팀A",
+                    tone:
+                      "border-rose-200 bg-rose-50/70 text-rose-700" as const,
+                  },
+                  {
+                    key: "B" as const,
+                    title: teamLabels.B || "팀B",
+                    tone:
+                      "border-sky-200 bg-sky-50/70 text-sky-700" as const,
+                  },
+                ] as const).map((team) => (
+                  <div
+                    key={team.key}
+                    className={`rounded-2xl border ${team.tone} p-3`}
                   >
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <p className="text-sm font-black">{team.title}</p>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                        {teamGroupedParticipants[team.key].length}명
+                      </span>
+                    </div>
+                    {teamGroupedParticipants[team.key].length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {teamGroupedParticipants[team.key].map((participant) => {
+                          const pid = getParticipantPlayerId(participant);
+                          const name = getParticipantName(participant);
+                          const isPending = pendingPairPlayerId === pid;
+                          const isPaired = pairedPlayerIds.has(pid);
+                          return (
+                            <button
+                              key={pid}
+                              type="button"
+                              onClick={() => handleParticipantCardClick(pid)}
+                              disabled={loading}
+                              className={[
+                                "rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed",
+                                isPending
+                                  ? "border-sky-400 bg-sky-100 text-sky-700"
+                                  : isPaired
+                                    ? "border-violet-200 bg-violet-50 text-violet-700"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+                              ].join(" ")}
+                            >
+                              {name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs font-medium text-slate-400">
+                        아직 이 팀에 배정된 참가자가 없습니다.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {registeredParticipants.map((participant) => {
+                  const pid = getParticipantPlayerId(participant);
+                  const name = getParticipantName(participant);
+                  const isPending = pendingPairPlayerId === pid;
+                  const isPaired = pairedPlayerIds.has(pid);
+                  return (
+                    <button
+                      key={pid}
+                      type="button"
+                      onClick={() => handleParticipantCardClick(pid)}
+                      disabled={loading}
+                      className={[
+                        "rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed",
+                        isPending
+                          ? "border-sky-400 bg-sky-100 text-sky-700"
+                          : isPaired
+                            ? "border-violet-200 bg-violet-50 text-violet-700"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+                      ].join(" ")}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {fixedPairs.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                   고정된 파트너
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {fixedPairs.map(([aId, bId], index) => {
-                    const aParticipant = registeredParticipants.find(
-                      (p) => getParticipantPlayerId(p) === aId
-                    );
-                    const bParticipant = registeredParticipants.find(
-                      (p) => getParticipantPlayerId(p) === bId
-                    );
-                    const aName = aParticipant
-                      ? getParticipantName(aParticipant)
-                      : aId;
-                    const bName = bParticipant
-                      ? getParticipantName(bParticipant)
-                      : bId;
-                    return (
+                {generationMode === "TEAM_BATTLE" ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {([
+                      {
+                        key: "A" as const,
+                        title: teamLabels.A || "팀A",
+                        tone: "border-rose-200 bg-rose-50/70 text-rose-700",
+                      },
+                      {
+                        key: "B" as const,
+                        title: teamLabels.B || "팀B",
+                        tone: "border-sky-200 bg-sky-50/70 text-sky-700",
+                      },
+                    ] as const).map((team) => (
                       <div
-                        key={index}
-                        className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 pl-3 pr-1.5 py-1.5"
+                        key={team.key}
+                        className={`rounded-2xl border ${team.tone} p-3`}
                       >
-                        <span className="text-xs font-bold text-violet-700">
-                          {aName}
-                        </span>
-                        <span className="text-[10px] font-bold text-violet-400">
-                          &amp;
-                        </span>
-                        <span className="text-xs font-bold text-violet-700">
-                          {bName}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removePair(index)}
-                          disabled={loading}
-                          className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-violet-200 text-[10px] font-black text-violet-600 transition hover:bg-violet-300 disabled:cursor-not-allowed"
-                        >
-                          ×
-                        </button>
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <p className="text-sm font-black">{team.title}</p>
+                          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                            {fixedPairsByTeam[team.key].length}개
+                          </span>
+                        </div>
+                        {fixedPairsByTeam[team.key].length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {fixedPairsByTeam[team.key].map((pair) => (
+                              <div
+                                key={pair.index}
+                                className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 pl-3 pr-1.5 py-1.5"
+                              >
+                                <span className="text-xs font-bold text-violet-700">
+                                  {pair.aName}
+                                </span>
+                                <span className="text-[10px] font-bold text-violet-400">
+                                  &amp;
+                                </span>
+                                <span className="text-xs font-bold text-violet-700">
+                                  {pair.bName}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removePair(pair.index)}
+                                  disabled={loading}
+                                  className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-violet-200 text-[10px] font-black text-violet-600 transition hover:bg-violet-300 disabled:cursor-not-allowed"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs font-medium text-slate-400">
+                            아직 고정된 파트너가 없습니다.
+                          </p>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {fixedPairs.map(([aId, bId], index) => {
+                      const aParticipant = registeredParticipants.find(
+                        (p) => getParticipantPlayerId(p) === aId
+                      );
+                      const bParticipant = registeredParticipants.find(
+                        (p) => getParticipantPlayerId(p) === bId
+                      );
+                      const aName = aParticipant
+                        ? getParticipantName(aParticipant)
+                        : aId;
+                      const bName = bParticipant
+                        ? getParticipantName(bParticipant)
+                        : bId;
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 pl-3 pr-1.5 py-1.5"
+                        >
+                          <span className="text-xs font-bold text-violet-700">
+                            {aName}
+                          </span>
+                          <span className="text-[10px] font-bold text-violet-400">
+                            &amp;
+                          </span>
+                          <span className="text-xs font-bold text-violet-700">
+                            {bName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removePair(index)}
+                            disabled={loading}
+                            className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-violet-200 text-[10px] font-black text-violet-600 transition hover:bg-violet-300 disabled:cursor-not-allowed"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -681,9 +1296,13 @@ export function SessionBracketPanel({
                   {bracket.config.courtCount}코트 · 최소{" "}
                   {bracket.config.minGamesPerPlayer}경기
                   <br />
-                  {bracket.config.separateByGender
-                    ? "남복/여복 분리"
-                    : "랜덤 복식"}
+                  {bracket.config.generationMode === "TEAM_BATTLE"
+                    ? `${bracket.config.teamLabels?.A ?? "팀A"} vs ${
+                        bracket.config.teamLabels?.B ?? "팀B"
+                      }`
+                    : bracket.config.separateByGender
+                      ? "남복/여복 분리"
+                      : "랜덤 복식"}
                 </p>
               </div>
             </div>
@@ -763,9 +1382,13 @@ export function SessionBracketPanel({
                                   team === "A" ? "bg-sky-50" : "bg-emerald-50",
                                 ].join(" ")}
                               >
-                                <p className={["text-xs font-bold", team === "A" ? "text-sky-700" : "text-emerald-700"].join(" ")}>
-                                  팀 {team}
-                                </p>
+                                  <p className={["text-xs font-bold", team === "A" ? "text-sky-700" : "text-emerald-700"].join(" ")}>
+                                  {bracket.config.generationMode === "TEAM_BATTLE"
+                                    ? team === "A"
+                                      ? bracket.config.teamLabels?.A ?? "팀A"
+                                      : bracket.config.teamLabels?.B ?? "팀B"
+                                    : `팀 ${team}`}
+                                  </p>
                                 <div className="mt-2 space-y-1">
                                   {teamData.players.map((player, playerIndex) => {
                                     const isSelected =
@@ -773,7 +1396,21 @@ export function SessionBracketPanel({
                                       swapSelection?.matchIndex === matchIndex &&
                                       swapSelection?.team === team &&
                                       swapSelection?.playerIndex === playerIndex;
-                                    const isSwappable = isThisRoundSelected && !isSelected;
+                                    const selectedMatch = swapSelection
+                                      ? bracket.rounds[swapSelection.roundIndex].matches[
+                                          swapSelection.matchIndex
+                                        ]
+                                      : null;
+                                    const isSameDivision =
+                                      !selectedMatch ||
+                                      selectedMatch.division === match.division;
+                                    const isSwappable =
+                                      isThisRoundSelected &&
+                                      !isSelected &&
+                                      (bracket.config.generationMode !==
+                                        "TEAM_BATTLE" ||
+                                        (swapSelection?.team === team &&
+                                          isSameDivision));
                                     return (
                                       <button
                                         key={player.playerId}

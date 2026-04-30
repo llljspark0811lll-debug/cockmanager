@@ -109,6 +109,12 @@ export interface SessionBracketConfig {
   courtCount: number;
   minGamesPerPlayer: number;
   separateByGender: boolean;
+  generationMode?: "STANDARD" | "TEAM_BATTLE";
+  teamAssignments?: Record<string, "A" | "B">;
+  teamLabels?: {
+    A: string;
+    B: string;
+  };
   fixedPairs?: Array<[string, string]>;
 }
 

@@ -24,6 +24,12 @@ export type SessionBracketGenerationInput = {
   courtCount: number;
   minGamesPerPlayer: number;
   separateByGender: boolean;
+  generationMode?: "STANDARD" | "TEAM_BATTLE";
+  teamAssignments?: Record<string, "A" | "B">;
+  teamLabels?: {
+    A: string;
+    B: string;
+  };
   fixedPairs?: Array<[string, string]>;
   seed?: number;
 };
@@ -44,6 +50,15 @@ type Pool = {
   key: DivisionKey;
   label: string;
   players: InternalPlayer[];
+};
+
+type TeamBattleSide = "A" | "B";
+
+type TeamBattlePool = {
+  key: DivisionKey;
+  label: string;
+  teamAPlayers: InternalPlayer[];
+  teamBPlayers: InternalPlayer[];
 };
 
 type MatchCandidate = {
@@ -285,6 +300,96 @@ function buildPools(
       players: players.filter((player) => player.gender === "여"),
     },
   ].filter((pool) => pool.players.length > 0);
+}
+
+function getTeamBattleLabel(
+  division: DivisionKey,
+  teamLabels: { A: string; B: string }
+) {
+  if (division === "MEN") {
+    return `${teamLabels.A} 남복 vs ${teamLabels.B} 남복`;
+  }
+
+  if (division === "WOMEN") {
+    return `${teamLabels.A} 여복 vs ${teamLabels.B} 여복`;
+  }
+
+  return `${teamLabels.A} vs ${teamLabels.B}`;
+}
+
+function buildTeamBattlePools(
+  players: InternalPlayer[],
+  separateByGender: boolean,
+  teamAssignments: Record<string, "A" | "B">,
+  teamLabels: { A: string; B: string }
+) {
+  const unassignedPlayers = players.filter(
+    (player) => !teamAssignments[player.playerId]
+  );
+
+  if (unassignedPlayers.length > 0) {
+    throw new Error(
+      `팀 대항 자동대진은 모든 참가자를 팀에 배정해야 합니다. ${unassignedPlayers
+        .map((player) => player.name)
+        .join(", ")} 참가자의 팀을 선택해 주세요.`
+    );
+  }
+
+  if (!separateByGender) {
+    return [
+      {
+        key: "ALL" as const,
+        label: getTeamBattleLabel("ALL", teamLabels),
+        teamAPlayers: players.filter(
+          (player) => teamAssignments[player.playerId] === "A"
+        ),
+        teamBPlayers: players.filter(
+          (player) => teamAssignments[player.playerId] === "B"
+        ),
+      },
+    ];
+  }
+
+  const invalidPlayers = players.filter(
+    (player) => !["남", "여"].includes(player.gender)
+  );
+
+  if (invalidPlayers.length > 0) {
+    throw new Error(
+      `남복/여복 분리 생성에는 모든 참가자의 성별 정보가 필요합니다. ${invalidPlayers
+        .map((player) => player.name)
+        .join(", ")} 참가자의 성별을 먼저 확인해 주세요.`
+    );
+  }
+
+  return [
+    {
+      key: "MEN" as const,
+      label: getTeamBattleLabel("MEN", teamLabels),
+      teamAPlayers: players.filter(
+        (player) =>
+          teamAssignments[player.playerId] === "A" && player.gender === "남"
+      ),
+      teamBPlayers: players.filter(
+        (player) =>
+          teamAssignments[player.playerId] === "B" && player.gender === "남"
+      ),
+    },
+    {
+      key: "WOMEN" as const,
+      label: getTeamBattleLabel("WOMEN", teamLabels),
+      teamAPlayers: players.filter(
+        (player) =>
+          teamAssignments[player.playerId] === "A" && player.gender === "여"
+      ),
+      teamBPlayers: players.filter(
+        (player) =>
+          teamAssignments[player.playerId] === "B" && player.gender === "여"
+      ),
+    },
+  ].filter(
+    (pool) => pool.teamAPlayers.length > 0 || pool.teamBPlayers.length > 0
+  );
 }
 
 function keyForPair(leftId: string, rightId: string) {
@@ -550,23 +655,22 @@ function allocateMatchesForRound(
   return allocations;
 }
 
-function chooseSelectedPlayersForPool(
-  pool: Pool,
-  matchCount: number,
+function chooseSelectedPlayers(
+  players: InternalPlayer[],
+  target: number,
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
   minGamesPerPlayer: number,
   randomOrder: Map<string, number>,
   fixedPairMap: Map<string, string>
 ) {
-  if (matchCount <= 0) {
+  if (target <= 0) {
     return [];
   }
 
-  const target = matchCount * 4;
-  const poolIds = new Set(pool.players.map((p) => p.playerId));
+  const selectableIds = new Set(players.map((p) => p.playerId));
   const sorted = sortPlayersForSelection(
-    pool.players,
+    players,
     states,
     previousRested,
     minGamesPerPlayer,
@@ -580,7 +684,11 @@ function chooseSelectedPlayersForPool(
     if (selected.has(player.playerId)) continue;
 
     const partnerId = fixedPairMap.get(player.playerId);
-    if (partnerId && poolIds.has(partnerId) && !selected.has(partnerId)) {
+    if (
+      partnerId &&
+      selectableIds.has(partnerId) &&
+      !selected.has(partnerId)
+    ) {
       if (selected.size + 2 <= target) {
         selected.add(player.playerId);
         selected.add(partnerId);
@@ -591,7 +699,301 @@ function chooseSelectedPlayersForPool(
     }
   }
 
-  return pool.players.filter((p) => selected.has(p.playerId));
+  return players.filter((p) => selected.has(p.playerId));
+}
+
+function chooseSelectedPlayersForPool(
+  pool: Pool,
+  matchCount: number,
+  states: Map<string, PlayerState>,
+  previousRested: Set<string>,
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>,
+  fixedPairMap: Map<string, string>
+) {
+  return chooseSelectedPlayers(
+    pool.players,
+    matchCount * 4,
+    states,
+    previousRested,
+    minGamesPerPlayer,
+    randomOrder,
+    fixedPairMap
+  );
+}
+
+function getTeamBattleMatchLimit(pool: TeamBattlePool) {
+  return Math.min(
+    Math.floor(pool.teamAPlayers.length / 2),
+    Math.floor(pool.teamBPlayers.length / 2)
+  );
+}
+
+function getTeamBattleRecoveryMatchFloor(pool: TeamBattlePool) {
+  const matchLimit = getTeamBattleMatchLimit(pool);
+
+  if (matchLimit <= 0) {
+    return 0;
+  }
+
+  const maxSelectableNextRound = matchLimit * 2;
+  const unrecoverableCarryA =
+    pool.teamAPlayers.length - maxSelectableNextRound;
+  const unrecoverableCarryB =
+    pool.teamBPlayers.length - maxSelectableNextRound;
+
+  return Math.max(
+    unrecoverableCarryA <= 0 ? 0 : Math.ceil(unrecoverableCarryA / 2),
+    unrecoverableCarryB <= 0 ? 0 : Math.ceil(unrecoverableCarryB / 2)
+  );
+}
+
+function getTeamBattlePoolAverageGames(
+  pool: TeamBattlePool,
+  states: Map<string, PlayerState>
+) {
+  const players = [...pool.teamAPlayers, ...pool.teamBPlayers];
+
+  if (players.length === 0) {
+    return 0;
+  }
+
+  const totalGames = players.reduce(
+    (total, player) => total + (states.get(player.playerId)?.games ?? 0),
+    0
+  );
+
+  return totalGames / players.length;
+}
+
+function getOverallAverageGamesForTeamBattle(
+  pools: TeamBattlePool[],
+  states: Map<string, PlayerState>
+) {
+  const players = pools.flatMap((pool) => [
+    ...pool.teamAPlayers,
+    ...pool.teamBPlayers,
+  ]);
+
+  if (players.length === 0) {
+    return 0;
+  }
+
+  const totalGames = players.reduce(
+    (total, player) => total + (states.get(player.playerId)?.games ?? 0),
+    0
+  );
+
+  return totalGames / players.length;
+}
+
+function getTeamBattlePoolMatchPriority(
+  pool: TeamBattlePool,
+  currentMatches: number,
+  states: Map<string, PlayerState>,
+  previousRested: Set<string>,
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>,
+  overallAverageGames: number,
+  fixedPairMap: Map<string, string>
+) {
+  const nextSelectedCount = (currentMatches + 1) * 2;
+  const selectedA = chooseSelectedPlayers(
+    pool.teamAPlayers,
+    nextSelectedCount,
+    states,
+    previousRested,
+    minGamesPerPlayer,
+    randomOrder,
+    fixedPairMap
+  );
+  const selectedB = chooseSelectedPlayers(
+    pool.teamBPlayers,
+    nextSelectedCount,
+    states,
+    previousRested,
+    minGamesPerPlayer,
+    randomOrder,
+    fixedPairMap
+  );
+
+  if (
+    selectedA.length < nextSelectedCount ||
+    selectedB.length < nextSelectedCount
+  ) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const poolAverageGames = getTeamBattlePoolAverageGames(pool, states);
+  const gameGap = overallAverageGames - poolAverageGames;
+
+  return [...selectedA, ...selectedB].reduce((total, player, index) => {
+    const state = states.get(player.playerId)!;
+    const unmetGames = Math.max(0, minGamesPerPlayer - state.games);
+    const mustPlayBonus = previousRested.has(player.playerId) ? 6 : 0;
+    const lowGamesBonus = Math.max(0, overallAverageGames - state.games);
+    const randomBias =
+      (randomOrder.get(player.playerId) ?? 0) * (index + 1) * 0.01;
+
+    return (
+      total +
+      unmetGames * 10 +
+      mustPlayBonus +
+      lowGamesBonus * 4 +
+      randomBias
+    );
+  }, gameGap * 40 - currentMatches * 12);
+}
+
+function allocateMatchesForRoundTeamBattle(
+  pools: TeamBattlePool[],
+  courtCount: number,
+  states: Map<string, PlayerState>,
+  previousRested: Set<string>,
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>,
+  fixedPairMap: Map<string, string>
+) {
+  const allocations = new Map<DivisionKey, number>();
+  let requiredMatches = 0;
+  const overallAverageGames = getOverallAverageGamesForTeamBattle(
+    pools,
+    states
+  );
+
+  for (const pool of pools) {
+    const needsGamesA = pool.teamAPlayers.some((player) => {
+      const state = states.get(player.playerId)!;
+      return state.games < minGamesPerPlayer;
+    });
+    const needsGamesB = pool.teamBPlayers.some((player) => {
+      const state = states.get(player.playerId)!;
+      return state.games < minGamesPerPlayer;
+    });
+    const hasPreviousRestersA = pool.teamAPlayers.some((player) =>
+      previousRested.has(player.playerId)
+    );
+    const hasPreviousRestersB = pool.teamBPlayers.some((player) =>
+      previousRested.has(player.playerId)
+    );
+
+    if (pool.teamAPlayers.length < 2 && (needsGamesA || hasPreviousRestersA)) {
+      throw new Error(
+        `${pool.label} 생성에는 ${pool.label.includes("남복") ? "A팀 남자" : pool.label.includes("여복") ? "A팀 여자" : "A팀"} 참가자가 최소 2명 이상 필요합니다.`
+      );
+    }
+
+    if (pool.teamBPlayers.length < 2 && (needsGamesB || hasPreviousRestersB)) {
+      throw new Error(
+        `${pool.label} 생성에는 ${pool.label.includes("남복") ? "B팀 남자" : pool.label.includes("여복") ? "B팀 여자" : "B팀"} 참가자가 최소 2명 이상 필요합니다.`
+      );
+    }
+
+    const mustPlayCountA = pool.teamAPlayers.filter((player) =>
+      previousRested.has(player.playerId)
+    ).length;
+    const mustPlayCountB = pool.teamBPlayers.filter((player) =>
+      previousRested.has(player.playerId)
+    ).length;
+    const requiredFromPreviousRest = Math.max(
+      mustPlayCountA === 0 ? 0 : Math.ceil(mustPlayCountA / 2),
+      mustPlayCountB === 0 ? 0 : Math.ceil(mustPlayCountB / 2)
+    );
+    const requiredForRecovery = getTeamBattleRecoveryMatchFloor(pool);
+    const required = Math.max(requiredFromPreviousRest, requiredForRecovery);
+
+    if (required > getTeamBattleMatchLimit(pool)) {
+      throw new Error(
+        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 팀 인원 또는 코트 수를 다시 확인해 주세요.`
+      );
+    }
+
+    allocations.set(pool.key, required);
+    requiredMatches += required;
+  }
+
+  if (requiredMatches > courtCount) {
+    throw new Error(
+      "직전 라운드 휴식 인원을 모두 다음 라운드에 배정할 수 없습니다. 코트 수를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
+    );
+  }
+
+  let remainingMatches = courtCount - requiredMatches;
+
+  while (remainingMatches > 0) {
+    let bestPool: TeamBattlePool | null = null;
+    let bestPriority = Number.NEGATIVE_INFINITY;
+
+    for (const pool of pools) {
+      const currentMatches = allocations.get(pool.key) ?? 0;
+      const matchLimit = getTeamBattleMatchLimit(pool);
+
+      if (currentMatches >= matchLimit) {
+        continue;
+      }
+
+      const priority = getTeamBattlePoolMatchPriority(
+        pool,
+        currentMatches,
+        states,
+        previousRested,
+        minGamesPerPlayer,
+        randomOrder,
+        overallAverageGames,
+        fixedPairMap
+      );
+
+      if (priority > bestPriority) {
+        bestPriority = priority;
+        bestPool = pool;
+      }
+    }
+
+    if (!bestPool || bestPriority <= 0) {
+      break;
+    }
+
+    allocations.set(
+      bestPool.key,
+      (allocations.get(bestPool.key) ?? 0) + 1
+    );
+    remainingMatches -= 1;
+  }
+
+  return allocations;
+}
+
+function chooseSelectedPlayersForTeamBattlePool(
+  pool: TeamBattlePool,
+  matchCount: number,
+  states: Map<string, PlayerState>,
+  previousRested: Set<string>,
+  minGamesPerPlayer: number,
+  randomOrder: Map<string, number>,
+  fixedPairMap: Map<string, string>
+) {
+  const target = matchCount * 2;
+
+  return {
+    teamAPlayers: chooseSelectedPlayers(
+      pool.teamAPlayers,
+      target,
+      states,
+      previousRested,
+      minGamesPerPlayer,
+      randomOrder,
+      fixedPairMap
+    ),
+    teamBPlayers: chooseSelectedPlayers(
+      pool.teamBPlayers,
+      target,
+      states,
+      previousRested,
+      minGamesPerPlayer,
+      randomOrder,
+      fixedPairMap
+    ),
+  };
 }
 
 function generateCombinations<T>(
@@ -773,6 +1175,196 @@ function evaluateQuartetPairings(
   return bestCandidate;
 }
 
+function wouldSplitFixedPair(
+  selectedPlayers: InternalPlayer[],
+  availablePlayers: InternalPlayer[],
+  fixedPairMap: Map<string, string>
+) {
+  const selectedIds = new Set(selectedPlayers.map((player) => player.playerId));
+  const availableIds = new Set(availablePlayers.map((player) => player.playerId));
+
+  return selectedPlayers.some((player) => {
+    const partnerId = fixedPairMap.get(player.playerId);
+    return (
+      partnerId !== undefined &&
+      availableIds.has(partnerId) &&
+      !selectedIds.has(partnerId)
+    );
+  });
+}
+
+function evaluateTeamBattlePairing(
+  teamAPlayers: InternalPlayer[],
+  teamBPlayers: InternalPlayer[],
+  division: DivisionKey,
+  label: string,
+  courtNumber: number,
+  partnerHistory: Map<string, number>,
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>,
+  fixedPairMap: Map<string, string>
+): MatchCandidate | null {
+  if (
+    !isPairingValidForFixedPairs(teamAPlayers, teamBPlayers, fixedPairMap)
+  ) {
+    return null;
+  }
+
+  const teamATotal = teamAPlayers.reduce(
+    (total, player) => total + player.score,
+    0
+  );
+  const teamBTotal = teamBPlayers.reduce(
+    (total, player) => total + player.score,
+    0
+  );
+  const balanceGap = Math.abs(teamATotal - teamBTotal);
+
+  const partnerPenalty =
+    (partnerHistory.get(
+      keyForPair(teamAPlayers[0]!.playerId, teamAPlayers[1]!.playerId)
+    ) ?? 0) *
+      80 +
+    (partnerHistory.get(
+      keyForPair(teamBPlayers[0]!.playerId, teamBPlayers[1]!.playerId)
+    ) ?? 0) *
+      80;
+
+  const opponentPairs = [
+    [teamAPlayers[0]!, teamBPlayers[0]!],
+    [teamAPlayers[0]!, teamBPlayers[1]!],
+    [teamAPlayers[1]!, teamBPlayers[0]!],
+    [teamAPlayers[1]!, teamBPlayers[1]!],
+  ];
+
+  const opponentPenalty = opponentPairs.reduce(
+    (total, [left, right]) =>
+      total +
+      (opponentHistory.get(keyForPair(left.playerId, right.playerId)) ?? 0) *
+        18,
+    0
+  );
+
+  const quartet = [...teamAPlayers, ...teamBPlayers];
+  const scoreSpread =
+    Math.max(...quartet.map((player) => player.score)) -
+    Math.min(...quartet.map((player) => player.score));
+
+  const score =
+    balanceGap * 12 +
+    partnerPenalty +
+    opponentPenalty +
+    scoreSpread * 3 +
+    getPairingRandomBias(teamAPlayers, teamBPlayers, randomOrder);
+
+  return {
+    score,
+    playerIds: quartet.map((player) => player.playerId),
+    match: {
+      courtNumber,
+      label,
+      division,
+      balanceGap,
+      teamA: {
+        players: teamAPlayers,
+        totalScore: teamATotal,
+      },
+      teamB: {
+        players: teamBPlayers,
+        totalScore: teamBTotal,
+      },
+    },
+  };
+}
+
+function buildRoundMatchesForTeamBattlePool(
+  pool: TeamBattlePool,
+  selectedTeamAPlayers: InternalPlayer[],
+  selectedTeamBPlayers: InternalPlayer[],
+  firstCourtNumber: number,
+  partnerHistory: Map<string, number>,
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>,
+  random: RandomFn,
+  fixedPairMap: Map<string, string>
+) {
+  const remainingTeamA = shuffleArray(selectedTeamAPlayers, random);
+  const remainingTeamB = shuffleArray(selectedTeamBPlayers, random);
+  const matches: SessionBracketMatch[] = [];
+  let nextCourtNumber = firstCourtNumber;
+
+  while (remainingTeamA.length >= 2 && remainingTeamB.length >= 2) {
+    const teamACombos = shuffleArray(
+      generateCombinations(remainingTeamA, 2),
+      random
+    );
+    const teamBCombos = shuffleArray(
+      generateCombinations(remainingTeamB, 2),
+      random
+    );
+
+    let bestCandidate: MatchCandidate | null = null;
+
+    for (const teamAPlayers of teamACombos) {
+      if (
+        wouldSplitFixedPair(teamAPlayers, remainingTeamA, fixedPairMap)
+      ) {
+        continue;
+      }
+
+      for (const teamBPlayers of teamBCombos) {
+        if (
+          wouldSplitFixedPair(teamBPlayers, remainingTeamB, fixedPairMap)
+        ) {
+          continue;
+        }
+
+        const candidate = evaluateTeamBattlePairing(
+          teamAPlayers,
+          teamBPlayers,
+          pool.key,
+          pool.label,
+          nextCourtNumber,
+          partnerHistory,
+          opponentHistory,
+          randomOrder,
+          fixedPairMap
+        );
+
+        if (candidate && (!bestCandidate || candidate.score < bestCandidate.score)) {
+          bestCandidate = candidate;
+        }
+      }
+    }
+
+    if (!bestCandidate) {
+      throw new Error(
+        `${pool.label} 대진을 구성하지 못했습니다. 팀 배정 또는 고정 파트너 설정을 다시 확인해 주세요.`
+      );
+    }
+
+    matches.push(bestCandidate.match);
+    nextCourtNumber += 1;
+
+    const selectedIdSet = new Set(bestCandidate.playerIds);
+    for (let index = remainingTeamA.length - 1; index >= 0; index -= 1) {
+      if (selectedIdSet.has(remainingTeamA[index]!.playerId)) {
+        remainingTeamA.splice(index, 1);
+      }
+    }
+    for (let index = remainingTeamB.length - 1; index >= 0; index -= 1) {
+      if (selectedIdSet.has(remainingTeamB[index]!.playerId)) {
+        remainingTeamB.splice(index, 1);
+      }
+    }
+  }
+
+  return matches.map((match, index) => ({
+    ...match,
+    courtNumber: firstCourtNumber + index,
+  }));
+}
+
 function buildRoundMatchesForPool(
   pool: Pool,
   selectedPlayers: InternalPlayer[],
@@ -937,6 +1529,61 @@ function validateGenerationInput(
   }
 }
 
+function validateTeamBattleInput(
+  players: InternalPlayer[],
+  config: SessionBracketConfig,
+  teamAssignments: Record<string, "A" | "B">,
+  fixedPairMap: Map<string, string>
+) {
+  validateGenerationInput(players, config);
+
+  const unassignedPlayers = players.filter(
+    (player) => !teamAssignments[player.playerId]
+  );
+  if (unassignedPlayers.length > 0) {
+    throw new Error(
+      `팀 대항 자동대진은 모든 참가자의 팀 배정이 필요합니다. ${unassignedPlayers
+        .map((player) => player.name)
+        .join(", ")} 참가자의 팀을 먼저 선택해 주세요.`
+    );
+  }
+
+  const teamAPlayers = players.filter(
+    (player) => teamAssignments[player.playerId] === "A"
+  );
+  const teamBPlayers = players.filter(
+    (player) => teamAssignments[player.playerId] === "B"
+  );
+
+  if (teamAPlayers.length < 2 || teamBPlayers.length < 2) {
+    throw new Error(
+      "팀 대항 자동대진은 A팀과 B팀에 각각 최소 2명 이상 있어야 생성할 수 있습니다."
+    );
+  }
+
+  for (const [playerId, partnerId] of fixedPairMap.entries()) {
+    if (playerId > partnerId) {
+      continue;
+    }
+
+    if (teamAssignments[playerId] !== teamAssignments[partnerId]) {
+      throw new Error(
+        "고정 파트너는 같은 팀 안에서만 설정할 수 있습니다. 팀 배정 또는 고정 파트너를 다시 확인해 주세요."
+      );
+    }
+
+    if (config.separateByGender) {
+      const player = players.find((entry) => entry.playerId === playerId);
+      const partner = players.find((entry) => entry.playerId === partnerId);
+      if (player && partner && player.gender !== partner.gender) {
+        throw new Error(
+          "남복/여복 분리 생성에서는 고정 파트너도 같은 성별 안에서만 설정할 수 있습니다."
+        );
+      }
+    }
+  }
+}
+
 function buildSummary(
   players: InternalPlayer[],
   states: Map<string, PlayerState>,
@@ -977,6 +1624,188 @@ function buildSummary(
   };
 }
 
+function generateTeamBattleRounds(
+  players: InternalPlayer[],
+  config: SessionBracketConfig,
+  teamAssignments: Record<string, "A" | "B">,
+  randomOrder: Map<string, number>,
+  random: RandomFn,
+  fixedPairMap: Map<string, string>
+) {
+  const teamLabels = config.teamLabels ?? { A: "팀A", B: "팀B" };
+  const pools = buildTeamBattlePools(
+    players,
+    config.separateByGender,
+    teamAssignments,
+    teamLabels
+  );
+  const playerEntryMap = getEntryMap(players);
+  const states = new Map<string, PlayerState>(
+    players.map((player) => [
+      player.playerId,
+      {
+        games: 0,
+        rests: 0,
+        lastPlayedRound: 0,
+      },
+    ])
+  );
+  const partnerHistory = new Map<string, number>();
+  const opponentHistory = new Map<string, number>();
+  const rounds: SessionBracketRound[] = [];
+  const warnings: string[] = [];
+  let previousRested = new Set<string>();
+
+  const teamACount = players.filter(
+    (player) => teamAssignments[player.playerId] === "A"
+  ).length;
+  const teamBCount = players.filter(
+    (player) => teamAssignments[player.playerId] === "B"
+  ).length;
+  if (teamACount !== teamBCount) {
+    warnings.push(
+      `${teamLabels.A} ${teamACount}명 / ${teamLabels.B} ${teamBCount}명으로 팀 인원 차이가 있어 한쪽 팀의 휴식 인원이 더 많아질 수 있습니다.`
+    );
+  }
+
+  for (const pool of pools) {
+    if (pool.teamAPlayers.length !== pool.teamBPlayers.length) {
+      warnings.push(
+        `${pool.label} 인원 차이로 라운드별 휴식 인원이 고르게 나뉘지 않을 수 있습니다.`
+      );
+    }
+  }
+
+  const estimatedRounds = Math.ceil(
+    (players.length * config.minGamesPerPlayer) /
+      Math.max(1, config.courtCount * 4)
+  );
+  const maxRounds = Math.max(
+    estimatedRounds + players.length,
+    config.minGamesPerPlayer * 3,
+    6
+  );
+
+  for (let roundNumber = 1; roundNumber <= maxRounds; roundNumber += 1) {
+    if (
+      rounds.length > 0 &&
+      allPlayersSatisfied(players, states, config.minGamesPerPlayer)
+    ) {
+      break;
+    }
+
+    const allocations = allocateMatchesForRoundTeamBattle(
+      pools,
+      config.courtCount,
+      states,
+      previousRested,
+      config.minGamesPerPlayer,
+      randomOrder,
+      fixedPairMap
+    );
+    const roundMatches: SessionBracketMatch[] = [];
+    const restedPlayerIds = new Set<string>();
+    let nextCourtNumber = 1;
+
+    for (const pool of pools) {
+      const matchCount = allocations.get(pool.key) ?? 0;
+      const selectedPlayers = chooseSelectedPlayersForTeamBattlePool(
+        pool,
+        matchCount,
+        states,
+        previousRested,
+        config.minGamesPerPlayer,
+        randomOrder,
+        fixedPairMap
+      );
+
+      const selectedIdSet = new Set([
+        ...selectedPlayers.teamAPlayers.map((player) => player.playerId),
+        ...selectedPlayers.teamBPlayers.map((player) => player.playerId),
+      ]);
+
+      const restingPlayers = [...pool.teamAPlayers, ...pool.teamBPlayers].filter(
+        (player) => !selectedIdSet.has(player.playerId)
+      );
+
+      for (const restingPlayer of restingPlayers) {
+        restedPlayerIds.add(restingPlayer.playerId);
+      }
+
+      const poolMatches = buildRoundMatchesForTeamBattlePool(
+        pool,
+        selectedPlayers.teamAPlayers,
+        selectedPlayers.teamBPlayers,
+        nextCourtNumber,
+        partnerHistory,
+        opponentHistory,
+        randomOrder,
+        random,
+        fixedPairMap
+      );
+
+      roundMatches.push(...poolMatches);
+      nextCourtNumber += poolMatches.length;
+    }
+
+    if (roundMatches.length === 0) {
+      break;
+    }
+
+    for (const match of roundMatches) {
+      registerMatchHistory(match, partnerHistory, opponentHistory);
+    }
+
+    for (const player of players) {
+      const state = states.get(player.playerId)!;
+
+      if (restedPlayerIds.has(player.playerId)) {
+        state.rests += 1;
+      } else {
+        state.games += 1;
+        state.lastPlayedRound = roundNumber;
+      }
+    }
+
+    previousRested = restedPlayerIds;
+
+    rounds.push({
+      roundNumber,
+      matches: roundMatches,
+      restingPlayers: [...restedPlayerIds]
+        .map((playerId) => playerEntryMap.get(playerId)!)
+        .sort((left, right) => {
+          if (left.score !== right.score) {
+            return right.score - left.score;
+          }
+
+          return left.name.localeCompare(right.name, "ko");
+        }),
+    });
+  }
+
+  if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
+    throw new Error(
+      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수나 팀 인원을 다시 확인해 주세요."
+    );
+  }
+
+  for (const player of players) {
+    const state = states.get(player.playerId)!;
+
+    if (state.games > config.minGamesPerPlayer + 1) {
+      warnings.push(
+        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
+      );
+    }
+  }
+
+  return {
+    rounds,
+    summary: buildSummary(players, states, config, rounds, warnings),
+  };
+}
+
 export function generateSessionBracket(
   input: SessionBracketGenerationInput
 ) {
@@ -991,6 +1820,19 @@ export function generateSessionBracket(
       Math.floor(input.minGamesPerPlayer)
     ),
     separateByGender: Boolean(input.separateByGender),
+    generationMode:
+      input.generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD",
+    teamAssignments:
+      input.generationMode === "TEAM_BATTLE"
+        ? input.teamAssignments ?? {}
+        : undefined,
+    teamLabels:
+      input.generationMode === "TEAM_BATTLE"
+        ? {
+            A: input.teamLabels?.A?.trim() || "팀A",
+            B: input.teamLabels?.B?.trim() || "팀B",
+          }
+        : undefined,
     fixedPairs: input.fixedPairs ?? [],
   };
 
@@ -1015,6 +1857,28 @@ export function generateSessionBracket(
   const randomOrder = new Map(
     players.map((player) => [player.playerId, random()])
   );
+
+  if (config.generationMode === "TEAM_BATTLE") {
+    validateTeamBattleInput(
+      players,
+      config,
+      config.teamAssignments ?? {},
+      fixedPairMap
+    );
+
+    return {
+      config,
+      ...generateTeamBattleRounds(
+        players,
+        config,
+        config.teamAssignments ?? {},
+        randomOrder,
+        random,
+        fixedPairMap
+      ),
+    };
+  }
+
   const pools = buildPools(players, config.separateByGender);
   const playerEntryMap = getEntryMap(players);
   const states = new Map<string, PlayerState>(

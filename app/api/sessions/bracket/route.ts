@@ -14,29 +14,159 @@ import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-particip
 import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
-function normalizeSavedBracket(
-  bracket: {
-    id: number;
-    sessionId: number;
-    config: unknown;
-    rounds: unknown;
-    summary: unknown;
-    createdAt: Date;
-    updatedAt: Date;
-  } | null
+type BracketMode = "STANDARD" | "TEAM_BATTLE";
+
+type SessionBracketRecord = {
+  id: number;
+  sessionId: number;
+  config: unknown;
+  rounds: unknown;
+  summary: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type StoredConfigVariantEnvelope = {
+  variants?: Partial<Record<BracketMode, { config: unknown }>>;
+};
+
+type StoredRoundsVariantEnvelope = {
+  variants?: Partial<Record<BracketMode, { rounds: unknown }>>;
+};
+
+type StoredSummaryVariantEnvelope = {
+  variants?: Partial<Record<BracketMode, { summary: unknown }>>;
+};
+
+function normalizeBracketMode(value: string | null | undefined): BracketMode {
+  return value === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD";
+}
+
+function getStoredBracketVariant(
+  bracket: SessionBracketRecord | null,
+  mode: BracketMode
 ) {
   if (!bracket) {
     return null;
   }
 
+  const configEnvelope =
+    bracket.config && typeof bracket.config === "object"
+      ? (bracket.config as StoredConfigVariantEnvelope)
+      : null;
+  const roundsEnvelope =
+    bracket.rounds && typeof bracket.rounds === "object"
+      ? (bracket.rounds as StoredRoundsVariantEnvelope)
+      : null;
+  const summaryEnvelope =
+    bracket.summary && typeof bracket.summary === "object"
+      ? (bracket.summary as StoredSummaryVariantEnvelope)
+      : null;
+
+  const configVariant = configEnvelope?.variants?.[mode];
+  const roundsVariant = roundsEnvelope?.variants?.[mode];
+  const summaryVariant = summaryEnvelope?.variants?.[mode];
+
+  if (configVariant && roundsVariant && summaryVariant) {
+    return {
+      id: bracket.id,
+      sessionId: bracket.sessionId,
+      config: configVariant.config,
+      rounds: roundsVariant.rounds,
+      summary: summaryVariant.summary,
+      createdAt: bracket.createdAt,
+      updatedAt: bracket.updatedAt,
+    };
+  }
+
+  const directConfig =
+    bracket.config && typeof bracket.config === "object"
+      ? (bracket.config as { generationMode?: BracketMode })
+      : null;
+  const directMode = normalizeBracketMode(directConfig?.generationMode);
+
+  if (!configEnvelope?.variants && directMode === mode) {
+    return bracket;
+  }
+
+  return null;
+}
+
+function normalizeSavedBracket(
+  bracket: SessionBracketRecord | null,
+  mode: BracketMode
+) {
+  const target = getStoredBracketVariant(bracket, mode);
+
+  if (!target) {
+    return null;
+  }
+
   return {
-    id: bracket.id,
-    sessionId: bracket.sessionId,
-    config: bracket.config,
-    rounds: bracket.rounds,
-    summary: bracket.summary,
-    createdAt: bracket.createdAt,
-    updatedAt: bracket.updatedAt,
+    id: target.id,
+    sessionId: target.sessionId,
+    config: target.config,
+    rounds: target.rounds,
+    summary: target.summary,
+    createdAt: target.createdAt,
+    updatedAt: target.updatedAt,
+  };
+}
+
+function buildStoredVariantPayload(
+  existingBracket: SessionBracketRecord | null,
+  mode: BracketMode,
+  generated: {
+    config: unknown;
+    rounds: unknown;
+    summary: unknown;
+  }
+) {
+  const existingConfigEnvelope =
+    existingBracket?.config && typeof existingBracket.config === "object"
+      ? (existingBracket.config as StoredConfigVariantEnvelope)
+      : {};
+  const existingRoundsEnvelope =
+    existingBracket?.rounds && typeof existingBracket.rounds === "object"
+      ? (existingBracket.rounds as StoredRoundsVariantEnvelope)
+      : {};
+  const existingSummaryEnvelope =
+    existingBracket?.summary && typeof existingBracket.summary === "object"
+      ? (existingBracket.summary as StoredSummaryVariantEnvelope)
+      : {};
+
+  const fallbackMode = normalizeBracketMode(
+    (
+      existingBracket?.config as
+        | { generationMode?: BracketMode }
+        | undefined
+        | null
+    )?.generationMode
+  );
+
+  const configVariants = { ...(existingConfigEnvelope.variants ?? {}) };
+  const roundsVariants = { ...(existingRoundsEnvelope.variants ?? {}) };
+  const summaryVariants = { ...(existingSummaryEnvelope.variants ?? {}) };
+
+  if (
+    existingBracket &&
+    !existingConfigEnvelope.variants &&
+    !existingRoundsEnvelope.variants &&
+    !existingSummaryEnvelope.variants
+  ) {
+    configVariants[fallbackMode] = { config: existingBracket.config };
+    roundsVariants[fallbackMode] = { rounds: existingBracket.rounds };
+    summaryVariants[fallbackMode] = { summary: existingBracket.summary };
+  }
+
+  configVariants[mode] = { config: generated.config };
+  roundsVariants[mode] = { rounds: generated.rounds };
+  summaryVariants[mode] = { summary: generated.summary };
+
+  return {
+    config: { variants: configVariants } as Prisma.InputJsonValue,
+    rounds: { variants: roundsVariants } as Prisma.InputJsonValue,
+    summary: { variants: summaryVariants } as Prisma.InputJsonValue,
   };
 }
 
@@ -185,6 +315,22 @@ function buildBracketPlayers(
   return players;
 }
 
+function normalizeTeamAssignments(
+  value: unknown
+): Record<string, "A" | "B"> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    (entry): entry is [string, "A" | "B"] =>
+      typeof entry[0] === "string" &&
+      (entry[1] === "A" || entry[1] === "B")
+  );
+
+  return Object.fromEntries(entries);
+}
+
 export async function GET(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -195,6 +341,9 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const sessionId = Number(searchParams.get("sessionId"));
+    const generationMode = normalizeBracketMode(
+      searchParams.get("generationMode")
+    );
 
     if (!Number.isFinite(sessionId)) {
       return NextResponse.json(
@@ -215,7 +364,7 @@ export async function GET(req: Request) {
       sessionId: session.id,
       sessionTitle: session.title,
       participantCount: session.participants.length,
-      bracket: normalizeSavedBracket(session.bracket),
+      bracket: normalizeSavedBracket(session.bracket, generationMode),
     });
   } catch (error) {
     console.error(error);
@@ -239,6 +388,23 @@ export async function POST(req: Request) {
     const courtCount = Number(body.courtCount);
     const minGamesPerPlayer = Number(body.minGamesPerPlayer);
     const separateByGender = Boolean(body.separateByGender);
+    const generationMode =
+      body.generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD";
+    const teamAssignments = normalizeTeamAssignments(body.teamAssignments);
+    const rawTeamLabels =
+      body.teamLabels && typeof body.teamLabels === "object"
+        ? (body.teamLabels as Record<string, unknown>)
+        : {};
+    const teamLabels = {
+      A:
+        typeof rawTeamLabels.A === "string" && rawTeamLabels.A.trim()
+          ? rawTeamLabels.A.trim()
+          : "팀A",
+      B:
+        typeof rawTeamLabels.B === "string" && rawTeamLabels.B.trim()
+          ? rawTeamLabels.B.trim()
+          : "팀B",
+    };
     const fixedPairs: Array<[string, string]> = Array.isArray(body.fixedPairs)
       ? body.fixedPairs.filter(
           (pair: unknown): pair is [string, string] =>
@@ -283,24 +449,33 @@ export async function POST(req: Request) {
       courtCount,
       minGamesPerPlayer,
       separateByGender,
+      generationMode,
+      teamAssignments,
+      teamLabels,
       fixedPairs,
       seed: Date.now() + Math.floor(Math.random() * 1_000_000),
     });
+
+    const storedPayload = buildStoredVariantPayload(
+      session.bracket,
+      generationMode,
+      generated
+    );
 
     const savedBracket = await prisma.sessionBracket.upsert({
       where: {
         sessionId: session.id,
       },
       update: {
-        config: generated.config as unknown as Prisma.InputJsonValue,
-        rounds: generated.rounds as unknown as Prisma.InputJsonValue,
-        summary: generated.summary as unknown as Prisma.InputJsonValue,
+        config: storedPayload.config,
+        rounds: storedPayload.rounds,
+        summary: storedPayload.summary,
       },
       create: {
         sessionId: session.id,
-        config: generated.config as unknown as Prisma.InputJsonValue,
-        rounds: generated.rounds as unknown as Prisma.InputJsonValue,
-        summary: generated.summary as unknown as Prisma.InputJsonValue,
+        config: storedPayload.config,
+        rounds: storedPayload.rounds,
+        summary: storedPayload.summary,
       },
     });
 
@@ -315,7 +490,7 @@ export async function POST(req: Request) {
       sessionId: session.id,
       sessionTitle: session.title,
       participantCount: session.participants.length,
-      bracket: normalizeSavedBracket(savedBracket),
+      bracket: normalizeSavedBracket(savedBracket, generationMode),
     });
   } catch (error) {
     console.error(error);

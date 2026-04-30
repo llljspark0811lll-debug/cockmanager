@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
 import type { ClubSession } from "@/components/dashboard/types";
 import {
@@ -31,6 +31,13 @@ type ParticipantFilterState = {
   genderFilter: string;
   levelFilter: string;
   sortOption: ParticipantSortOption;
+};
+
+type SessionSelectOption = {
+  id: number;
+  title: string;
+  date: string | Date;
+  startTime: string;
 };
 
 const initialFilters: ParticipantFilterState = {
@@ -117,6 +124,59 @@ function getRegisteredParticipants(session: ClubSession) {
   return (session.participants ?? []).filter((p) => p.status === "REGISTERED");
 }
 
+const AttendanceSessionPicker = memo(
+  function AttendanceSessionPicker({
+    options,
+    selectedSessionId,
+    onSelectSession,
+  }: {
+    options: SessionSelectOption[];
+    selectedSessionId: number | null;
+    onSelectSession: (id: number) => void;
+  }) {
+    return (
+      <label className="block space-y-1.5">
+        <span className="text-xs font-bold tracking-[0.18em] text-slate-400">
+          TODAY SESSION
+        </span>
+        <select
+          value={selectedSessionId ?? ""}
+          onChange={(event) => onSelectSession(Number(event.target.value))}
+          className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-semibold outline-none transition focus:border-sky-400 sm:px-4 sm:text-sm"
+        >
+          <option value="" disabled>
+            대진표를 생성할 운동 일정을 선택해 주세요
+          </option>
+          {options.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.title} / {formatDate(session.date)} / {session.startTime}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  },
+  (prevProps, nextProps) => {
+    if (prevProps.selectedSessionId !== nextProps.selectedSessionId) {
+      return false;
+    }
+
+    if (prevProps.options.length !== nextProps.options.length) {
+      return false;
+    }
+
+    return prevProps.options.every((option, index) => {
+      const nextOption = nextProps.options[index];
+      return (
+        option.id === nextOption.id &&
+        option.title === nextOption.title &&
+        String(option.date) === String(nextOption.date) &&
+        option.startTime === nextOption.startTime
+      );
+    });
+  }
+);
+
 export function AttendancePanel({
   sessions,
   selectedSessionId,
@@ -135,6 +195,24 @@ export function AttendancePanel({
     null;
 
   const [filters, setFilters] = useState<ParticipantFilterState>(initialFilters);
+
+  const sessionPickerOptions = useMemo(
+    () =>
+      sessions.map((session) => ({
+        id: session.id,
+        title: session.title,
+        date: session.date,
+        startTime: session.startTime,
+      })),
+    [
+      sessions
+        .map(
+          (session) =>
+            `${session.id}|${session.title}|${String(session.date)}|${session.startTime}`
+        )
+        .join("||"),
+    ]
+  );
 
   useEffect(() => {
     if (!hasSelectedSession && sessions[0]) {
@@ -230,6 +308,12 @@ export function AttendancePanel({
           </div>
 
           <div className="w-full xl:max-w-[320px]">
+            <AttendanceSessionPicker
+              options={sessionPickerOptions}
+              selectedSessionId={selectedSession?.id ?? null}
+              onSelectSession={onSelectSession}
+            />
+            {false ? (
             <label className="block space-y-1.5">
               <span className="text-xs font-bold tracking-[0.18em] text-slate-400">
                 TODAY SESSION
@@ -249,6 +333,7 @@ export function AttendancePanel({
                 ))}
               </select>
             </label>
+            ) : null}
           </div>
         </div>
       </section>
