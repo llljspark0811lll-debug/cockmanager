@@ -170,6 +170,9 @@ function renderSummary(bracket: SessionBracket, y: number) {
   const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
   const cardGap = 16;
   const cardWidth = (innerWidth - cardGap * 2) / 3;
+  const teamBattleLabel = `${bracket.config.teamLabels?.A?.trim() || "팀A"} vs ${
+    bracket.config.teamLabels?.B?.trim() || "팀B"
+  }`;
   const entries = [
     {
       label: "코트 / 최소 경기",
@@ -186,6 +189,64 @@ function renderSummary(bracket: SessionBracket, y: number) {
       value: bracket.config.separateByGender
         ? "남복 / 여복 분리"
         : "랜덤 복식",
+      fill: "#0f172a",
+    },
+  ];
+
+  if (bracket.config.generationMode === "TEAM_BATTLE") {
+    entries[2].value = bracket.config.separateByGender
+      ? "?⑤났 / ?щ났 遺꾨━"
+      : "?쒕뜡 蹂듭떇";
+  }
+
+  return entries
+    .map((entry, index) => {
+      const x = PADDING_X + index * (cardWidth + cardGap);
+
+      return `
+        <rect x="${x}" y="${y}" width="${cardWidth}" height="${SUMMARY_HEIGHT}" rx="22" fill="#ffffff" stroke="#d8e0ea" />
+        ${textBlock(x + 18, y + 28, [entry.label], {
+          fontSize: 16,
+          lineHeight: 18,
+          fill: "#7b8798",
+          fontWeight: 700,
+        })}
+        ${textBlock(
+          x + 18,
+          y + 62,
+          wrapText(entry.value, cardWidth - 36, 24),
+          {
+            fontSize: 24,
+            lineHeight: 28,
+            fill: entry.fill,
+            fontWeight: 900,
+          }
+        )}
+      `;
+    })
+    .join("");
+}
+
+function renderSummaryCards(bracket: SessionBracket, y: number) {
+  const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
+  const cardGap = 16;
+  const cardWidth = (innerWidth - cardGap * 2) / 3;
+  const entries = [
+    {
+      label: "코트 / 최소 경기",
+      value: `${bracket.config.courtCount}코트 · 최소 ${bracket.config.minGamesPerPlayer}경기`,
+      fill: "#0f172a",
+    },
+    {
+      label: "총 라운드 / 총 경기",
+      value: `${bracket.summary.totalRounds}라운드 · ${bracket.summary.totalMatches}경기`,
+      fill: "#0f172a",
+    },
+    {
+      label: "생성 방식",
+      value: bracket.config.separateByGender
+        ? "\uB0A8\uBCF5 / \uC5EC\uBCF5 \uBD84\uB9AC"
+        : "\uB79C\uB364 \uBCF5\uC2DD",
       fill: "#0f172a",
     },
   ];
@@ -218,8 +279,20 @@ function renderSummary(bracket: SessionBracket, y: number) {
     .join("");
 }
 
-function renderRoundSection(round: SessionBracket["rounds"][number], y: number) {
+function renderRoundSection(
+  round: SessionBracket["rounds"][number],
+  y: number,
+  bracket: SessionBracket
+) {
   const column = tableColumnX();
+  const teamALabel =
+    bracket.config.generationMode === "TEAM_BATTLE"
+      ? bracket.config.teamLabels?.A?.trim() || "팀A"
+      : "팀A";
+  const teamBLabel =
+    bracket.config.generationMode === "TEAM_BATTLE"
+      ? bracket.config.teamLabels?.B?.trim() || "팀B"
+      : "팀B";
   let markup = `
     <rect x="${column.left}" y="${y}" width="${column.innerWidth}" height="${ROUND_HEADER_HEIGHT}" rx="16" fill="#eef2f7" />
     ${textBlock(column.left + 18, y + 28, [`라운드 ${round.roundNumber}`], {
@@ -258,6 +331,14 @@ function renderRoundSection(round: SessionBracket["rounds"][number], y: number) 
       anchor: "middle",
     })}
   `;
+
+  if (bracket.config.generationMode === "TEAM_BATTLE") {
+    markup = markup
+      .replace(">팀A<", `>${escapeXml(teamALabel)}<`)
+      .replace(">팀B<", `>${escapeXml(teamBLabel)}<`)
+      .replace(">?\u0080A<", `>${escapeXml(teamALabel)}<`)
+      .replace(">?\u0080B<", `>${escapeXml(teamBLabel)}<`);
+  }
 
   round.matches.forEach((match, index) => {
     const rowY = headerY + TABLE_HEADER_HEIGHT + index * MATCH_ROW_HEIGHT;
@@ -352,11 +433,11 @@ function renderSvg(session: ClubSession, bracket: SessionBracket) {
   `;
 
   currentY += HEADER_HEIGHT;
-  markup += renderSummary(bracket, currentY);
+  markup += renderSummaryCards(bracket, currentY);
   currentY += SUMMARY_HEIGHT + 28;
 
   bracket.rounds.forEach((round) => {
-    markup += renderRoundSection(round, currentY);
+    markup += renderRoundSection(round, currentY, bracket);
     currentY += sectionHeight(round) + SECTION_GAP;
   });
 
@@ -531,4 +612,3 @@ export async function downloadFiles(files: File[]) {
     }, 1000);
   });
 }
-
