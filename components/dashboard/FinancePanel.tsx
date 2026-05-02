@@ -11,6 +11,7 @@ import type {
 import {
   LEDGER_CATEGORY_OPTIONS,
   formatNumberInput,
+  getLedgerCategoryLabel,
   parseNumberInput,
 } from "@/lib/finance";
 
@@ -143,7 +144,7 @@ function downloadLedgerCsv(params: {
       [
         entry.entryType === "INCOME" ? "입금" : "지출",
         new Date(entry.entryDate).toLocaleDateString("ko-KR"),
-        entry.category,
+        getLedgerCategoryLabel(entry.category),
         entry.title,
         entry.memberName ?? "",
         entry.memo ?? "",
@@ -597,63 +598,67 @@ export function FinancePanel({
                 엑셀용 CSV 다운로드
               </button>
 
-              <div className="flex gap-2">
-                <select
-                  value={selectedYear}
-                  onChange={(event) =>
-                    handleLedgerYearChange(Number(event.target.value))
-                  }
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
-                  aria-label="장부 연도 선택"
-                >
-                  {Array.from(
-                    { length: 7 },
-                    (_, index) =>
-                      new Date().getFullYear() - 3 + index
-                  ).map((year) => (
-                    <option key={year} value={year}>
-                      {year}년
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={ledgerMonth}
-                  onChange={(event) =>
-                    handleLedgerMonthChange(Number(event.target.value))
-                  }
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
-                  aria-label="장부 월 선택"
-                >
-                  {MONTHS.map((month) => (
-                    <option key={month} value={month}>
-                      {month}월
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="date"
-                  value={ledgerDateRange.startDate}
-                  onChange={(event) =>
-                    onChangeLedgerDateRange({
-                      ...ledgerDateRange,
-                      startDate: event.target.value,
-                    })
-                  }
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
-                  aria-label="장부 시작일 선택"
-                />
-                <input
-                  type="date"
-                  value={ledgerDateRange.endDate}
-                  onChange={(event) =>
-                    onChangeLedgerDateRange({
-                      ...ledgerDateRange,
-                      endDate: event.target.value,
-                    })
-                  }
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
-                  aria-label="장부 종료일 선택"
-                />
+              <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:justify-end">
+                <div className="grid grid-cols-2 gap-2 md:flex md:flex-none">
+                  <select
+                    value={selectedYear}
+                    onChange={(event) =>
+                      handleLedgerYearChange(Number(event.target.value))
+                    }
+                    className="min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    aria-label="장부 연도 선택"
+                  >
+                    {Array.from(
+                      { length: 7 },
+                      (_, index) =>
+                        new Date().getFullYear() - 3 + index
+                    ).map((year) => (
+                      <option key={year} value={year}>
+                        {year}년
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={ledgerMonth}
+                    onChange={(event) =>
+                      handleLedgerMonthChange(Number(event.target.value))
+                    }
+                    className="min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    aria-label="장부 월 선택"
+                  >
+                    {MONTHS.map((month) => (
+                      <option key={month} value={month}>
+                        {month}월
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:flex md:flex-none">
+                  <input
+                    type="date"
+                    value={ledgerDateRange.startDate}
+                    onChange={(event) =>
+                      onChangeLedgerDateRange({
+                        ...ledgerDateRange,
+                        startDate: event.target.value,
+                      })
+                    }
+                    className="min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    aria-label="장부 시작일 선택"
+                  />
+                  <input
+                    type="date"
+                    value={ledgerDateRange.endDate}
+                    onChange={(event) =>
+                      onChangeLedgerDateRange({
+                        ...ledgerDateRange,
+                        endDate: event.target.value,
+                      })
+                    }
+                    className="min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    aria-label="장부 종료일 선택"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -699,7 +704,7 @@ export function FinancePanel({
                         </div>
                       </td>
                       <td className="px-4 py-4 text-slate-600">
-                        {entry.category}
+                        {getLedgerCategoryLabel(entry.category)}
                       </td>
                       <td className="px-4 py-4 text-slate-500">
                         {entry.memo || "-"}

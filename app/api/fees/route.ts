@@ -193,7 +193,7 @@ export async function POST(req: Request) {
           ${member.id},
           'INCOME',
           'AUTO_FEE',
-          'MONTHLY_FEE',
+          '월회비',
           ${amount},
           CURRENT_TIMESTAMP,
           ${buildMonthlyFeeTitle(member.name, year, month)},
