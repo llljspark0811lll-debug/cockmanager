@@ -605,7 +605,7 @@ export function FinancePanel({
                     onChange={(event) =>
                       handleLedgerYearChange(Number(event.target.value))
                     }
-                    className="min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    className="w-full min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
                     aria-label="장부 연도 선택"
                   >
                     {Array.from(
@@ -623,7 +623,7 @@ export function FinancePanel({
                     onChange={(event) =>
                       handleLedgerMonthChange(Number(event.target.value))
                     }
-                    className="min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    className="w-full min-w-0 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
                     aria-label="장부 월 선택"
                   >
                     {MONTHS.map((month) => (
@@ -643,7 +643,7 @@ export function FinancePanel({
                         startDate: event.target.value,
                       })
                     }
-                    className="min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    className="w-full min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
                     aria-label="장부 시작일 선택"
                   />
                   <input
@@ -655,7 +655,7 @@ export function FinancePanel({
                         endDate: event.target.value,
                       })
                     }
-                    className="min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
+                    className="w-full min-w-0 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-400"
                     aria-label="장부 종료일 선택"
                   />
                 </div>
