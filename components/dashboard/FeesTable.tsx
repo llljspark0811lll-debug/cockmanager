@@ -7,7 +7,7 @@ type FeesTableProps = {
   selectedYear: number;
   onChangeYear: (year: number) => void;
   onToggleFee: (
-    memberId: number,
+    member: FeeMember,
     year: number,
     month: number,
     currentPaid: boolean
@@ -27,7 +27,7 @@ type FeeRowProps = {
   monthStates: boolean[];
   selectedYear: number;
   onToggleFee: (
-    memberId: number,
+    member: FeeMember,
     year: number,
     month: number,
     currentPaid: boolean
@@ -63,9 +63,7 @@ const FeeMemberRow = memo(
   }: FeeRowProps) {
     return (
       <tr className="hover:bg-slate-50">
-        <td className="px-4 py-4 font-bold text-slate-900">
-          {member.name}
-        </td>
+        <td className="px-4 py-4 font-bold text-slate-900">{member.name}</td>
         {MONTHS.map((month, index) => {
           const isPaid = monthStates[index];
 
@@ -73,12 +71,7 @@ const FeeMemberRow = memo(
             <td key={month} className="px-2 py-4 text-center">
               <button
                 onClick={() =>
-                  onToggleFee(
-                    member.id,
-                    selectedYear,
-                    month,
-                    isPaid
-                  )
+                  onToggleFee(member, selectedYear, month, isPaid)
                 }
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-lg font-black transition ${
                   isPaid
@@ -123,6 +116,18 @@ const FeeMemberRow = memo(
     }
 
     if (prevProps.selectedYear !== nextProps.selectedYear) {
+      return false;
+    }
+
+    if (prevProps.onToggleFee !== nextProps.onToggleFee) {
+      return false;
+    }
+
+    if (prevProps.onMarkAllPaid !== nextProps.onMarkAllPaid) {
+      return false;
+    }
+
+    if (prevProps.onMarkAllUnpaid !== nextProps.onMarkAllUnpaid) {
       return false;
     }
 
@@ -208,12 +213,12 @@ export function FeesTable({
       <div className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px_300px] xl:items-center">
           <div className="min-w-0">
-          <h3 className="text-lg font-black text-slate-900">
-            연도별 회비 관리
-          </h3>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            기준 월을 직접 선택해서 해당 월 미납과 누적 미납 회원을 빠르게 확인할 수 있어요.
-          </p>
+            <h3 className="text-lg font-black text-slate-900">
+              연도별 회비 관리
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              기준 월을 직접 선택해서 해당 월 미납과 누적 미납 회원을 빠르게 확인할 수 있어요.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 xl:w-full xl:max-w-[420px] xl:justify-self-center">
@@ -238,9 +243,7 @@ export function FeesTable({
               해당 월 미납만
             </button>
             <button
-              onClick={() =>
-                setQuickFilter("CUMULATIVE_UNPAID")
-              }
+              onClick={() => setQuickFilter("CUMULATIVE_UNPAID")}
               className={`rounded-xl px-3 py-2 text-xs font-bold transition ${
                 quickFilter === "CUMULATIVE_UNPAID"
                   ? "bg-orange-500 text-white"
@@ -260,6 +263,7 @@ export function FeesTable({
               기준 월까지 완납만
             </button>
           </div>
+
           <div className="flex flex-col gap-3 sm:flex-row xl:justify-self-end">
             <select
               value={selectedYear}

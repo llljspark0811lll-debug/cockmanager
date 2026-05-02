@@ -9,6 +9,10 @@ import {
   formatDate,
   formatPhoneNumber,
 } from "@/components/dashboard/utils";
+import {
+  formatNumberInput,
+  parseNumberInput,
+} from "@/lib/finance";
 
 type SpecialFeesPanelProps = {
   members: FeeMember[];
@@ -212,12 +216,15 @@ export function SpecialFeesPanel({
               className="w-full rounded-2xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition focus:border-sky-400 sm:px-4"
             />
             <input
-              type="number"
-              value={form.amount}
+              type="text"
+              inputMode="numeric"
+              value={formatNumberInput(form.amount)}
               onChange={(event) =>
                 setForm({
                   ...form,
-                  amount: event.target.value,
+                  amount: String(
+                    parseNumberInput(event.target.value)
+                  ),
                 })
               }
               placeholder="금액"

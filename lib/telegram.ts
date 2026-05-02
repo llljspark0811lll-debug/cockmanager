@@ -5,21 +5,81 @@ type TelegramNewClubAlertInput = {
 };
 
 export type TelegramAlertInput =
-  | { event: "MEMBER_REQUEST_APPLY"; clubName: string; name: string; gender: string; level: string }
+  | {
+      event: "ACCOUNT_DELETE";
+      clubName: string;
+      adminUsername: string;
+      adminEmail: string;
+    }
+  | {
+      event: "MEMBER_REQUEST_APPLY";
+      clubName: string;
+      name: string;
+      gender: string;
+      level: string;
+    }
   | { event: "MEMBER_REQUEST_APPROVE"; clubName: string; name: string }
   | { event: "MEMBER_REQUEST_REJECT"; clubName: string; name: string }
   | { event: "MEMBER_DIRECT_CREATE"; clubName: string; name: string }
   | { event: "SESSION_CREATE"; clubName: string; title: string; date: string }
-  | { event: "SESSION_RESPOND_REGISTER"; clubName: string; sessionTitle: string; memberName: string; guestCount: number; status: string }
-  | { event: "SESSION_RESPOND_CANCEL"; clubName: string; sessionTitle: string; memberName: string }
-  | { event: "SESSION_BRACKET_CREATE"; clubName: string; sessionTitle: string }
-  | { event: "SUPPORT_INQUIRY"; clubName: string; adminEmail: string; category: string; message: string }
+  | {
+      event: "SESSION_RESPOND_REGISTER";
+      clubName: string;
+      sessionTitle: string;
+      memberName: string;
+      guestCount: number;
+      status: string;
+    }
+  | {
+      event: "SESSION_RESPOND_CANCEL";
+      clubName: string;
+      sessionTitle: string;
+      memberName: string;
+    }
+  | {
+      event: "SESSION_BRACKET_CREATE";
+      clubName: string;
+      sessionTitle: string;
+    }
+  | {
+      event: "SUPPORT_INQUIRY";
+      clubName: string;
+      adminEmail: string;
+      category: string;
+      message: string;
+    }
   | { event: "ADMIN_MEMBERS_TAB_CLICK"; clubName: string }
   | { event: "ADMIN_FEES_TAB_CLICK"; clubName: string }
-  | { event: "SESSION_ADMIN_REGISTER"; clubName: string; sessionTitle: string; participantName: string; participantType: "member" | "guest"; status: string }
-  | { event: "MONTHLY_FEE_TOGGLE"; clubName: string; memberName: string; year: number; month: number; paid: boolean }
-  | { event: "YEARLY_FEE_TOGGLE"; clubName: string; memberName: string; year: number; paid: boolean }
-  | { event: "SPECIAL_FEE_TOGGLE"; clubName: string; memberName: string; feeTitle: string; paid: boolean }
+  | {
+      event: "SESSION_ADMIN_REGISTER";
+      clubName: string;
+      sessionTitle: string;
+      participantName: string;
+      participantType: "member" | "guest";
+      status: string;
+    }
+  | {
+      event: "MONTHLY_FEE_TOGGLE";
+      clubName: string;
+      memberName: string;
+      year: number;
+      month: number;
+      paid: boolean;
+    }
+  | {
+      event: "YEARLY_FEE_TOGGLE";
+      clubName: string;
+      memberName: string;
+      year: number;
+      paid: boolean;
+    }
+  | {
+      event: "SPECIAL_FEE_TOGGLE";
+      clubName: string;
+      memberName: string;
+      feeTitle: string;
+      paid: boolean;
+    }
   | {
       event: "SESSION_BRACKET_SWAP";
       clubName: string;
@@ -50,38 +110,54 @@ function getTelegramConfig() {
 }
 
 function buildNewClubAlertMessage({ clubName }: TelegramNewClubAlertInput) {
-  return ["콕매니저 새 클럽 생성", `클럽: ${clubName}`].join("\n");
+  return ["🎉 콕매니저 새 클럽 생성", `클럽: ${clubName}`].join("\n");
 }
 
 function buildAlertMessage(input: TelegramAlertInput): string {
   switch (input.event) {
+    case "ACCOUNT_DELETE":
+      return [
+        "🗑️ 클럽 계정 삭제",
+        `클럽: ${input.clubName}`,
+        `관리자 아이디: ${input.adminUsername}`,
+        `관리자 이메일: ${input.adminEmail || "-"}`,
+      ].join("\n");
+
     case "MEMBER_REQUEST_APPLY":
       return [
-        "회원 가입 신청",
+        "📝 회원 가입 신청",
         `클럽: ${input.clubName}`,
         `신청자: ${input.name} (${input.gender} / ${input.level})`,
       ].join("\n");
 
     case "MEMBER_REQUEST_APPROVE":
-      return ["가입 승인", `클럽: ${input.clubName}`, `회원: ${input.name}`].join("\n");
+      return ["✅ 가입 승인", `클럽: ${input.clubName}`, `회원: ${input.name}`].join(
+        "\n"
+      );
 
     case "MEMBER_REQUEST_REJECT":
-      return ["가입 거절", `클럽: ${input.clubName}`, `신청자: ${input.name}`].join("\n");
+      return ["🚫 가입 거절", `클럽: ${input.clubName}`, `신청자: ${input.name}`].join(
+        "\n"
+      );
 
     case "MEMBER_DIRECT_CREATE":
-      return ["회원 직접 등록", `클럽: ${input.clubName}`, `회원: ${input.name}`].join("\n");
+      return ["👤 회원 직접 등록", `클럽: ${input.clubName}`, `회원: ${input.name}`].join(
+        "\n"
+      );
 
     case "SESSION_CREATE":
       return [
-        "운동 일정 등록",
+        "📅 운동 일정 등록",
         `클럽: ${input.clubName}`,
         `일정: ${input.title}`,
         `날짜: ${input.date}`,
       ].join("\n");
 
     case "SESSION_RESPOND_REGISTER": {
-      const statusLabel = input.status === "WAITLIST" ? "대기 등록" : "참석 신청";
-      const guestSuffix = input.guestCount > 0 ? ` (+게스트 ${input.guestCount}명)` : "";
+      const statusLabel = input.status === "WAITLIST" ? "⏳ 대기 등록" : "🙋 참석 요청";
+      const guestSuffix =
+        input.guestCount > 0 ? ` (+게스트 ${input.guestCount}명)` : "";
+
       return [
         statusLabel,
         `클럽: ${input.clubName}`,
@@ -92,7 +168,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "SESSION_RESPOND_CANCEL":
       return [
-        "참석 취소",
+        "↩️ 참석 취소",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `회원: ${input.memberName}`,
@@ -100,14 +176,14 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "SESSION_BRACKET_CREATE":
       return [
-        "대진표 생성",
+        "🏸 대진표 생성",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
       ].join("\n");
 
     case "SUPPORT_INQUIRY":
       return [
-        "고객 문의",
+        "📮 고객 문의",
         `클럽: ${input.clubName}`,
         `이메일: ${input.adminEmail}`,
         `유형: ${input.category}`,
@@ -116,16 +192,17 @@ function buildAlertMessage(input: TelegramAlertInput): string {
       ].join("\n");
 
     case "ADMIN_MEMBERS_TAB_CLICK":
-      return ["관리자 클릭", `클럽: ${input.clubName}`, "화면: 회원 탭"].join("\n");
+      return ["👀 관리자 클릭", `클럽: ${input.clubName}`, "화면: 회원 탭"].join("\n");
 
     case "ADMIN_FEES_TAB_CLICK":
-      return ["관리자 클릭", `클럽: ${input.clubName}`, "화면: 회비 탭"].join("\n");
+      return ["👀 관리자 클릭", `클럽: ${input.clubName}`, "화면: 회비 탭"].join("\n");
 
     case "SESSION_ADMIN_REGISTER": {
-      const statusLabel = input.status === "WAITLIST" ? "대기 등록" : "참석 등록";
+      const statusLabel = input.status === "WAITLIST" ? "⏳ 대기 등록" : "✅ 참석 등록";
       const typeLabel = input.participantType === "guest" ? "게스트" : "회원";
+
       return [
-        "관리자 직접 참석 등록",
+        "🛠️ 관리자 직접 참석 등록",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `구분: ${typeLabel}`,
@@ -136,7 +213,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "MONTHLY_FEE_TOGGLE":
       return [
-        "월회비 체크 변경",
+        "💸 월회비 체크 변경",
         `클럽: ${input.clubName}`,
         `회원: ${input.memberName}`,
         `대상: ${input.year}년 ${input.month}월`,
@@ -145,7 +222,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "YEARLY_FEE_TOGGLE":
       return [
-        "연회비 일괄 체크 변경",
+        "📆 연간 회비 체크 변경",
         `클럽: ${input.clubName}`,
         `회원: ${input.memberName}`,
         `대상: ${input.year}년`,
@@ -154,7 +231,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "SPECIAL_FEE_TOGGLE":
       return [
-        "특별회비 체크 변경",
+        "🧾 수시회비 체크 변경",
         `클럽: ${input.clubName}`,
         `회원: ${input.memberName}`,
         `회비: ${input.feeTitle}`,
@@ -163,7 +240,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "SESSION_BRACKET_SWAP":
       return [
-        "자동대진 선수 수정",
+        "🔁 자동대진 선수 수정",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `라운드: ${input.roundNumber}`,
@@ -173,7 +250,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "SESSION_BRACKET_EXPORT":
       return [
-        "자동대진 이미지 저장",
+        "🖼️ 자동대진 이미지 저장",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `저장 이미지: ${input.imageCount}장`,
@@ -192,7 +269,9 @@ async function sendMessage(text: string) {
   );
 
   if (response.statusCode < 200 || response.statusCode >= 300) {
-    throw new Error(`텔레그램 알림 전송 실패. ${response.statusCode} ${response.body}`);
+    throw new Error(
+      `텔레그램 알림 전송 실패. ${response.statusCode} ${response.body}`
+    );
   }
 }
 
@@ -237,7 +316,10 @@ function postTelegramForm(url: string, body: string) {
           responseBody += chunk;
         });
         response.on("end", () => {
-          resolve({ statusCode: response.statusCode ?? 0, body: responseBody });
+          resolve({
+            statusCode: response.statusCode ?? 0,
+            body: responseBody,
+          });
         });
       }
     );

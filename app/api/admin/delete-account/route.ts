@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { getAuthAdmin, clearAuthCookie } from "@/lib/auth";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function DELETE(request: Request) {
@@ -18,7 +19,13 @@ export async function DELETE(request: Request) {
 
   const adminRecord = await prisma.admin.findUnique({
     where: { id: admin.adminId },
-    select: { password: true, clubId: true },
+    select: {
+      password: true,
+      clubId: true,
+      username: true,
+      email: true,
+      club: { select: { name: true } },
+    },
   });
   if (!adminRecord) {
     return NextResponse.json({ error: "계정을 찾을 수 없습니다." }, { status: 404 });
@@ -27,6 +34,19 @@ export async function DELETE(request: Request) {
   const isMatch = await bcrypt.compare(password, adminRecord.password);
   if (!isMatch) {
     return NextResponse.json({ error: "비밀번호가 일치하지 않습니다." }, { status: 400 });
+  }
+
+  const deletedClubName = adminRecord.club?.name ?? String(adminRecord.clubId);
+
+  try {
+    await sendTelegramAlert({
+      event: "ACCOUNT_DELETE",
+      clubName: deletedClubName,
+      adminUsername: adminRecord.username,
+      adminEmail: adminRecord.email ?? "",
+    });
+  } catch (telegramError) {
+    console.error("Telegram delete account alert failed", telegramError);
   }
 
   // Club 삭제 시 Admin, Member, Session 등 cascade 삭제

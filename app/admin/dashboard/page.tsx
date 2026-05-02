@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ import {
 import { StatsOverview } from "@/components/dashboard/StatsOverview";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
 import { DeletedMembersTable } from "@/components/dashboard/DeletedMembersTable";
-import { FeesTable } from "@/components/dashboard/FeesTable";
+import { FinancePanel } from "@/components/dashboard/FinancePanel";
 import { JoinRequestLinkPanel } from "@/components/dashboard/JoinRequestLinkPanel";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
@@ -33,6 +33,10 @@ import type {
   DashboardTab,
   Fee,
   FeeMember,
+  FinanceSettings,
+  LedgerDateRange,
+  LedgerEntry,
+  LedgerSummary,
   Member,
   MemberFormState,
   MemberRequest,
@@ -44,6 +48,16 @@ import {
   getSubscriptionAmount,
   getTossClientKey,
 } from "@/lib/payments-client";
+
+function buildLedgerDateRange(year: number, month: number): LedgerDateRange {
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end),
+  };
+}
 
 declare global {
   interface Window {
@@ -124,6 +138,11 @@ export default function DashboardPage() {
   const [specialFees, setSpecialFees] = useState<SpecialFee[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
   const [feeMembers, setFeeMembers] = useState<FeeMember[]>([]);
+  const [financeSettings, setFinanceSettings] =
+    useState<FinanceSettings | null>(null);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+  const [ledgerSummary, setLedgerSummary] =
+    useState<LedgerSummary | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [feesCache, setFeesCache] = useState<Record<number, Fee[]>>(
     {}
@@ -175,6 +194,11 @@ export default function DashboardPage() {
   const [specialFeesLoaded, setSpecialFeesLoaded] =
     useState(false);
   const [loadingFees, setLoadingFees] = useState(false);
+  const [loadingFinanceSettings, setLoadingFinanceSettings] =
+    useState(false);
+  const [savingFinanceSettings, setSavingFinanceSettings] =
+    useState(false);
+  const [loadingLedger, setLoadingLedger] = useState(false);
   const [loadingSpecialFees, setLoadingSpecialFees] =
     useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -184,6 +208,17 @@ export default function DashboardPage() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [feeMembersLoaded, setFeeMembersLoaded] =
     useState(false);
+  const [financeSettingsLoaded, setFinanceSettingsLoaded] =
+    useState(false);
+  const [ledgerMonth, setLedgerMonth] = useState(
+    new Date().getMonth() + 1
+  );
+  const [ledgerDateRange, setLedgerDateRange] = useState<LedgerDateRange>(
+    buildLedgerDateRange(
+      new Date().getFullYear(),
+      new Date().getMonth() + 1
+    )
+  );
   const [loadingStats, setLoadingStats] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
@@ -237,7 +272,8 @@ export default function DashboardPage() {
     activeTab === "fees" &&
     ((loadingFeeMembers && !feeMembersLoaded) ||
       (loadingFees && !hasCachedFeesForSelectedYear) ||
-      (loadingSpecialFees && !specialFeesLoaded));
+      (loadingSpecialFees && !specialFeesLoaded) ||
+      (loadingFinanceSettings && !financeSettingsLoaded));
   const shouldShowInitialSessionsLoading =
     (activeTab === "sessions" || activeTab === "attendance") &&
     loadingSessions &&
@@ -586,6 +622,45 @@ export default function DashboardPage() {
     }
   }
 
+  async function refreshFinanceSettings() {
+    setLoadingFinanceSettings(true);
+
+    try {
+      setFinanceSettings(
+        await requestJson<FinanceSettings>("/api/finance-settings")
+      );
+      setFinanceSettingsLoaded(true);
+    } finally {
+      setLoadingFinanceSettings(false);
+    }
+  }
+
+  async function refreshLedger(
+    year = selectedYear,
+    month = ledgerMonth,
+    range = ledgerDateRange
+  ) {
+    setLoadingLedger(true);
+
+    try {
+      const params = new URLSearchParams({
+        year: String(year),
+        month: String(month),
+        startDate: range.startDate,
+        endDate: range.endDate,
+      });
+      const response = await requestJson<{
+        entries: LedgerEntry[];
+        summary: LedgerSummary;
+      }>(`/api/ledger?${params.toString()}`);
+
+      setLedgerEntries(response.entries);
+      setLedgerSummary(response.summary);
+    } finally {
+      setLoadingLedger(false);
+    }
+  }
+
   async function performLogout() {
     try {
       await fetch("/api/admin/logout", {
@@ -693,6 +768,10 @@ export default function DashboardPage() {
       feeMembersLoaded ? Promise.resolve() : refreshFeeMembers(),
       refreshFees(selectedYear),
       specialFeesLoaded ? Promise.resolve() : refreshSpecialFees(),
+      financeSettingsLoaded
+        ? Promise.resolve()
+        : refreshFinanceSettings(),
+      refreshLedger(selectedYear, ledgerMonth, ledgerDateRange),
     ]).catch((error: Error) => {
       if (isIgnorableDashboardNotFound(error)) {
         return;
@@ -700,7 +779,15 @@ export default function DashboardPage() {
 
       alert(error.message);
     });
-  }, [activeTab, selectedYear, feeMembersLoaded, specialFeesLoaded]);
+  }, [
+    activeTab,
+    selectedYear,
+    ledgerMonth,
+    ledgerDateRange,
+    feeMembersLoaded,
+    specialFeesLoaded,
+    financeSettingsLoaded,
+  ]);
 
   useEffect(() => {
     if (
@@ -1066,11 +1153,16 @@ export default function DashboardPage() {
   }
 
   async function toggleFee(
-    memberId: number,
+    member: FeeMember,
     year: number,
     month: number,
-    currentPaid: boolean
+    currentPaid: boolean,
+    options?: {
+      amount?: number;
+      createLedgerEntry?: boolean;
+    }
   ) {
+    const memberId = member.id;
     const nextPaid = !currentPaid;
 
     const updatedFee = await requestJson<Fee>("/api/fees", {
@@ -1080,6 +1172,8 @@ export default function DashboardPage() {
         year,
         month,
         paid: nextPaid,
+        amount: options?.amount,
+        createLedgerEntry: options?.createLedgerEntry,
       }),
     });
 
@@ -1113,9 +1207,19 @@ export default function DashboardPage() {
         [year]: nextYearFees,
       };
     });
+
+    if (financeSettings?.ledgerEnabled) {
+      await refreshLedger(year, ledgerMonth);
+    }
   }
 
-  async function handleAllPaid(memberId: number) {
+  async function handleAllPaid(
+    memberId: number,
+    options?: {
+      amount?: number;
+      createLedgerEntry?: boolean;
+    }
+  ) {
     if (!confirm(`${selectedYear}년 12개월 모두 납부 처리할까요?`)) {
       return;
     }
@@ -1126,6 +1230,8 @@ export default function DashboardPage() {
         memberId,
         year: selectedYear,
         paid: true,
+        amount: options?.amount,
+        createLedgerEntry: options?.createLedgerEntry,
       }),
     });
 
@@ -1155,6 +1261,10 @@ export default function DashboardPage() {
         [selectedYear]: [...nextYearFees, ...updatedFees],
       };
     });
+
+    if (financeSettings?.ledgerEnabled) {
+      await refreshLedger(selectedYear, ledgerMonth);
+    }
   }
 
   async function handleAllUnpaid(memberId: number) {
@@ -1197,6 +1307,85 @@ export default function DashboardPage() {
         [selectedYear]: [...nextYearFees, ...updatedFees],
       };
     });
+
+    if (financeSettings?.ledgerEnabled) {
+      await refreshLedger(selectedYear, ledgerMonth);
+    }
+  }
+
+  async function handleSaveFinanceSettings(
+    nextSettings: FinanceSettings
+  ) {
+    setSavingFinanceSettings(true);
+
+    try {
+      const response = await requestJson<FinanceSettings>(
+        "/api/finance-settings",
+        {
+          method: "PATCH",
+          body: JSON.stringify(nextSettings),
+        }
+      );
+
+      setFinanceSettings(response);
+      await refreshLedger(selectedYear, ledgerMonth);
+    } finally {
+      setSavingFinanceSettings(false);
+    }
+  }
+
+  async function handleResetLedger(nextSettings: FinanceSettings) {
+    setSavingFinanceSettings(true);
+
+    try {
+      const response = await requestJson<FinanceSettings>(
+        "/api/finance-settings",
+        {
+          method: "PATCH",
+          body: JSON.stringify(nextSettings),
+        }
+      );
+
+      setFinanceSettings(response);
+
+      await requestJson("/api/ledger/reset", {
+        method: "POST",
+      });
+
+      await Promise.all([
+        refreshFees(selectedYear),
+        refreshSpecialFees(),
+        refreshLedger(selectedYear, ledgerMonth),
+      ]);
+    } finally {
+      setSavingFinanceSettings(false);
+    }
+  }
+
+  async function handleCreateLedgerEntry(payload: {
+    entryType: "INCOME" | "EXPENSE";
+    category: string;
+    memberId?: number | null;
+    amount: number;
+    entryDate: string;
+    title: string;
+    memo: string;
+  }) {
+    await requestJson("/api/ledger", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    await refreshLedger(selectedYear, ledgerMonth);
+  }
+
+  async function handleDeleteLedgerEntry(id: number) {
+    await requestJson("/api/ledger", {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+    });
+
+    await refreshLedger(selectedYear, ledgerMonth);
   }
 
   async function handleApprove(id: number) {
@@ -1640,6 +1829,9 @@ export default function DashboardPage() {
         const paymentIndex = currentPayments.findIndex(
           (payment) => payment.memberId === memberId
         );
+        const matchedMember = feeMembers.find(
+          (member) => member.id === memberId
+        );
 
         let nextPayments = currentPayments;
 
@@ -1652,6 +1844,18 @@ export default function DashboardPage() {
                 }
               : payment
           );
+        } else if (matchedMember) {
+          nextPayments = [
+            ...currentPayments,
+            {
+              ...updatedPayment,
+              member: {
+                id: matchedMember.id,
+                name: matchedMember.name,
+                phone: matchedMember.phone,
+              },
+            },
+          ];
         }
 
         const paidCount =
@@ -1666,6 +1870,10 @@ export default function DashboardPage() {
         };
       })
     );
+
+    if (financeSettings?.ledgerEnabled) {
+      await refreshLedger(selectedYear, ledgerMonth);
+    }
   }
 
   async function handleUpdateSessionStatus(
@@ -2040,52 +2248,42 @@ export default function DashboardPage() {
                   "월회비 표를 불러오는 중입니다."
                 )
               : (
-                <FeesTable
+                <FinancePanel
                   members={feeMembers}
                   fees={fees}
                   selectedYear={selectedYear}
                   onChangeYear={setSelectedYear}
-                  onToggleFee={(
-                    memberId,
-                    year,
-                    month,
-                    currentPaid
-                  ) => {
-                    toggleFee(
-                      memberId,
-                      year,
-                      month,
-                      currentPaid
-                    ).catch((error: Error) => {
-                      alert(error.message);
-                    });
-                  }}
-                  onMarkAllPaid={(memberId) => {
-                    handleAllPaid(memberId).catch(
-                      (error: Error) => {
-                        alert(error.message);
-                      }
-                    );
-                  }}
-                  onMarkAllUnpaid={(memberId) => {
-                    handleAllUnpaid(memberId).catch(
-                      (error: Error) => {
-                        alert(error.message);
-                      }
-                    );
-                  }}
+                  onToggleFee={toggleFee}
+                  onMarkAllPaid={handleAllPaid}
+                  onMarkAllUnpaid={handleAllUnpaid}
+                  financeSettings={financeSettings}
+                  financeSettingsLoading={loadingFinanceSettings}
+                  savingFinanceSettings={savingFinanceSettings}
+                  onSaveFinanceSettings={handleSaveFinanceSettings}
+                  onResetLedger={handleResetLedger}
+                  ledgerEntries={ledgerEntries}
+                  ledgerSummary={ledgerSummary}
+                  ledgerLoading={loadingLedger}
+                  ledgerMonth={ledgerMonth}
+                  onChangeLedgerMonth={setLedgerMonth}
+                  ledgerDateRange={ledgerDateRange}
+                  onChangeLedgerDateRange={setLedgerDateRange}
+                  onCreateLedgerEntry={handleCreateLedgerEntry}
+                  onDeleteLedgerEntry={handleDeleteLedgerEntry}
+                  specialFeesPanel={
+                    <SpecialFeesPanel
+                      members={feeMembers}
+                      specialFees={specialFees}
+                      selectedFeeId={selectedSpecialFeeId}
+                      loadingSelectedFee={loadingSpecialFeeDetail}
+                      onSelectFee={handleSelectSpecialFee}
+                      onDeleteFee={handleDeleteSpecialFee}
+                      onCreateFee={handleCreateSpecialFee}
+                      onTogglePayment={handleToggleSpecialFeePayment}
+                    />
+                  }
                 />
               )}
-            <SpecialFeesPanel
-              members={feeMembers}
-              specialFees={specialFees}
-              selectedFeeId={selectedSpecialFeeId}
-              loadingSelectedFee={loadingSpecialFeeDetail}
-              onSelectFee={handleSelectSpecialFee}
-              onDeleteFee={handleDeleteSpecialFee}
-              onCreateFee={handleCreateSpecialFee}
-              onTogglePayment={handleToggleSpecialFeePayment}
-            />
           </div>
         ) : null}
 
@@ -2211,3 +2409,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+
