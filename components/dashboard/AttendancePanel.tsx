@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
+import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
 import type { ClubSession } from "@/components/dashboard/types";
 import {
@@ -47,6 +48,7 @@ const initialFilters: ParticipantFilterState = {
   levelFilter: "ALL",
   sortOption: "name",
 };
+const ATTENDANCE_PAGE_SIZE = 15;
 
 function getGenderBadgeClass(gender: string) {
   if (gender === "남") return "bg-sky-50 text-sky-700";
@@ -195,6 +197,7 @@ export function AttendancePanel({
     null;
 
   const [filters, setFilters] = useState<ParticipantFilterState>(initialFilters);
+  const [page, setPage] = useState(1);
 
   const sessionPickerOptions = useMemo(
     () =>
@@ -233,6 +236,34 @@ export function AttendancePanel({
     () => filterAndSortParticipants(registeredParticipants, filters),
     [registeredParticipants, filters]
   );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredParticipants.length / ATTENDANCE_PAGE_SIZE)
+  );
+  const paginatedParticipants = useMemo(() => {
+    const startIndex = (page - 1) * ATTENDANCE_PAGE_SIZE;
+
+    return filteredParticipants.slice(
+      startIndex,
+      startIndex + ATTENDANCE_PAGE_SIZE
+    );
+  }, [filteredParticipants, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    selectedSession?.id,
+    filters.searchQuery,
+    filters.typeFilter,
+    filters.genderFilter,
+    filters.levelFilter,
+    filters.sortOption,
+    registeredParticipants.length,
+  ]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const summary = useMemo(() => {
     const levelCounts = new Map<string, number>();
@@ -462,7 +493,7 @@ export function AttendancePanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredParticipants.map((participant) => {
+                {paginatedParticipants.map((participant) => {
                   const gender = getParticipantGenderLabel(participant);
                   const level = getParticipantLevelLabel(participant);
                   return (
@@ -520,6 +551,14 @@ export function AttendancePanel({
                 ) : null}
               </tbody>
             </table>
+          </div>
+
+          <div className="border-t border-slate-100 px-4 py-4">
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onChange={setPage}
+            />
           </div>
         </section>
       ) : null}

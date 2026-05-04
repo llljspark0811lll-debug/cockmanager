@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import type {
   ClubSession,
   SessionParticipant,
@@ -83,9 +84,13 @@ type ParticipantSectionProps = {
   >;
   emptyMessage: string;
   onCancelClick?: (participant: SessionParticipant) => void;
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 };
 
 const SESSION_LIST_PAGE_SIZE = 5;
+const PARTICIPANT_LIST_PAGE_SIZE = 15;
 
 const SESSION_STATUS_LABEL: Record<ClubSession["status"], string> = {
   OPEN: "모집 중",
@@ -338,6 +343,9 @@ function ParticipantSection({
   setFilters,
   emptyMessage,
   onCancelClick,
+  page,
+  totalPages,
+  onPageChange,
 }: ParticipantSectionProps) {
   const filteredMemberCount = filteredParticipants.filter(
     (participant) => !isGuestParticipant(participant)
@@ -345,6 +353,14 @@ function ParticipantSection({
   const filteredGuestCount = filteredParticipants.filter(
     (participant) => isGuestParticipant(participant)
   ).length;
+  const paginatedParticipants = useMemo(() => {
+    const startIndex = (page - 1) * PARTICIPANT_LIST_PAGE_SIZE;
+
+    return filteredParticipants.slice(
+      startIndex,
+      startIndex + PARTICIPANT_LIST_PAGE_SIZE
+    );
+  }, [filteredParticipants, page]);
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-slate-200">
@@ -473,7 +489,7 @@ function ParticipantSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredParticipants.map((participant) => {
+            {paginatedParticipants.map((participant) => {
               const gender = getParticipantGenderLabel(participant);
               const level = getParticipantLevelLabel(participant);
 
@@ -552,6 +568,14 @@ function ParticipantSection({
           </tbody>
         </table>
       </div>
+
+      <div className="border-t border-slate-100 px-4 py-4">
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onChange={onPageChange}
+        />
+      </div>
     </section>
   );
 }
@@ -587,6 +611,9 @@ export function SessionsPanel({
   const [canceledFilters, setCanceledFilters] = useState(
     initialParticipantFilters
   );
+  const [registeredPage, setRegisteredPage] = useState(1);
+  const [waitlistedPage, setWaitlistedPage] = useState(1);
+  const [canceledPage, setCanceledPage] = useState(1);
   const [sessionListPage, setSessionListPage] = useState(1);
   const [cancelTarget, setCancelTarget] =
     useState<SessionParticipant | null>(null);
@@ -695,6 +722,24 @@ export function SessionsPanel({
     canceledParticipants,
     canceledFilters
   );
+  const registeredTotalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredRegisteredParticipants.length / PARTICIPANT_LIST_PAGE_SIZE
+    )
+  );
+  const waitlistedTotalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredWaitlistedParticipants.length / PARTICIPANT_LIST_PAGE_SIZE
+    )
+  );
+  const canceledTotalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredCanceledParticipants.length / PARTICIPANT_LIST_PAGE_SIZE
+    )
+  );
 
   const registeredSummary = getParticipantSummary(
     filteredRegisteredParticipants
@@ -739,6 +784,55 @@ export function SessionsPanel({
       )
     )
   );
+
+  useEffect(() => {
+    setRegisteredPage(1);
+  }, [
+    selectedSession?.id,
+    registeredFilters.searchQuery,
+    registeredFilters.typeFilter,
+    registeredFilters.genderFilter,
+    registeredFilters.levelFilter,
+    registeredFilters.sortOption,
+  ]);
+
+  useEffect(() => {
+    setWaitlistedPage(1);
+  }, [
+    selectedSession?.id,
+    waitlistedFilters.searchQuery,
+    waitlistedFilters.typeFilter,
+    waitlistedFilters.genderFilter,
+    waitlistedFilters.levelFilter,
+    waitlistedFilters.sortOption,
+  ]);
+
+  useEffect(() => {
+    setCanceledPage(1);
+  }, [
+    selectedSession?.id,
+    canceledFilters.searchQuery,
+    canceledFilters.typeFilter,
+    canceledFilters.genderFilter,
+    canceledFilters.levelFilter,
+    canceledFilters.sortOption,
+  ]);
+
+  useEffect(() => {
+    setRegisteredPage((current) =>
+      Math.min(current, registeredTotalPages)
+    );
+  }, [registeredTotalPages]);
+
+  useEffect(() => {
+    setWaitlistedPage((current) =>
+      Math.min(current, waitlistedTotalPages)
+    );
+  }, [waitlistedTotalPages]);
+
+  useEffect(() => {
+    setCanceledPage((current) => Math.min(current, canceledTotalPages));
+  }, [canceledTotalPages]);
 
   const registeredMemberCount = registeredParticipants.filter(
     (participant) => !isGuestParticipant(participant)
@@ -1393,6 +1487,9 @@ export function SessionsPanel({
                   setFilters={setRegisteredFilters}
                   emptyMessage="아직 참석 신청한 사람이 없습니다."
                   onCancelClick={setCancelTarget}
+                  page={registeredPage}
+                  totalPages={registeredTotalPages}
+                  onPageChange={setRegisteredPage}
                 />
 
                 <ParticipantSection
@@ -1406,6 +1503,9 @@ export function SessionsPanel({
                   setFilters={setWaitlistedFilters}
                   emptyMessage="현재 대기 인원이 없습니다."
                   onCancelClick={setCancelTarget}
+                  page={waitlistedPage}
+                  totalPages={waitlistedTotalPages}
+                  onPageChange={setWaitlistedPage}
                 />
 
                 <ParticipantSection
@@ -1418,6 +1518,9 @@ export function SessionsPanel({
                   filters={canceledFilters}
                   setFilters={setCanceledFilters}
                   emptyMessage="불참 인원이 없습니다."
+                  page={canceledPage}
+                  totalPages={canceledTotalPages}
+                  onPageChange={setCanceledPage}
                 />
               </div>
             )}

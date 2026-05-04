@@ -9,6 +9,7 @@ import {
   formatDate,
   formatPhoneNumber,
 } from "@/components/dashboard/utils";
+import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import {
   formatNumberInput,
   parseNumberInput,
@@ -43,7 +44,8 @@ const initialForm = {
   description: "",
 };
 
-const SPECIAL_FEE_LIST_PAGE_SIZE = 5;
+const SPECIAL_FEE_LIST_PAGE_SIZE = 15;
+const SPECIAL_FEE_PAYMENT_PAGE_SIZE = 15;
 
 export function SpecialFeesPanel({
   members,
@@ -61,6 +63,7 @@ export function SpecialFeesPanel({
   const [quickFilter, setQuickFilter] =
     useState<SpecialFeeQuickFilter>("ALL");
   const [specialFeeListPage, setSpecialFeeListPage] = useState(1);
+  const [paymentPage, setPaymentPage] = useState(1);
 
   const effectiveSelectedFeeId =
     selectedFeeId ?? specialFees[0]?.id ?? null;
@@ -149,6 +152,27 @@ export function SpecialFeesPanel({
 
     return allRows;
   }, [displayFee, members, quickFilter]);
+
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [effectiveSelectedFeeId, quickFilter, members.length]);
+
+  const paymentTotalPages = Math.max(
+    1,
+    Math.ceil(selectedPayments.length / SPECIAL_FEE_PAYMENT_PAGE_SIZE)
+  );
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (paymentPage - 1) * SPECIAL_FEE_PAYMENT_PAGE_SIZE;
+
+    return selectedPayments.slice(
+      startIndex,
+      startIndex + SPECIAL_FEE_PAYMENT_PAGE_SIZE
+    );
+  }, [paymentPage, selectedPayments]);
+
+  useEffect(() => {
+    setPaymentPage((current) => Math.min(current, paymentTotalPages));
+  }, [paymentTotalPages]);
 
   async function handleCreate() {
     setCreating(true);
@@ -401,7 +425,7 @@ export function SpecialFeesPanel({
                       조건에 맞는 회원이 없습니다.
                     </div>
                   ) : (
-                    selectedPayments.map(({ member, paid }) => (
+                    paginatedPayments.map(({ member, paid }) => (
                       <div
                         key={member.id}
                         className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3.5"
@@ -459,7 +483,7 @@ export function SpecialFeesPanel({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {selectedPayments.map(({ member, paid }) => (
+                      {paginatedPayments.map(({ member, paid }) => (
                         <tr key={member.id} className="hover:bg-slate-50">
                           <td className="px-4 py-4 font-bold text-slate-900">
                             {member.name}
@@ -514,6 +538,14 @@ export function SpecialFeesPanel({
                     </tbody>
                   </table>
                 </div>
+                </div>
+
+                <div className="mt-4">
+                  <PaginationControls
+                    page={paymentPage}
+                    totalPages={paymentTotalPages}
+                    onChange={setPaymentPage}
+                  />
                 </div>
               </>
             )}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Member } from "@/components/dashboard/types";
+import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import {
   formatDate,
   formatPhoneNumber,
@@ -24,6 +25,7 @@ type MembersTableProps = {
 type SortOption = "name" | "gender" | "level" | "recent";
 
 const STORAGE_KEY = "dashboard-members-filters-v1";
+const MEMBERS_PAGE_SIZE = 15;
 
 function MemberCard({
   member,
@@ -112,6 +114,7 @@ export function MembersTable({
   const [levelFilter, setLevelFilter] = useState("ALL");
   const [sortOption, setSortOption] =
     useState<SortOption>("name");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -203,6 +206,33 @@ export function MembersTable({
 
       return left.name.localeCompare(right.name, "ko");
     });
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    searchQuery,
+    genderFilter,
+    levelFilter,
+    sortOption,
+    members.length,
+  ]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / MEMBERS_PAGE_SIZE)
+  );
+  const paginatedMembers = useMemo(() => {
+    const startIndex = (page - 1) * MEMBERS_PAGE_SIZE;
+
+    return filteredMembers.slice(
+      startIndex,
+      startIndex + MEMBERS_PAGE_SIZE
+    );
+  }, [filteredMembers, page]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const maleCount = members.filter(
     (member) => normalizeGenderLabel(member.gender) === "남"
@@ -359,7 +389,7 @@ export function MembersTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredMembers.map((member) => (
+            {paginatedMembers.map((member) => (
               <tr key={member.id} className="hover:bg-slate-50">
                 <td className="px-4 py-4 font-bold text-slate-900">
                   {member.name}
@@ -438,7 +468,7 @@ export function MembersTable({
           </div>
         ) : null}
 
-        {filteredMembers.map((member) => (
+        {paginatedMembers.map((member) => (
           <MemberCard
             key={member.id}
             member={member}
@@ -447,6 +477,14 @@ export function MembersTable({
             onDelete={onDelete}
           />
         ))}
+      </div>
+
+      <div className="border-t border-slate-100 px-4 py-4">
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
       </div>
     </div>
   );

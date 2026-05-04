@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   SessionBracketConfig,
   SessionBracketMatch,
   SessionBracketPlayerEntry,
@@ -76,6 +76,58 @@ const LEVEL_SCORE_MAP: Record<string, number> = {
   E: 2,
   초심: 1,
 };
+
+const BALANCE_GAP_WEIGHT = 14;
+const OPPONENT_REPEAT_WEIGHT = 15;
+const FIXED_PAIR_REPEAT_WEIGHT = 80;
+const FIXED_PAIR_STRONG_TEAM_THRESHOLD = 10;
+
+function hasFixedPair(
+  teamPlayers: InternalPlayer[],
+  fixedPairMap: Map<string, string>
+) {
+  if (teamPlayers.length !== 2) {
+    return false;
+  }
+
+  const [first, second] = teamPlayers;
+  return (
+    fixedPairMap.get(first!.playerId) === second!.playerId ||
+    fixedPairMap.get(second!.playerId) === first!.playerId
+  );
+}
+
+function getFixedPairBalanceProtectionPenalty(
+  teamAPlayers: InternalPlayer[],
+  teamBPlayers: InternalPlayer[],
+  teamATotal: number,
+  teamBTotal: number,
+  balanceGap: number,
+  fixedPairMap: Map<string, string>
+) {
+  const teamAIsFixedPair = hasFixedPair(teamAPlayers, fixedPairMap);
+  const teamBIsFixedPair = hasFixedPair(teamBPlayers, fixedPairMap);
+
+  if (!teamAIsFixedPair && !teamBIsFixedPair) {
+    return 0;
+  }
+
+  const strongerTotal = Math.max(teamATotal, teamBTotal);
+
+  if (strongerTotal < FIXED_PAIR_STRONG_TEAM_THRESHOLD) {
+    return 0;
+  }
+
+  if (balanceGap >= 4) {
+    return 40;
+  }
+
+  if (balanceGap >= 3) {
+    return 20;
+  }
+
+  return 0;
+}
 
 function createSeededRandom(seed: number): RandomFn {
   let state = seed >>> 0;
@@ -209,7 +261,7 @@ function getAdjustedPlayerScore(
   separateByGender: boolean
 ) {
   const ageBalanceLevels = ["S", "A", "B", "C", "D"] as const;
-  const genderBalanceLevels = ["S", "A", "B", "C", "D", "珥덉떖"] as const;
+  const genderBalanceLevels = ["S", "A", "B", "C", "D", "초심"] as const;
   const levelIndex = ageBalanceLevels.indexOf(
     level as (typeof ageBalanceLevels)[number]
   );
@@ -266,7 +318,7 @@ function buildPools(
     return [
       {
         key: "ALL" as const,
-        label: "혼합 복식",
+        label: "통합 복식",
         players,
       },
     ];
@@ -352,7 +404,7 @@ function buildTeamBattlePools(
 
   if (invalidPlayers.length > 0) {
     throw new Error(
-      `남복/여복 분리 생성에는 모든 참가자의 성별 정보가 필요합니다. ${invalidPlayers
+      `남복/여복 분리 생성은 모든 참가자의 성별 정보가 필요합니다. ${invalidPlayers
         .map((player) => player.name)
         .join(", ")} 참가자의 성별을 먼저 확인해 주세요.`
     );
@@ -572,7 +624,7 @@ function allocateMatchesForRound(
 
       if (needsGames || hasPreviousResters) {
         throw new Error(
-          `${pool.label} 참가 인원이 4명 미만이라 자동 대진표를 생성할 수 없습니다.`
+          `${pool.label} 李멸? ?몄썝??4紐?誘몃쭔?대씪 ?먮룞 ?吏꾪몴瑜??앹꽦?????놁뒿?덈떎.`
         );
       }
     }
@@ -593,7 +645,7 @@ function allocateMatchesForRound(
 
     if (required > getPoolMatchLimit(pool)) {
       throw new Error(
-        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요.`
+        `${pool.label}?먯꽌 吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎. 肄뷀듃瑜??섎━嫄곕굹 李멸? ?몄썝???ㅼ떆 ?뺤씤??二쇱꽭??`
       );
     }
 
@@ -603,7 +655,7 @@ function allocateMatchesForRound(
 
   if (requiredMatches > courtCount) {
     throw new Error(
-      "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트 수를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
+      "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗튂?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 ?吏??앹꽦 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??"
     );
   }
 
@@ -673,7 +725,7 @@ function chooseSelectedPlayers(
     randomOrder
   );
 
-  // 페어는 원자 단위로 취급: 둘 다 선택하거나 둘 다 제외
+  // ?섏뼱???먯옄 ?⑥쐞濡?痍④툒: ?????좏깮?섍굅???????쒖쇅
   const selected = new Set<string>();
   for (const player of sorted) {
     if (selected.size >= target) break;
@@ -689,7 +741,7 @@ function chooseSelectedPlayers(
         selected.add(player.playerId);
         selected.add(partnerId);
       }
-      // 슬롯이 1개만 남으면 페어 스킵 (다음 개인 선수가 채움)
+      // ?щ’??1媛쒕쭔 ?⑥쑝硫??섏뼱 ?ㅽ궢 (?ㅼ쓬 媛쒖씤 ?좎닔媛 梨꾩?)
     } else {
       selected.add(player.playerId);
     }
@@ -875,13 +927,13 @@ function allocateMatchesForRoundTeamBattle(
 
     if (pool.teamAPlayers.length < 2 && (needsGamesA || hasPreviousRestersA)) {
       throw new Error(
-        `${pool.label} 생성에는 ${pool.label.includes("남복") ? "A팀 남자" : pool.label.includes("여복") ? "A팀 여자" : "A팀"} 참가자가 최소 2명 이상 필요합니다.`
+        `${pool.label} ?앹꽦?먮뒗 ${pool.label.includes("?⑤났") ? "A? ?⑥옄" : pool.label.includes("?щ났") ? "A? ?ъ옄" : "A?"} 李멸??먭? 理쒖냼 2紐??댁긽 ?꾩슂?⑸땲??`
       );
     }
 
     if (pool.teamBPlayers.length < 2 && (needsGamesB || hasPreviousRestersB)) {
       throw new Error(
-        `${pool.label} 생성에는 ${pool.label.includes("남복") ? "B팀 남자" : pool.label.includes("여복") ? "B팀 여자" : "B팀"} 참가자가 최소 2명 이상 필요합니다.`
+        `${pool.label} ?앹꽦?먮뒗 ${pool.label.includes("?⑤났") ? "B? ?⑥옄" : pool.label.includes("?щ났") ? "B? ?ъ옄" : "B?"} 李멸??먭? 理쒖냼 2紐??댁긽 ?꾩슂?⑸땲??`
       );
     }
 
@@ -900,7 +952,7 @@ function allocateMatchesForRoundTeamBattle(
 
     if (required > getTeamBattleMatchLimit(pool)) {
       throw new Error(
-        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 팀 인원 또는 코트 수를 다시 확인해 주세요.`
+        `${pool.label}?먯꽌 吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎. ? ?몄썝 ?먮뒗 肄뷀듃 ?섎? ?ㅼ떆 ?뺤씤??二쇱꽭??`
       );
     }
 
@@ -910,7 +962,7 @@ function allocateMatchesForRoundTeamBattle(
 
   if (requiredMatches > courtCount) {
     throw new Error(
-      "직전 라운드 휴식 인원을 모두 다음 라운드에 배정할 수 없습니다. 코트 수를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
+      "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 ?吏??앹꽦 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??"
     );
   }
 
@@ -1045,7 +1097,7 @@ function isPairingValidForFixedPairs(
     const playerInA = teamAPlayers.some((p) => p.playerId === player.playerId);
     const partnerInA = teamAPlayers.some((p) => p.playerId === partnerId);
     const partnerInB = teamBPlayers.some((p) => p.playerId === partnerId);
-    // 파트너가 이 쿼텟 안에 있는데 다른 팀에 배정된 경우 → 무효
+    // ?뚰듃?덇? ??荑쇳뀩 ?덉뿉 ?덈뒗???ㅻⅨ ???諛곗젙??寃쎌슦 ??臾댄슚
     if ((partnerInA || partnerInB) && playerInA !== partnerInA) {
       return false;
     }
@@ -1082,7 +1134,7 @@ function evaluateQuartetPairings(
   let bestCandidate: MatchCandidate | null = null;
 
   for (const [teamAPlayers, teamBPlayers] of pairings) {
-    // 고정 파트너가 다른 팀으로 분리되는 배정은 건너뜀
+    // 怨좎젙 ?뚰듃?덇? ?ㅻⅨ ??쇰줈 遺꾨━?섎뒗 諛곗젙? 嫄대꼫?
     if (!isPairingValidForFixedPairs(teamAPlayers!, teamBPlayers!, fixedPairMap)) {
       continue;
     }
@@ -1103,14 +1155,14 @@ function evaluateQuartetPairings(
           teamAPlayers[1]!.playerId
         )
       ) ?? 0) *
-        80 +
+        FIXED_PAIR_REPEAT_WEIGHT +
       (partnerHistory.get(
         keyForPair(
           teamBPlayers[0]!.playerId,
           teamBPlayers[1]!.playerId
         )
       ) ?? 0) *
-        80;
+        FIXED_PAIR_REPEAT_WEIGHT;
 
     const opponentPairs = [
       [teamAPlayers[0]!, teamBPlayers[0]!],
@@ -1125,7 +1177,7 @@ function evaluateQuartetPairings(
         (opponentHistory.get(
           keyForPair(left.playerId, right.playerId)
         ) ?? 0) *
-          18,
+          OPPONENT_REPEAT_WEIGHT,
       0
     );
 
@@ -1133,10 +1185,20 @@ function evaluateQuartetPairings(
       Math.max(...quartet.map((player) => player.score)) -
       Math.min(...quartet.map((player) => player.score));
 
+    const fixedPairBalancePenalty = getFixedPairBalanceProtectionPenalty(
+      teamAPlayers,
+      teamBPlayers,
+      teamATotal,
+      teamBTotal,
+      balanceGap,
+      fixedPairMap
+    );
+
     const score =
-      balanceGap * 12 +
+      balanceGap * BALANCE_GAP_WEIGHT +
       partnerPenalty +
       opponentPenalty +
+      fixedPairBalancePenalty +
       scoreSpread * 3 +
       getPairingRandomBias(
         teamAPlayers,
@@ -1220,11 +1282,11 @@ function evaluateTeamBattlePairing(
     (partnerHistory.get(
       keyForPair(teamAPlayers[0]!.playerId, teamAPlayers[1]!.playerId)
     ) ?? 0) *
-      80 +
+      FIXED_PAIR_REPEAT_WEIGHT +
     (partnerHistory.get(
       keyForPair(teamBPlayers[0]!.playerId, teamBPlayers[1]!.playerId)
     ) ?? 0) *
-      80;
+      FIXED_PAIR_REPEAT_WEIGHT;
 
   const opponentPairs = [
     [teamAPlayers[0]!, teamBPlayers[0]!],
@@ -1237,7 +1299,7 @@ function evaluateTeamBattlePairing(
     (total, [left, right]) =>
       total +
       (opponentHistory.get(keyForPair(left.playerId, right.playerId)) ?? 0) *
-        18,
+        OPPONENT_REPEAT_WEIGHT,
     0
   );
 
@@ -1246,10 +1308,20 @@ function evaluateTeamBattlePairing(
     Math.max(...quartet.map((player) => player.score)) -
     Math.min(...quartet.map((player) => player.score));
 
+  const fixedPairBalancePenalty = getFixedPairBalanceProtectionPenalty(
+    teamAPlayers,
+    teamBPlayers,
+    teamATotal,
+    teamBTotal,
+    balanceGap,
+    fixedPairMap
+  );
+
   const score =
-    balanceGap * 12 +
+    balanceGap * BALANCE_GAP_WEIGHT +
     partnerPenalty +
     opponentPenalty +
+    fixedPairBalancePenalty +
     scoreSpread * 3 +
     getPairingRandomBias(teamAPlayers, teamBPlayers, randomOrder);
 
@@ -1335,7 +1407,7 @@ function buildRoundMatchesForTeamBattlePool(
 
     if (!bestCandidate) {
       throw new Error(
-        `${pool.label} 대진을 구성하지 못했습니다. 팀 배정 또는 고정 파트너 설정을 다시 확인해 주세요.`
+        `${pool.label} ?吏꾩쓣 援ъ꽦?섏? 紐삵뻽?듬땲?? ? 諛곗젙 ?먮뒗 怨좎젙 ?뚰듃???ㅼ젙???ㅼ떆 ?뺤씤??二쇱꽭??`
       );
     }
 
@@ -1387,7 +1459,7 @@ function buildRoundMatchesForPool(
       const quartet = [anchor, ...combo];
       const quartetIds = new Set(quartet.map((p) => p.playerId));
 
-      // 고정 파트너가 이 쿼텟에는 없는데 아직 남은 선수 중에 있다면 → 분리 → 건너뜀
+      // 怨좎젙 ?뚰듃?덇? ??荑쇳뀩?먮뒗 ?녿뒗???꾩쭅 ?⑥? ?좎닔 以묒뿉 ?덈떎硫???遺꾨━ ??嫄대꼫?
       const splitsPair = quartet.some((player) => {
         const partnerId = fixedPairMap.get(player.playerId);
         return (
@@ -1416,7 +1488,7 @@ function buildRoundMatchesForPool(
 
     if (!bestCandidate) {
       throw new Error(
-        `${pool.label} 대진표를 구성하지 못했습니다. 고정 파트너 설정 또는 참가자 수와 조건을 다시 확인해 주세요.`
+        `${pool.label} ?吏꾪몴瑜?援ъ꽦?섏? 紐삵뻽?듬땲?? 怨좎젙 ?뚰듃???ㅼ젙 ?먮뒗 李멸????섏? 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??`
       );
     }
 
@@ -1504,23 +1576,23 @@ function validateGenerationInput(
 ) {
   if (players.length < 4) {
     throw new Error(
-      "자동 대진표는 최소 4명 이상의 참석 확정 인원이 있어야 생성할 수 있습니다."
+      "?먮룞 ?吏꾪몴??理쒖냼 4紐??댁긽??李몄꽍 ?뺤젙 ?몄썝???덉뼱???앹꽦?????덉뒿?덈떎."
     );
   }
 
   if (config.courtCount < 1) {
-    throw new Error("사용 코트 수는 1개 이상이어야 합니다.");
+    throw new Error("?ъ슜 肄뷀듃 ?섎뒗 1媛??댁긽?댁뼱???⑸땲??");
   }
 
   if (config.minGamesPerPlayer < 1) {
-    throw new Error("최소 경기 수는 1경기 이상이어야 합니다.");
+    throw new Error("理쒖냼 寃쎄린 ?섎뒗 1寃쎄린 ?댁긽?댁뼱???⑸땲??");
   }
 
   const maxPlayersPerRound = config.courtCount * 4;
 
   if (players.length > maxPlayersPerRound * 2) {
     throw new Error(
-      "현재 코트 수로는 두 경기 연속 쉬는 인원 없이 대진표를 만들 수 없습니다. 코트를 늘리거나 참가 인원을 다시 운영해 주세요."
+      "?꾩옱 肄뷀듃 ?섎줈????寃쎄린 ?곗냽 ?щ뒗 ?몄썝 ?놁씠 ?吏꾪몴瑜?留뚮뱾 ???놁뒿?덈떎. 肄뷀듃瑜??섎━嫄곕굹 李멸? ?몄썝???ㅼ떆 ?댁쁺??二쇱꽭??"
     );
   }
 }
@@ -1538,9 +1610,9 @@ function validateTeamBattleInput(
   );
   if (unassignedPlayers.length > 0) {
     throw new Error(
-      `팀 대항 자동대진은 모든 참가자의 팀 배정이 필요합니다. ${unassignedPlayers
+      `? ????먮룞?吏꾩? 紐⑤뱺 李멸??먯쓽 ? 諛곗젙???꾩슂?⑸땲?? ${unassignedPlayers
         .map((player) => player.name)
-        .join(", ")} 참가자의 팀을 먼저 선택해 주세요.`
+        .join(", ")} 李멸??먯쓽 ???癒쇱? ?좏깮??二쇱꽭??`
     );
   }
 
@@ -1553,7 +1625,7 @@ function validateTeamBattleInput(
 
   if (teamAPlayers.length < 2 || teamBPlayers.length < 2) {
     throw new Error(
-      "팀 대항 자동대진은 A팀과 B팀에 각각 최소 2명 이상 있어야 생성할 수 있습니다."
+      "? ????먮룞?吏꾩? A?怨?B???媛곴컖 理쒖냼 2紐??댁긽 ?덉뼱???앹꽦?????덉뒿?덈떎."
     );
   }
 
@@ -1564,7 +1636,7 @@ function validateTeamBattleInput(
 
     if (teamAssignments[playerId] !== teamAssignments[partnerId]) {
       throw new Error(
-        "고정 파트너는 같은 팀 안에서만 설정할 수 있습니다. 팀 배정 또는 고정 파트너를 다시 확인해 주세요."
+        "怨좎젙 ?뚰듃?덈뒗 媛숈? ? ?덉뿉?쒕쭔 ?ㅼ젙?????덉뒿?덈떎. ? 諛곗젙 ?먮뒗 怨좎젙 ?뚰듃?덈? ?ㅼ떆 ?뺤씤??二쇱꽭??"
       );
     }
 
@@ -1573,7 +1645,7 @@ function validateTeamBattleInput(
       const partner = players.find((entry) => entry.playerId === partnerId);
       if (player && partner && player.gender !== partner.gender) {
         throw new Error(
-          "남복/여복 분리 생성에서는 고정 파트너도 같은 성별 안에서만 설정할 수 있습니다."
+          "?⑤났/?щ났 遺꾨━ ?앹꽦?먯꽌??怨좎젙 ?뚰듃?덈룄 媛숈? ?깅퀎 ?덉뿉?쒕쭔 ?ㅼ젙?????덉뒿?덈떎."
         );
       }
     }
@@ -1628,7 +1700,7 @@ function generateTeamBattleRounds(
   random: RandomFn,
   fixedPairMap: Map<string, string>
 ) {
-  const teamLabels = config.teamLabels ?? { A: "팀A", B: "팀B" };
+  const teamLabels = config.teamLabels ?? { A: "?A", B: "?B" };
   const pools = buildTeamBattlePools(
     players,
     config.separateByGender,
@@ -1660,14 +1732,14 @@ function generateTeamBattleRounds(
   ).length;
   if (teamACount !== teamBCount) {
     warnings.push(
-      `${teamLabels.A} ${teamACount}명 / ${teamLabels.B} ${teamBCount}명으로 팀 인원 차이가 있어 한쪽 팀의 휴식 인원이 더 많아질 수 있습니다.`
+      `${teamLabels.A} ${teamACount}紐?/ ${teamLabels.B} ${teamBCount}紐낆쑝濡?? ?몄썝 李⑥씠媛 ?덉뼱 ?쒖そ ????댁떇 ?몄썝????留롮븘吏????덉뒿?덈떎.`
     );
   }
 
   for (const pool of pools) {
     if (pool.teamAPlayers.length !== pool.teamBPlayers.length) {
       warnings.push(
-        `${pool.label} 인원 차이로 라운드별 휴식 인원이 고르게 나뉘지 않을 수 있습니다.`
+        `${pool.label} ?몄썝 李⑥씠濡??쇱슫?쒕퀎 ?댁떇 ?몄썝??怨좊Ⅴ寃??섎돇吏 ?딆쓣 ???덉뒿?덈떎.`
       );
     }
   }
@@ -1782,7 +1854,7 @@ function generateTeamBattleRounds(
 
   if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
     throw new Error(
-      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수나 팀 인원을 다시 확인해 주세요."
+      "?꾩옱 議곌굔?쇰줈??紐⑤뱺 李멸??먯뿉寃?理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎굹 ? ?몄썝???ㅼ떆 ?뺤씤??二쇱꽭??"
     );
   }
 
@@ -1791,7 +1863,7 @@ function generateTeamBattleRounds(
 
     if (state.games > config.minGamesPerPlayer + 1) {
       warnings.push(
-        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
+        `${player.name} ?좎닔??寃쎄린 ?섍? ?ㅻⅨ ?몄썝蹂대떎 留롪쾶 諛곗젙?섏뿀?듬땲??`
       );
     }
   }
@@ -1825,8 +1897,8 @@ export function generateSessionBracket(
     teamLabels:
       input.generationMode === "TEAM_BATTLE"
         ? {
-            A: input.teamLabels?.A?.trim() || "팀A",
-            B: input.teamLabels?.B?.trim() || "팀B",
+            A: input.teamLabels?.A?.trim() || "?A",
+            B: input.teamLabels?.B?.trim() || "?B",
           }
         : undefined,
     fixedPairs: input.fixedPairs ?? [],
@@ -1840,7 +1912,7 @@ export function generateSessionBracket(
   );
   validateGenerationInput(players, config);
 
-  // 고정 파트너 맵 구성 (양방향)
+  // 怨좎젙 ?뚰듃??留?援ъ꽦 (?묐갑??
   const playerIdSet = new Set(players.map((p) => p.playerId));
   const fixedPairMap = new Map<string, string>();
   for (const [idA, idB] of config.fixedPairs ?? []) {
@@ -1998,7 +2070,7 @@ export function generateSessionBracket(
 
   if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
     throw new Error(
-      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수를 늘리거나 최소 경기 수를 낮춰 주세요."
+      "?꾩옱 議곌굔?쇰줈??紐⑤뱺 李멸??먯뿉寃?理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 理쒖냼 寃쎄린 ?섎? ??떠 二쇱꽭??"
     );
   }
 
@@ -2007,7 +2079,7 @@ export function generateSessionBracket(
 
     if (state.games > config.minGamesPerPlayer + 1) {
       warnings.push(
-        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
+        `${player.name} ?좎닔??寃쎄린 ?섍? ?ㅻⅨ ?몄썝蹂대떎 留롪쾶 諛곗젙?섏뿀?듬땲??`
       );
     }
   }
@@ -2018,3 +2090,10 @@ export function generateSessionBracket(
     summary: buildSummary(players, states, config, rounds, warnings),
   };
 }
+
+
+
+
+
+
+

@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import type { Fee, FeeMember } from "@/components/dashboard/types";
 
 type FeesTableProps = {
@@ -38,6 +39,7 @@ type FeeRowProps = {
 
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 const EMPTY_MONTH_STATES = MONTHS.map(() => false);
+const FEES_PAGE_SIZE = 15;
 
 function getYearOptions(selectedYear: number) {
   const currentYear = new Date().getFullYear();
@@ -151,6 +153,7 @@ export function FeesTable({
   const [referenceMonth, setReferenceMonth] = useState(
     new Date().getMonth() + 1
   );
+  const [page, setPage] = useState(1);
 
   const yearOptions = useMemo(
     () => getYearOptions(selectedYear),
@@ -207,6 +210,27 @@ export function FeesTable({
       return paidCountUntilReferenceMonth === referenceMonth;
     });
   }, [memberMonthStates, members, quickFilter, referenceMonth]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [quickFilter, referenceMonth, selectedYear, members.length, fees.length]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / FEES_PAGE_SIZE)
+  );
+  const paginatedMembers = useMemo(() => {
+    const startIndex = (page - 1) * FEES_PAGE_SIZE;
+
+    return filteredMembers.slice(
+      startIndex,
+      startIndex + FEES_PAGE_SIZE
+    );
+  }, [filteredMembers, page]);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <div className="space-y-4">
@@ -316,7 +340,7 @@ export function FeesTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredMembers.map((member) => (
+              {paginatedMembers.map((member) => (
                 <FeeMemberRow
                   key={member.id}
                   member={member}
@@ -344,6 +368,14 @@ export function FeesTable({
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="border-t border-slate-100 px-4 py-4">
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
       </div>
     </div>
   );
