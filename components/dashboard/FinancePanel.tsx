@@ -484,7 +484,7 @@ export function FinancePanel({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               {
                 id: "MEMBER_FEES" as const,
@@ -504,19 +504,21 @@ export function FinancePanel({
                   key={option.id}
                   type="button"
                   onClick={() => setViewMode(option.id)}
-                  className={`group rounded-[1.5rem] border px-4 py-3 text-left transition ${
+                  className={`group min-w-0 rounded-[1.25rem] border px-3 py-3 text-left transition md:rounded-[1.5rem] md:px-4 ${
                     selected
                       ? "border-slate-900 bg-slate-900 text-white shadow-[0_18px_35px_rgba(15,23,42,0.18)]"
                       : "border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-sky-50"
                   }`}
                 >
-                  <div className="text-sm font-black">{option.label}</div>
+                  <div className="whitespace-nowrap text-[13px] font-black md:text-sm">
+                    {option.label}
+                  </div>
                   <div
-                    className={`mt-1 text-xs ${
+                    className={`mt-1 whitespace-nowrap text-[11px] ${
                       selected
                         ? "text-white/75"
                         : "text-slate-500 group-hover:text-sky-700"
-                    }`}
+                    } md:text-xs`}
                   >
                     {option.hint}
                   </div>
