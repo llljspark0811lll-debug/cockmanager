@@ -542,7 +542,7 @@ function ParticipantSection({
                     </span>
                   </td>
                   <td className="px-2 py-3 text-[10px] leading-4 text-slate-500 md:px-4 md:py-4 md:text-sm md:leading-5">
-                    <span className="block break-keep whitespace-nowrap md:whitespace-pre-line">
+                    <span className="block break-keep whitespace-pre-line">
                       {getParticipantRemarkText(participant)}
                     </span>
                   </td>

@@ -248,14 +248,14 @@ export function getParticipantRemarkText(
   participant: SessionParticipant
 ) {
   if (participant.guestName) {
-    const notes = [];
+    const notes: string[] = [];
 
     if (participant.guestAge) {
       notes.push(ageGroupLabel(participant.guestAge));
     }
 
     if (participant.hostMember?.name) {
-      notes.push(`동반 회원 ${participant.hostMember.name}`);
+      notes.push(`동반회원 ${participant.hostMember.name}`);
     }
 
     return notes.join("\n") || "-";
