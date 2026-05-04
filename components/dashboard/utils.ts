@@ -84,9 +84,7 @@ export function getWaitlistedParticipants(session: ClubSession) {
 
 export function getCanceledParticipants(session: ClubSession) {
   return (session.participants ?? []).filter(
-    (participant) =>
-      participant.status === "CANCELED" &&
-      participant.hostMemberId === null
+    (participant) => participant.status === "CANCELED"
   );
 }
 
