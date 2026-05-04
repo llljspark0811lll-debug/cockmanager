@@ -4,8 +4,71 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
-import { promoteWaitlistIfPossible } from "@/lib/session-registration";
+import {
+  getNextRegistrationStatus,
+  promoteWaitlistIfPossible,
+} from "@/lib/session-registration";
 import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  try {
+    const admin = await requireAuthAdmin();
+
+    if (!admin) {
+      return unauthorizedResponse();
+    }
+
+    const { participantId } = await req.json();
+
+    const participant = await prisma.sessionParticipant.findFirst({
+      where: {
+        id: Number(participantId),
+        status: "CANCELED",
+        session: { clubId: admin.clubId },
+      },
+      include: {
+        session: {
+          select: {
+            id: true,
+            capacity: true,
+            participants: {
+              select: { id: true, status: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!participant) {
+      return notFoundResponse("복구할 참가자를 찾을 수 없습니다.");
+    }
+
+    const registeredCount = participant.session.participants.filter(
+      (item) => item.status === "REGISTERED"
+    ).length;
+    const nextStatus = getNextRegistrationStatus(
+      participant.session.capacity,
+      registeredCount
+    );
+
+    await prisma.sessionParticipant.updateMany({
+      where: { id: participant.id },
+      data: {
+        status: nextStatus,
+        attendanceStatus: "PENDING",
+        checkedInAt: null,
+      },
+    });
+
+    return NextResponse.json({ success: true, status: nextStatus });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "참가 복구를 처리하지 못했습니다." },
+      { status: 500 }
+    );
+  }
+}
 
 export async function DELETE(req: Request) {
   try {

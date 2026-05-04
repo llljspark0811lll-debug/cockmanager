@@ -48,6 +48,9 @@ type SessionsPanelProps = {
     status: ClubSession["status"]
   ) => Promise<void>;
   onCancelParticipant: (participantId: number) => Promise<void>;
+  onReinstateParticipant: (
+    participantId: number
+  ) => Promise<void>;
   onRefreshSession: (sessionId: number) => Promise<void>;
 };
 
@@ -83,7 +86,9 @@ type ParticipantSectionProps = {
     React.SetStateAction<ParticipantFilterState>
   >;
   emptyMessage: string;
-  onCancelClick?: (participant: SessionParticipant) => void;
+  actionLabel?: string;
+  actionTone?: "rose" | "emerald";
+  onActionClick?: (participant: SessionParticipant) => void;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -342,7 +347,9 @@ function ParticipantSection({
   filters,
   setFilters,
   emptyMessage,
-  onCancelClick,
+  actionLabel,
+  actionTone = "rose",
+  onActionClick,
   page,
   totalPages,
   onPageChange,
@@ -466,7 +473,7 @@ function ParticipantSection({
         <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onCancelClick ? "w-[18%]" : "w-[22%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
               <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
@@ -478,10 +485,10 @@ function ParticipantSection({
               <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
                 급수
               </th>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onCancelClick ? "w-[28%]" : "w-[41%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
-              {onCancelClick ? (
+              {onActionClick ? (
                 <th className="w-[17%] px-2 py-3 text-center font-semibold md:px-4 md:py-4">
                   관리
                 </th>
@@ -539,13 +546,17 @@ function ParticipantSection({
                       {getParticipantRemarkText(participant)}
                     </span>
                   </td>
-                  {onCancelClick ? (
+                  {onActionClick ? (
                     <td className="px-2 py-3 text-center md:px-4 md:py-4">
                       <button
-                        onClick={() => onCancelClick(participant)}
-                        className="rounded-xl border border-rose-200 bg-white px-2 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-50 md:px-3 md:py-1.5 md:text-xs"
+                        onClick={() => onActionClick(participant)}
+                        className={`rounded-xl border px-2 py-1 text-[10px] font-bold transition md:px-3 md:py-1.5 md:text-xs ${
+                          actionTone === "emerald"
+                            ? "border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50"
+                            : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+                        }`}
                       >
-                        참가 취소
+                        {actionLabel ?? "관리"}
                       </button>
                     </td>
                   ) : null}
@@ -556,7 +567,7 @@ function ParticipantSection({
             {filteredParticipants.length === 0 ? (
               <tr>
                 <td
-                  colSpan={onCancelClick ? 6 : 5}
+                  colSpan={onActionClick ? 6 : 5}
                   className="px-3 py-10 text-center text-xs text-slate-400 md:px-4 md:py-12 md:text-sm"
                 >
                   {participants.length === 0
@@ -591,6 +602,7 @@ export function SessionsPanel({
   onDeleteSession,
   onUpdateSessionStatus,
   onCancelParticipant,
+  onReinstateParticipant,
   onRefreshSession,
 }: SessionsPanelProps) {
   const [adminRegisterOpen, setAdminRegisterOpen] = useState(false);
@@ -617,7 +629,10 @@ export function SessionsPanel({
   const [sessionListPage, setSessionListPage] = useState(1);
   const [cancelTarget, setCancelTarget] =
     useState<SessionParticipant | null>(null);
+  const [reinstateTarget, setReinstateTarget] =
+    useState<SessionParticipant | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [reinstating, setReinstating] = useState(false);
   const [noticeText, setNoticeText] = useState("");
   const [noticeSaving, setNoticeSaving] = useState(false);
   const [noticeSaved, setNoticeSaved] = useState(false);
@@ -928,6 +943,23 @@ export function SessionsPanel({
     }
   }
 
+  async function handleConfirmReinstate() {
+    if (!reinstateTarget) return;
+    setReinstating(true);
+    try {
+      await onReinstateParticipant(reinstateTarget.id);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "참석 복구를 처리하지 못했습니다."
+      );
+    } finally {
+      setReinstating(false);
+      setReinstateTarget(null);
+    }
+  }
+
   async function handleCopyLink() {
     if (!publicSessionLink) {
       return;
@@ -1030,6 +1062,43 @@ export function SessionsPanel({
               <button
                 onClick={() => setCancelTarget(null)}
                 disabled={cancelling}
+                className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {reinstateTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-[1.5rem] bg-white p-6 shadow-xl">
+            <h3 className="text-base font-black text-slate-900">
+              참석 복구 확인
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              <span className="font-bold text-slate-900">
+                {getParticipantDisplayName(reinstateTarget)}
+              </span>
+              님을 다시 참석 명단으로 복구하시겠습니까?
+            </p>
+            <p className="mt-1 text-sm text-amber-600">
+              정원이 가득 찬 경우에는 대기 인원으로 복구될 수 있습니다.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => {
+                  handleConfirmReinstate().catch(() => undefined);
+                }}
+                disabled={reinstating}
+                className="flex-1 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+              >
+                {reinstating ? "복구 중..." : "참석으로 변경"}
+              </button>
+              <button
+                onClick={() => setReinstateTarget(null)}
+                disabled={reinstating}
                 className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 닫기
@@ -1486,7 +1555,9 @@ export function SessionsPanel({
                   filters={registeredFilters}
                   setFilters={setRegisteredFilters}
                   emptyMessage="아직 참석 신청한 사람이 없습니다."
-                  onCancelClick={setCancelTarget}
+                  actionLabel="참가 취소"
+                  actionTone="rose"
+                  onActionClick={setCancelTarget}
                   page={registeredPage}
                   totalPages={registeredTotalPages}
                   onPageChange={setRegisteredPage}
@@ -1502,7 +1573,9 @@ export function SessionsPanel({
                   filters={waitlistedFilters}
                   setFilters={setWaitlistedFilters}
                   emptyMessage="현재 대기 인원이 없습니다."
-                  onCancelClick={setCancelTarget}
+                  actionLabel="참가 취소"
+                  actionTone="rose"
+                  onActionClick={setCancelTarget}
                   page={waitlistedPage}
                   totalPages={waitlistedTotalPages}
                   onPageChange={setWaitlistedPage}
@@ -1518,6 +1591,9 @@ export function SessionsPanel({
                   filters={canceledFilters}
                   setFilters={setCanceledFilters}
                   emptyMessage="불참 인원이 없습니다."
+                  actionLabel="참석으로 변경"
+                  actionTone="emerald"
+                  onActionClick={setReinstateTarget}
                   page={canceledPage}
                   totalPages={canceledTotalPages}
                   onPageChange={setCanceledPage}

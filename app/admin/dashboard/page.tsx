@@ -1901,6 +1901,17 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleReinstateParticipant(participantId: number) {
+    await requestJson("/api/sessions/participants", {
+      method: "POST",
+      body: JSON.stringify({ participantId }),
+    });
+
+    if (selectedSessionId) {
+      await refreshSessionDetail(selectedSessionId, { silent: true });
+    }
+  }
+
   function markTutorialAsCompleted() {
     if (clubInfo) {
       window.localStorage.setItem(
@@ -2305,6 +2316,7 @@ export default function DashboardPage() {
                 onDeleteSession={handleDeleteSession}
                 onUpdateSessionStatus={handleUpdateSessionStatus}
                 onCancelParticipant={handleCancelParticipant}
+                onReinstateParticipant={handleReinstateParticipant}
                 onRefreshSession={(id) => refreshSessionDetail(id, { silent: true })}
               />
             </div>
