@@ -1425,11 +1425,23 @@ export function SessionBracketPanel({
                                               : "hover:bg-white/70",
                                         ].join(" ")}
                                       >
-                                        <span className={["truncate text-[15px] font-semibold leading-6 md:text-sm", isSelected ? "text-white" : "text-slate-900"].join(" ")}>
-                                          {player.name}
-                                        </span>
-                                        <span className={["ml-2 text-xs font-medium", isSelected ? "text-sky-100" : "text-slate-500"].join(" ")}>
-                                          {normalizeGenderLabel(player.gender)} · {player.level}
+                                        <span
+                                          className={[
+                                            "flex items-baseline gap-1 whitespace-nowrap text-[13px] font-semibold leading-5 md:block md:text-sm",
+                                            isSelected ? "text-white" : "text-slate-900",
+                                          ].join(" ")}
+                                        >
+                                          <span className="truncate">
+                                            {player.name}
+                                          </span>
+                                          <span
+                                            className={[
+                                              "shrink-0 text-[11px] font-medium md:ml-2 md:text-xs",
+                                              isSelected ? "text-sky-100" : "text-slate-500",
+                                            ].join(" ")}
+                                          >
+                                            {normalizeGenderLabel(player.gender)} · {player.level}
+                                          </span>
                                         </span>
                                       </button>
                                     );
