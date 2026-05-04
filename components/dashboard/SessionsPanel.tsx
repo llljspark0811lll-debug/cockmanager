@@ -542,9 +542,23 @@ function ParticipantSection({
                     </span>
                   </td>
                   <td className="px-2 py-3 text-[10px] leading-4 text-slate-500 md:px-4 md:py-4 md:text-sm md:leading-5">
-                    <span className="block break-keep whitespace-pre-line">
-                      {getParticipantRemarkText(participant)}
-                    </span>
+                    {(() => {
+                      const remark = getParticipantRemarkText(participant);
+                      const [firstLine = "-", secondLine] = remark.split("\n");
+
+                      return (
+                        <span className="block break-keep">
+                          <span className="block md:whitespace-pre-line">
+                            {firstLine}
+                          </span>
+                          {secondLine ? (
+                            <span className="block whitespace-nowrap text-[9px] leading-3 md:text-sm md:leading-5">
+                              {secondLine}
+                            </span>
+                          ) : null}
+                        </span>
+                      );
+                    })()}
                   </td>
                   {onActionClick ? (
                     <td className="px-2 py-3 text-center md:px-4 md:py-4">
