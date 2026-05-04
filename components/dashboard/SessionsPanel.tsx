@@ -473,23 +473,23 @@ function ParticipantSection({
         <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[16%] md:w-[18%]" : "w-[22%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[14%] md:w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
               <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
                 구분
               </th>
-              <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[10%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
                 성별
               </th>
-              <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[10%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
                 급수
               </th>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[23%] md:w-[28%]" : "w-[41%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[21%] md:w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
               {onActionClick ? (
-                <th className="w-[24%] px-2 py-3 text-center font-semibold md:w-[17%] md:px-4 md:py-4">
+                <th className="w-[30%] px-1 py-3 text-center font-semibold md:w-[17%] md:px-4 md:py-4">
                   관리
                 </th>
               ) : null}
@@ -552,7 +552,7 @@ function ParticipantSection({
                             {firstLine}
                           </span>
                           {secondLine ? (
-                            <span className="block whitespace-nowrap text-[9px] leading-3 md:text-sm md:leading-5">
+                            <span className="block whitespace-nowrap text-[8px] leading-3 md:text-sm md:leading-5">
                               {secondLine}
                             </span>
                           ) : null}
@@ -561,10 +561,10 @@ function ParticipantSection({
                     })()}
                   </td>
                   {onActionClick ? (
-                    <td className="px-2 py-3 text-center md:px-4 md:py-4">
+                    <td className="px-1 py-3 text-center md:px-4 md:py-4">
                       <button
                         onClick={() => onActionClick(participant)}
-                        className={`whitespace-nowrap rounded-xl border px-2.5 py-1.5 text-[9px] font-bold transition md:px-3 md:py-1.5 md:text-xs ${
+                        className={`w-full min-w-0 whitespace-nowrap rounded-xl border px-1.5 py-1.5 text-[8px] font-bold transition md:px-3 md:py-1.5 md:text-xs ${
                           actionTone === "emerald"
                             ? "border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50"
                             : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
