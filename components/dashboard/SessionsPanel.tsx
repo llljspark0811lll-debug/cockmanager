@@ -473,10 +473,10 @@ function ParticipantSection({
         <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[15%] md:w-[18%]" : "w-[22%]"}`}>
+              <th className={`whitespace-nowrap px-2 py-3 text-[9px] font-semibold md:px-4 md:py-4 md:text-sm ${onActionClick ? "w-[15%] md:w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
-              <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[15%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 구분
               </th>
               <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
@@ -485,7 +485,7 @@ function ParticipantSection({
               <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 급수
               </th>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[25%] md:w-[28%]" : "w-[41%]"}`}>
+              <th className={`whitespace-nowrap px-2 py-3 text-[9px] font-semibold md:px-4 md:py-4 md:text-sm ${onActionClick ? "w-[25%] md:w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
               {onActionClick ? (
