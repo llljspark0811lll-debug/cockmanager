@@ -179,18 +179,14 @@ function getAgeBandAdjustment(age: number | null) {
   }
 
   if (age >= 60) {
-    return -4;
-  }
-
-  if (age >= 50) {
     return -3;
   }
 
-  if (age >= 40) {
+  if (age >= 50) {
     return -2;
   }
 
-  if (age >= 30) {
+  if (age >= 40) {
     return -1;
   }
 
