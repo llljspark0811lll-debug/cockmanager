@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "참가 복구를 처리하지 못했습니다." },
+      { error: "참석 복구를 처리하지 못했습니다." },
       { status: 500 }
     );
   }
@@ -112,7 +112,7 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "참가 취소를 처리하지 못했습니다." },
+      { error: "참석 취소를 처리하지 못했습니다." },
       { status: 500 }
     );
   }
