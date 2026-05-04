@@ -1427,16 +1427,16 @@ export function SessionBracketPanel({
                                       >
                                         <span
                                           className={[
-                                            "flex items-baseline gap-1 whitespace-nowrap text-[13px] font-semibold leading-5 md:block md:text-sm",
+                                            "flex items-baseline gap-0.5 whitespace-nowrap text-[12px] font-semibold leading-5 md:block md:text-sm",
                                             isSelected ? "text-white" : "text-slate-900",
                                           ].join(" ")}
                                         >
-                                          <span className="truncate">
+                                          <span className="whitespace-nowrap">
                                             {player.name}
                                           </span>
                                           <span
                                             className={[
-                                              "shrink-0 text-[11px] font-medium md:ml-2 md:text-xs",
+                                              "shrink-0 text-[10px] font-medium md:ml-2 md:text-xs",
                                               isSelected ? "text-sky-100" : "text-slate-500",
                                             ].join(" ")}
                                           >
