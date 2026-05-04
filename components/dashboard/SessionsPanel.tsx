@@ -473,23 +473,23 @@ function ParticipantSection({
         <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[14%] md:w-[18%]" : "w-[22%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[15%] md:w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
               <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">
                 구분
               </th>
-              <th className="w-[10%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 성별
               </th>
-              <th className="w-[10%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">
+              <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 급수
               </th>
-              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[21%] md:w-[28%]" : "w-[41%]"}`}>
+              <th className={`px-2 py-3 font-semibold md:px-4 md:py-4 ${onActionClick ? "w-[25%] md:w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
               {onActionClick ? (
-                <th className="w-[30%] px-1 py-3 text-center font-semibold md:w-[17%] md:px-4 md:py-4">
+                <th className="w-[22%] px-1 py-3 text-center text-[9px] font-semibold md:w-[17%] md:px-4 md:py-4 md:text-sm">
                   관리
                 </th>
               ) : null}
@@ -564,7 +564,7 @@ function ParticipantSection({
                     <td className="px-1 py-3 text-center md:px-4 md:py-4">
                       <button
                         onClick={() => onActionClick(participant)}
-                        className={`w-full min-w-0 whitespace-nowrap rounded-xl border px-1.5 py-1.5 text-[8px] font-bold transition md:px-3 md:py-1.5 md:text-xs ${
+                        className={`inline-flex max-w-full items-center justify-center whitespace-nowrap rounded-xl border px-1.5 py-1 text-[7px] font-bold transition md:px-3 md:py-1.5 md:text-xs ${
                           actionTone === "emerald"
                             ? "border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50"
                             : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
