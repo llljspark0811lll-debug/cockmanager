@@ -2,9 +2,10 @@
   requireAuthAdmin,
   unauthorizedResponse,
 } from "@/lib/api-auth";
-import { getMonthRange } from "@/lib/finance";
+import { getLedgerCategoryLabel, getMonthRange } from "@/lib/finance";
 import { ensureFinanceSchema } from "@/lib/finance-schema";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 type LedgerEntryRow = {
@@ -316,6 +317,31 @@ export async function POST(req: Request) {
         "referenceKey",
         "createdAt"
     `;
+
+    const [club, member] = await Promise.all([
+      prisma.club.findUnique({
+        where: { id: admin.clubId },
+        select: { name: true },
+      }),
+      memberId
+        ? prisma.member.findUnique({
+            where: { id: memberId },
+            select: { name: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    void sendTelegramAlert({
+      event:
+        entryType === "INCOME"
+          ? "LEDGER_MANUAL_INCOME_CREATE"
+          : "LEDGER_MANUAL_EXPENSE_CREATE",
+      clubName: club?.name ?? String(admin.clubId),
+      title,
+      category: getLedgerCategoryLabel(category),
+      amount,
+      memberName: member?.name ?? null,
+    });
 
     return NextResponse.json(rows[0]);
   } catch (error) {

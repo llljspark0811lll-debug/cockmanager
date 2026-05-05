@@ -484,6 +484,7 @@ export async function POST(req: Request) {
       event: "SESSION_BRACKET_CREATE",
       clubName: club?.name ?? String(admin.clubId),
       sessionTitle: session.title,
+      generationMode,
     });
 
     return NextResponse.json({

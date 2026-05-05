@@ -3,6 +3,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -180,6 +181,18 @@ export async function POST(req: Request) {
       });
     });
 
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "SPECIAL_FEE_CREATE",
+      clubName: club?.name ?? String(admin.clubId),
+      feeTitle: created.title,
+      amount: created.amount,
+    });
+
     return NextResponse.json({
       ...created,
       paidCount: 0,
@@ -227,6 +240,18 @@ export async function DELETE(req: Request) {
 
     await prisma.specialFee.delete({
       where: { id: existingSpecialFee.id },
+    });
+
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "SPECIAL_FEE_DELETE",
+      clubName: club?.name ?? String(admin.clubId),
+      feeTitle: existingSpecialFee.title,
+      amount: existingSpecialFee.amount,
     });
 
     return NextResponse.json({ success: true });

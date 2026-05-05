@@ -1,9 +1,10 @@
-﻿import {
+import {
   requireAuthAdmin,
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { ensureFinanceSchema } from "@/lib/finance-schema";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -20,6 +21,16 @@ export async function POST() {
       WHERE "clubId" = ${admin.clubId}
     `;
 
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "LEDGER_RESET",
+      clubName: club?.name ?? String(admin.clubId),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);
@@ -29,4 +40,3 @@ export async function POST() {
     );
   }
 }
-

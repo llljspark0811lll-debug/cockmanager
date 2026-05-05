@@ -245,6 +245,17 @@ export async function PUT(req: Request) {
       },
     });
 
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "MEMBER_UPDATE",
+      clubName: club?.name ?? String(admin.clubId),
+      name: updatedMember.name,
+    });
+
     return NextResponse.json(updatedMember);
   } catch (error) {
     console.error(error);
@@ -281,6 +292,17 @@ export async function DELETE(req: Request) {
         deletedAt: new Date(),
         withdrawnAt: new Date(),
       },
+    });
+
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "MEMBER_DELETE",
+      clubName: club?.name ?? String(admin.clubId),
+      name: existingMember.name,
     });
 
     return NextResponse.json({ message: "삭제 성공" });

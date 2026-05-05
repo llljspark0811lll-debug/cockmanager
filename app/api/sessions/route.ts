@@ -347,6 +347,22 @@ export async function PUT(req: Request) {
 
     const refreshedSession = await findSessionDetail(updatedSession.id, admin.clubId);
 
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "SESSION_UPDATE",
+      clubName: club?.name ?? String(admin.clubId),
+      title: updatedSession.title,
+      date: new Date(updatedSession.date).toLocaleDateString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      }),
+    });
+
     if (!refreshedSession) {
       return NextResponse.json(updatedSession);
     }
@@ -393,6 +409,22 @@ export async function DELETE(req: Request) {
 
     await prisma.clubSession.delete({
       where: { id: existingSession.id },
+    });
+
+    const club = await prisma.club.findUnique({
+      where: { id: admin.clubId },
+      select: { name: true },
+    });
+
+    void sendTelegramAlert({
+      event: "SESSION_DELETE",
+      clubName: club?.name ?? String(admin.clubId),
+      title: existingSession.title,
+      date: new Date(existingSession.date).toLocaleDateString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      }),
     });
 
     return NextResponse.json({ success: true });
