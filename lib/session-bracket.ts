@@ -624,7 +624,7 @@ function allocateMatchesForRound(
 
       if (needsGames || hasPreviousResters) {
         throw new Error(
-          `${pool.label} 李멸? ?몄썝??4紐?誘몃쭔?대씪 ?먮룞 ?吏꾪몴瑜??앹꽦?????놁뒿?덈떎.`
+          `${pool.label} 참가 인원이 4명 미만이라 자동 대진표를 생성할 수 없습니다.`
         );
       }
     }
@@ -645,7 +645,7 @@ function allocateMatchesForRound(
 
     if (required > getPoolMatchLimit(pool)) {
       throw new Error(
-        `${pool.label}?먯꽌 吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎. 肄뷀듃瑜??섎━嫄곕굹 李멸? ?몄썝???ㅼ떆 ?뺤씤??二쇱꽭??`
+        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요.`
       );
     }
 
@@ -655,7 +655,7 @@ function allocateMatchesForRound(
 
   if (requiredMatches > courtCount) {
     throw new Error(
-      "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗튂?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 ?吏??앹꽦 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??"
+      "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
     );
   }
 
@@ -1576,23 +1576,23 @@ function validateGenerationInput(
 ) {
   if (players.length < 4) {
     throw new Error(
-      "?먮룞 ?吏꾪몴??理쒖냼 4紐??댁긽??李몄꽍 ?뺤젙 ?몄썝???덉뼱???앹꽦?????덉뒿?덈떎."
+      "자동 대진표는 최소 4명 이상의 참석 확정 인원이 있어야 생성할 수 있습니다."
     );
   }
 
   if (config.courtCount < 1) {
-    throw new Error("?ъ슜 肄뷀듃 ?섎뒗 1媛??댁긽?댁뼱???⑸땲??");
+    throw new Error("사용 코트 수는 1개 이상이어야 합니다.");
   }
 
   if (config.minGamesPerPlayer < 1) {
-    throw new Error("理쒖냼 寃쎄린 ?섎뒗 1寃쎄린 ?댁긽?댁뼱???⑸땲??");
+    throw new Error("최소 경기 수는 1경기 이상이어야 합니다.");
   }
 
   const maxPlayersPerRound = config.courtCount * 4;
 
   if (players.length > maxPlayersPerRound * 2) {
     throw new Error(
-      "?꾩옱 肄뷀듃 ?섎줈????寃쎄린 ?곗냽 ?щ뒗 ?몄썝 ?놁씠 ?吏꾪몴瑜?留뚮뱾 ???놁뒿?덈떎. 肄뷀듃瑜??섎━嫄곕굹 李멸? ?몄썝???ㅼ떆 ?댁쁺??二쇱꽭??"
+      "현재 코트 수로는 모든 참가자에게 연속 휴식 없이 대진표를 만들 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요."
     );
   }
 }
@@ -1610,9 +1610,9 @@ function validateTeamBattleInput(
   );
   if (unassignedPlayers.length > 0) {
     throw new Error(
-      `? ????먮룞?吏꾩? 紐⑤뱺 李멸??먯쓽 ? 諛곗젙???꾩슂?⑸땲?? ${unassignedPlayers
+      `팀 대항 자동대진은 모든 참가자의 팀 배정이 필요합니다. ${unassignedPlayers
         .map((player) => player.name)
-        .join(", ")} 李멸??먯쓽 ???癒쇱? ?좏깮??二쇱꽭??`
+        .join(", ")} 참가자의 팀을 먼저 선택해 주세요.`
     );
   }
 
@@ -1625,7 +1625,7 @@ function validateTeamBattleInput(
 
   if (teamAPlayers.length < 2 || teamBPlayers.length < 2) {
     throw new Error(
-      "? ????먮룞?吏꾩? A?怨?B???媛곴컖 理쒖냼 2紐??댁긽 ?덉뼱???앹꽦?????덉뒿?덈떎."
+      "팀 대항 자동대진은 A팀과 B팀에 각각 최소 2명 이상 있어야 생성할 수 있습니다."
     );
   }
 
@@ -1636,7 +1636,7 @@ function validateTeamBattleInput(
 
     if (teamAssignments[playerId] !== teamAssignments[partnerId]) {
       throw new Error(
-        "怨좎젙 ?뚰듃?덈뒗 媛숈? ? ?덉뿉?쒕쭔 ?ㅼ젙?????덉뒿?덈떎. ? 諛곗젙 ?먮뒗 怨좎젙 ?뚰듃?덈? ?ㅼ떆 ?뺤씤??二쇱꽭??"
+        "고정 파트너는 같은 팀 안에서만 설정할 수 있습니다. 팀 배정 또는 고정 파트너를 다시 확인해 주세요."
       );
     }
 
@@ -1645,7 +1645,7 @@ function validateTeamBattleInput(
       const partner = players.find((entry) => entry.playerId === partnerId);
       if (player && partner && player.gender !== partner.gender) {
         throw new Error(
-          "?⑤났/?щ났 遺꾨━ ?앹꽦?먯꽌??怨좎젙 ?뚰듃?덈룄 媛숈? ?깅퀎 ?덉뿉?쒕쭔 ?ㅼ젙?????덉뒿?덈떎."
+          "남복/여복 분리 생성에서는 고정 파트너도 같은 성별 안에서만 설정할 수 있습니다."
         );
       }
     }
@@ -1854,7 +1854,7 @@ function generateTeamBattleRounds(
 
   if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
     throw new Error(
-      "?꾩옱 議곌굔?쇰줈??紐⑤뱺 李멸??먯뿉寃?理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎굹 ? ?몄썝???ㅼ떆 ?뺤씤??二쇱꽭??"
+      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수나 참가 인원을 다시 확인해 주세요."
     );
   }
 
@@ -1863,7 +1863,7 @@ function generateTeamBattleRounds(
 
     if (state.games > config.minGamesPerPlayer + 1) {
       warnings.push(
-        `${player.name} ?좎닔??寃쎄린 ?섍? ?ㅻⅨ ?몄썝蹂대떎 留롪쾶 諛곗젙?섏뿀?듬땲??`
+        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
       );
     }
   }
@@ -2070,7 +2070,7 @@ export function generateSessionBracket(
 
   if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
     throw new Error(
-      "?꾩옱 議곌굔?쇰줈??紐⑤뱺 李멸??먯뿉寃?理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 理쒖냼 寃쎄린 ?섎? ??떠 二쇱꽭??"
+      "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트를 늘리거나 최소 경기 수를 낮춰 주세요."
     );
   }
 
@@ -2079,7 +2079,7 @@ export function generateSessionBracket(
 
     if (state.games > config.minGamesPerPlayer + 1) {
       warnings.push(
-        `${player.name} ?좎닔??寃쎄린 ?섍? ?ㅻⅨ ?몄썝蹂대떎 留롪쾶 諛곗젙?섏뿀?듬땲??`
+        `${player.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
       );
     }
   }
