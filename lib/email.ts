@@ -19,7 +19,7 @@ export async function sendEmail(input: SendEmailInput) {
 
   if (!apiKey || !from) {
     throw new Error(
-      "이메일 발송 환경변수가 설정되지 않았습니다. RESEND_API_KEY와 MAIL_FROM을 확인해주세요."
+      "메일 발송 환경변수가 설정되지 않았습니다. RESEND_API_KEY와 MAIL_FROM을 확인해 주세요."
     );
   }
 
@@ -41,7 +41,7 @@ export async function sendEmail(input: SendEmailInput) {
   if (!response.ok) {
     const body = await response.text();
     throw new Error(
-      `이메일 발송에 실패했습니다. ${response.status} ${body}`
+      `메일 발송에 실패했습니다. ${response.status} ${body}`
     );
   }
 }

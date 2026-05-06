@@ -23,7 +23,7 @@ export default function AdminResetPasswordTokenPage() {
     }
 
     if (form.password.length < 6) {
-      alert("비밀번호는 6자 이상으로 입력해주세요.");
+      alert("비밀번호는 6자 이상으로 입력해 주세요.");
       return;
     }
 
@@ -50,7 +50,7 @@ export default function AdminResetPasswordTokenPage() {
       }
 
       alert(
-        "비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요."
+        "비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해 주세요."
       );
       router.push("/admin/login");
     } finally {
@@ -66,7 +66,7 @@ export default function AdminResetPasswordTokenPage() {
         </h1>
 
         <p className="mb-6 text-center text-sm text-gray-500">
-          이메일로 받은 링크에서 새 비밀번호를 설정해주세요.
+          이메일로 받은 링크에서 새 비밀번호를 설정해 주세요.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>

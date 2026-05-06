@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -56,7 +57,10 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error ?? "로그인에 실패했습니다.");
+        alert(
+          data.error ??
+            "로그인에 실패했습니다. 아이디와 비밀번호를 다시 확인해 주세요."
+        );
         return;
       }
 
@@ -88,7 +92,7 @@ export default function AdminLoginPage() {
         </h1>
 
         <p className="mb-6 text-center text-sm text-gray-500">
-          클럽/소모임 관리자 전용 로그인 페이지입니다.
+          클럽/모임 관리자 전용 로그인 페이지입니다.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -126,18 +130,19 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        <p
-          className="mt-6 cursor-pointer text-center text-sm text-gray-500 hover:underline"
-          onClick={() => router.push("/admin/signup")}
+        <Link
+          href="/admin/signup"
+          className="mt-6 block w-full text-center text-sm text-gray-500 hover:underline"
         >
-          클럽 / 소모임이 없나요? 새로 만들기
-        </p>
-        <p
-          className="mt-3 cursor-pointer text-center text-sm text-gray-500 hover:underline"
-          onClick={() => router.push("/admin/reset-password")}
+          클럽 / 모임이 없나요? 새로 만들기
+        </Link>
+
+        <Link
+          href="/admin/reset-password"
+          className="mt-3 block w-full text-center text-sm text-gray-500 hover:underline"
         >
           아이디 / 비밀번호를 잊으셨나요?
-        </p>
+        </Link>
       </div>
     </main>
   );

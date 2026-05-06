@@ -25,7 +25,7 @@ export default function AdminResetPasswordPage() {
 
       if (!response.ok) {
         alert(
-          data.error ?? "복구 이메일 전송에 실패했습니다."
+          data.error ?? "복구 메일 전송에 실패했습니다."
         );
         return;
       }
@@ -36,9 +36,10 @@ export default function AdminResetPasswordPage() {
         );
       } else {
         alert(
-          "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 링크를 보냈습니다."
+          "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 메일을 보냈습니다."
         );
       }
+
       router.push("/admin/login");
     } finally {
       setLoading(false);
@@ -53,11 +54,10 @@ export default function AdminResetPasswordPage() {
         </h1>
 
         <p className="mb-3 text-center text-sm text-gray-500">
-          관리자 이메일을 입력하면 아이디 안내와 비밀번호 재설정 링크를
-          보내드립니다.
+          관리자 이메일을 입력하면 아이디 안내와 비밀번호 재설정 메일을 보내드립니다.
         </p>
         <p className="mb-6 text-center text-xs leading-5 text-slate-400">
-          클럽 생성 때 등록한 관리자 이메일이 필요합니다.
+          클럽 생성 시 등록한 관리자 이메일이 필요합니다.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -74,16 +74,17 @@ export default function AdminResetPasswordPage() {
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
           >
-            {loading ? "이메일 전송 중..." : "이메일 보내기"}
+            {loading ? "메일 전송 중..." : "메일 보내기"}
           </button>
         </form>
 
-        <p
-          className="mt-6 cursor-pointer text-center text-sm text-gray-500 hover:underline"
+        <button
+          type="button"
+          className="mt-6 block w-full text-center text-sm text-gray-500 hover:underline"
           onClick={() => router.push("/admin/login")}
         >
           로그인으로 돌아가기
-        </p>
+        </button>
       </div>
     </main>
   );

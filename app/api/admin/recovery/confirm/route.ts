@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     if (!token || !newPassword || !confirmPassword) {
       return NextResponse.json(
-        { error: "토큰과 새 비밀번호 정보를 모두 입력해주세요." },
+        { error: "토큰과 새 비밀번호 정보를 모두 입력해 주세요." },
         { status: 400 }
       );
     }
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     if (newPassword.length < 6) {
       return NextResponse.json(
-        { error: "비밀번호는 6자 이상으로 입력해주세요." },
+        { error: "비밀번호는 6자 이상으로 입력해 주세요." },
         { status: 400 }
       );
     }

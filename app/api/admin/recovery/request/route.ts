@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     if (!email) {
       return NextResponse.json(
-        { error: "관리자 이메일을 입력해주세요." },
+        { error: "관리자 이메일을 입력해 주세요." },
         { status: 400 }
       );
     }
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
           );
         } else {
           throw new Error(
-            "이메일 발송 환경변수가 설정되지 않았습니다."
+            "메일 발송 환경변수가 설정되지 않았습니다."
           );
         }
       } else {
@@ -81,15 +81,15 @@ export async function POST(request: Request) {
             `비밀번호 재설정 링크: ${resetUrl}`,
             "",
             "이 링크는 1시간 동안만 유효합니다.",
-            "본인이 요청하지 않았다면 이 메일을 무시해주세요.",
+            "본인이 요청하지 않았다면 이 메일을 무시해 주세요.",
           ].join("\n"),
           html: `
             <div style="font-family: Arial, sans-serif; line-height: 1.7; color: #111827;">
               <h2 style="margin-bottom: 12px;">${admin.club.name} 관리자 계정 복구 안내</h2>
               <p>관리자 아이디 찾기 및 비밀번호 재설정 요청이 접수되었습니다.</p>
-              <p><strong>관리자 아이디</strong> ${admin.username}</p>
+              <p><strong>관리자 아이디:</strong> ${admin.username}</p>
               <p>
-                아래 버튼을 눌러 새 비밀번호를 설정해주세요.<br />
+                아래 버튼을 눌러 새 비밀번호를 설정해 주세요.<br />
                 링크 유효시간은 <strong>1시간</strong>입니다.
               </p>
               <p style="margin: 24px 0;">
@@ -97,8 +97,8 @@ export async function POST(request: Request) {
                   비밀번호 재설정하기
                 </a>
               </p>
-              <p style="word-break: break-all;">버튼이 열리지 않으면 아래 링크를 직접 이어주세요.<br />${resetUrl}</p>
-              <p>본인이 요청하지 않았다면 이 메일을 무시해주세요.</p>
+              <p style="word-break: break-all;">버튼이 열리지 않으면 아래 링크를 직접 열어 주세요.<br />${resetUrl}</p>
+              <p>본인이 요청하지 않았다면 이 메일을 무시해 주세요.</p>
             </div>
           `,
         });
@@ -107,13 +107,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message:
-        "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 링크를 보냈습니다.",
+        "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 메일을 보냈습니다.",
       ...(debugResetUrl ? { debugResetUrl } : {}),
     });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "계정 복구 이메일을 보내지 못했습니다." },
+      { error: "계정 복구 메일을 보내지 못했습니다." },
       { status: 500 }
     );
   }

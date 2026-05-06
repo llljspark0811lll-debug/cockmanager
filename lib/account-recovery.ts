@@ -40,7 +40,7 @@ export function buildPasswordResetUrl(rawToken: string) {
 
   if (!baseUrl) {
     throw new Error(
-      "비밀번호 재설정 링크를 만들 수 없습니다. APP_BASE_URL 또는 NEXT_PUBLIC_SITE_URL을 설정해주세요."
+      "비밀번호 재설정 링크를 만들 수 없습니다. APP_BASE_URL 또는 NEXT_PUBLIC_SITE_URL을 설정해 주세요."
     );
   }
 
