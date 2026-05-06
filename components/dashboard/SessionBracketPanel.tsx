@@ -23,7 +23,33 @@ type BracketApiResponse = {
   sessionTitle: string;
   participantCount: number;
   bracket: SessionBracket | null;
+  canProceedWithRelaxedMode?: boolean;
+  warnings?: string[];
 };
+
+const RELAXABLE_ERROR_PATTERNS = [
+  "연속 휴식 없이",
+  "직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다",
+  "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다",
+  "최소 경기 수를 배정할 수 없습니다",
+];
+
+function shouldOfferRelaxedMode(
+  canProceedWithRelaxedMode: boolean | undefined,
+  errorMessage: string | undefined
+) {
+  if (canProceedWithRelaxedMode) {
+    return true;
+  }
+
+  if (!errorMessage) {
+    return false;
+  }
+
+  return RELAXABLE_ERROR_PATTERNS.some((pattern) =>
+    errorMessage.includes(pattern)
+  );
+}
 
 async function notifyAdminActivity(payload: Record<string, unknown>) {
   try {
@@ -480,6 +506,33 @@ export function SessionBracketPanel({
     setFixedPairs((prev) => prev.filter((_, i) => i !== pairIndex));
   }
 
+  async function requestBracketGeneration(relaxedMode = false) {
+    const response = await fetch("/api/sessions/bracket", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sessionId: session.id,
+        courtCount,
+        minGamesPerPlayer,
+        separateByGender,
+        relaxedMode,
+        generationMode,
+        teamAssignments,
+        teamLabels,
+        fixedPairs,
+      }),
+    });
+
+    const data = (await response.json()) as BracketApiResponse & {
+      error?: string;
+    };
+
+    return { response, data };
+  }
+
   async function handleGenerateBracket() {
     setLoading(true);
     setError("");
@@ -488,32 +541,41 @@ export function SessionBracketPanel({
     setSwapNotice("");
 
     try {
-      const response = await fetch("/api/sessions/bracket", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionId: session.id,
-          courtCount,
-          minGamesPerPlayer,
-          separateByGender,
-          generationMode,
-          teamAssignments,
-          teamLabels,
-          fixedPairs,
-        }),
-      });
-
-      const data = (await response.json()) as BracketApiResponse & {
-        error?: string;
-      };
+      let { response, data } = await requestBracketGeneration(false);
 
       if (!response.ok) {
-        throw new Error(
-          data.error ?? "자동 대진표 생성에 실패했습니다."
-        );
+        if (shouldOfferRelaxedMode(data.canProceedWithRelaxedMode, data.error)) {
+          const confirmed = window.confirm(
+            [
+              "현재 조건에서는 모든 선수의 경기수, 휴식수, 밸런스를 만족하는 대진표를 만들 수 없습니다.",
+              "",
+              ...((data.warnings?.length
+                ? data.warnings
+                : [
+                    "일부 선수는 두 경기 연속 휴식할 수 있습니다.",
+                    "같은 파트너나 상대를 다시 만날 수 있습니다.",
+                    "일부 선수의 경기 수나 밸런스가 완벽하게 맞지 않을 수 있습니다.",
+                  ]) ?? []),
+              "",
+              "그래도 진행하시겠습니까?",
+            ].join("\n")
+          );
+
+          if (!confirmed) {
+            setError(
+              "현재 조건에서는 모든 선수의 경기수, 휴식수, 밸런스를 만족하는 대진표를 만들 수 없습니다."
+            );
+            return;
+          }
+
+          ({ response, data } = await requestBracketGeneration(true));
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ?? "자동 대진표 생성에 실패했습니다."
+          );
+        }
       }
 
       setBracket(data.bracket);
@@ -1307,7 +1369,8 @@ export function SessionBracketPanel({
               </div>
             </div>
 
-            {bracket.summary.warnings.length > 0 ? (
+            {bracket.summary.warnings.length > 0 &&
+            !bracket.config.relaxedMode ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <p className="text-sm font-bold text-amber-700">
                   확인 메시지

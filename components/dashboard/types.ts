@@ -149,6 +149,7 @@ export interface SessionBracketConfig {
   courtCount: number;
   minGamesPerPlayer: number;
   separateByGender: boolean;
+  relaxedMode?: boolean;
   generationMode?: "STANDARD" | "TEAM_BATTLE";
   teamAssignments?: Record<string, "A" | "B">;
   teamLabels?: {

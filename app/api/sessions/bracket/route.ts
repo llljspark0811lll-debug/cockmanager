@@ -1,4 +1,4 @@
-import {
+﻿import {
   notFoundResponse,
   requireAuthAdmin,
   unauthorizedResponse,
@@ -15,6 +15,30 @@ import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 type BracketMode = "STANDARD" | "TEAM_BATTLE";
+
+const RELAXED_MODE_MESSAGE =
+  "?꾩옱 議곌굔?먯꽌??紐⑤뱺 ?좎닔??寃쎄린?? ?댁떇?? 諛몃윴?ㅻ? 留뚯”?섎뒗 ?吏꾪몴瑜?留뚮뱾 ???놁뒿?덈떎.";
+
+const RELAXABLE_ERROR_PATTERNS = [
+  "?곗냽 ?댁떇 ?놁씠",
+  "吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎",
+  "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗튂?????놁뒿?덈떎",
+  "理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎",
+];
+
+function canProceedWithRelaxedMode(errorMessage: string) {
+  return RELAXABLE_ERROR_PATTERNS.some((pattern) =>
+    errorMessage.includes(pattern)
+  );
+}
+
+function buildRelaxedModeWarnings() {
+  return [
+    "?쇰? ?좎닔????寃쎄린 ?곗냽 ?댁떇?????덉뒿?덈떎.",
+    "媛숈? ?뚰듃?덈굹 ?곷?瑜??ㅼ떆 留뚮궇 ???덉뒿?덈떎.",
+    "?쇰? ?좎닔??寃쎄린 ?섎굹 諛몃윴?ㅺ? ?꾨꼍?섍쾶 留욎? ?딆쓣 ???덉뒿?덈떎.",
+  ];
+}
 
 type SessionBracketRecord = {
   id: number;
@@ -281,7 +305,7 @@ function buildBracketPlayers(
 ) {
   const players: SessionBracketPlayerInput[] = [];
 
-  const stripSamplePrefix = (name: string) => name.replace(/^\[체험\]\s*/, "").replace(/^\[체험\s*게스트\]\s*/, "");
+  const stripSamplePrefix = (name: string) => name.replace(/^\[泥댄뿕\]\s*/, "").replace(/^\[泥댄뿕\s*寃뚯뒪??]\s*/, "");
 
   for (const participant of participants) {
     if (participant.member) {
@@ -347,7 +371,7 @@ export async function GET(req: Request) {
 
     if (!Number.isFinite(sessionId)) {
       return NextResponse.json(
-        { error: "세션 정보를 다시 확인해주세요." },
+        { error: "?몄뀡 ?뺣낫瑜??ㅼ떆 ?뺤씤?댁＜?몄슂." },
         { status: 400 }
       );
     }
@@ -357,7 +381,7 @@ export async function GET(req: Request) {
     const session = await findSessionForBracket(sessionId, admin.clubId);
 
     if (!session) {
-      return notFoundResponse("운동 일정을 찾을 수 없습니다.");
+      return notFoundResponse("?대룞 ?쇱젙??李얠쓣 ???놁뒿?덈떎.");
     }
 
     return NextResponse.json({
@@ -369,7 +393,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "자동 대진표 정보를 불러오지 못했습니다." },
+      { error: "?먮룞 ?吏꾪몴 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??" },
       { status: 500 }
     );
   }
@@ -388,6 +412,7 @@ export async function POST(req: Request) {
     const courtCount = Number(body.courtCount);
     const minGamesPerPlayer = Number(body.minGamesPerPlayer);
     const separateByGender = Boolean(body.separateByGender);
+    const relaxedMode = Boolean(body.relaxedMode);
     const generationMode =
       body.generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD";
     const teamAssignments = normalizeTeamAssignments(body.teamAssignments);
@@ -421,7 +446,7 @@ export async function POST(req: Request) {
       !Number.isFinite(minGamesPerPlayer)
     ) {
       return NextResponse.json(
-        { error: "자동 대진표 설정 값을 다시 확인해주세요." },
+        { error: "?먮룞 ?吏꾪몴 ?ㅼ젙 媛믪쓣 ?ㅼ떆 ?뺤씤?댁＜?몄슂." },
         { status: 400 }
       );
     }
@@ -431,13 +456,13 @@ export async function POST(req: Request) {
     const session = await findSessionForBracket(sessionId, admin.clubId);
 
     if (!session) {
-      return notFoundResponse("운동 일정을 찾을 수 없습니다.");
+      return notFoundResponse("?대룞 ?쇱젙??李얠쓣 ???놁뒿?덈떎.");
     }
 
     if (session.status !== "CLOSED") {
       return NextResponse.json(
         {
-          error: "자동 대진표는 마감 처리된 운동 일정에서만 생성할 수 있습니다.",
+          error: "?먮룞 ?吏꾪몴??留덇컧 泥섎━???대룞 ?쇱젙?먯꽌留??앹꽦?????덉뒿?덈떎.",
         },
         { status: 400 }
       );
@@ -449,6 +474,7 @@ export async function POST(req: Request) {
       courtCount,
       minGamesPerPlayer,
       separateByGender,
+      relaxedMode,
       generationMode,
       teamAssignments,
       teamLabels,
@@ -497,6 +523,17 @@ export async function POST(req: Request) {
     console.error(error);
 
     if (error instanceof Error) {
+      if (canProceedWithRelaxedMode(error.message)) {
+        return NextResponse.json(
+          {
+            error: RELAXED_MODE_MESSAGE,
+            canProceedWithRelaxedMode: true,
+            warnings: buildRelaxedModeWarnings(),
+          },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { error: error.message },
         { status: 400 }
@@ -504,8 +541,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: "자동 대진표 생성에 실패했습니다." },
+      { error: "?먮룞 ?吏꾪몴 ?앹꽦???ㅽ뙣?덉뒿?덈떎." },
       { status: 500 }
     );
   }
 }
+

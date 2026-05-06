@@ -24,13 +24,21 @@ export default function AdminResetPasswordPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error ?? "이메일 전송에 실패했습니다.");
+        alert(
+          data.error ?? "복구 이메일 전송에 실패했습니다."
+        );
         return;
       }
 
-      alert(
-        "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 링크를 보냈습니다."
-      );
+      if (data.debugResetUrl) {
+        alert(
+          `개발 환경에서 메일 설정이 없어 재설정 링크를 화면에 표시합니다.\n\n${data.debugResetUrl}`
+        );
+      } else {
+        alert(
+          "입력한 이메일이 등록되어 있다면 아이디 안내와 비밀번호 재설정 링크를 보냈습니다."
+        );
+      }
       router.push("/admin/login");
     } finally {
       setLoading(false);
@@ -49,7 +57,7 @@ export default function AdminResetPasswordPage() {
           보내드립니다.
         </p>
         <p className="mb-6 text-center text-xs leading-5 text-slate-400">
-          클럽 생성 시 등록한 관리자 이메일이 필요합니다.
+          클럽 생성 때 등록한 관리자 이메일이 필요합니다.
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>

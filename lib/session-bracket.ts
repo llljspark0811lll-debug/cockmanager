@@ -24,6 +24,7 @@ export type SessionBracketGenerationInput = {
   courtCount: number;
   minGamesPerPlayer: number;
   separateByGender: boolean;
+  relaxedMode?: boolean;
   generationMode?: "STANDARD" | "TEAM_BATTLE";
   teamAssignments?: Record<string, "A" | "B">;
   teamLabels?: {
@@ -81,6 +82,8 @@ const BALANCE_GAP_WEIGHT = 14;
 const OPPONENT_REPEAT_WEIGHT = 15;
 const FIXED_PAIR_REPEAT_WEIGHT = 80;
 const FIXED_PAIR_STRONG_TEAM_THRESHOLD = 10;
+const TOP_CANDIDATE_POOL_SIZE = 5;
+const TOP_CANDIDATE_SCORE_MARGIN = 8;
 
 function hasFixedPair(
   teamPlayers: InternalPlayer[],
@@ -243,6 +246,35 @@ function getAgeBandAdjustment(age: number | null) {
   }
 
   return 0;
+}
+
+function chooseCandidateFromTopPool(
+  candidates: MatchCandidate[],
+  random: RandomFn
+) {
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const sorted = [...candidates].sort((left, right) => {
+    if (left.score !== right.score) {
+      return left.score - right.score;
+    }
+
+    return 0;
+  });
+
+  const bestScore = sorted[0]!.score;
+  const eligibleCandidates = sorted
+    .filter(
+      (candidate) =>
+        candidate.score <= bestScore + TOP_CANDIDATE_SCORE_MARGIN
+    )
+    .slice(0, TOP_CANDIDATE_POOL_SIZE);
+
+  return eligibleCandidates[
+    Math.floor(random() * eligibleCandidates.length)
+  ]!;
 }
 
 function getGenderAdjustment(gender: string, separateByGender: boolean) {
@@ -603,7 +635,8 @@ function allocateMatchesForRound(
   states: Map<string, PlayerState>,
   previousRested: Set<string>,
   minGamesPerPlayer: number,
-  randomOrder: Map<string, number>
+  randomOrder: Map<string, number>,
+  relaxedMode = false
 ) {
   const allocations = new Map<DivisionKey, number>();
   let requiredMatches = 0;
@@ -643,17 +676,20 @@ function allocateMatchesForRound(
       requiredForRecovery
     );
 
-    if (required > getPoolMatchLimit(pool)) {
+    const matchLimit = getPoolMatchLimit(pool);
+
+    if (!relaxedMode && required > matchLimit) {
       throw new Error(
         `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요.`
       );
     }
 
-    allocations.set(pool.key, required);
-    requiredMatches += required;
+    const initialRequired = relaxedMode ? 0 : required;
+    allocations.set(pool.key, initialRequired);
+    requiredMatches += initialRequired;
   }
 
-  if (requiredMatches > courtCount) {
+  if (!relaxedMode && requiredMatches > courtCount) {
     throw new Error(
       "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
     );
@@ -900,7 +936,8 @@ function allocateMatchesForRoundTeamBattle(
   previousRested: Set<string>,
   minGamesPerPlayer: number,
   randomOrder: Map<string, number>,
-  fixedPairMap: Map<string, string>
+  fixedPairMap: Map<string, string>,
+  relaxedMode = false
 ) {
   const allocations = new Map<DivisionKey, number>();
   let requiredMatches = 0;
@@ -950,17 +987,20 @@ function allocateMatchesForRoundTeamBattle(
     const requiredForRecovery = getTeamBattleRecoveryMatchFloor(pool);
     const required = Math.max(requiredFromPreviousRest, requiredForRecovery);
 
-    if (required > getTeamBattleMatchLimit(pool)) {
+    const matchLimit = getTeamBattleMatchLimit(pool);
+
+    if (!relaxedMode && required > matchLimit) {
       throw new Error(
         `${pool.label}?먯꽌 吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎. ? ?몄썝 ?먮뒗 肄뷀듃 ?섎? ?ㅼ떆 ?뺤씤??二쇱꽭??`
       );
     }
 
-    allocations.set(pool.key, required);
-    requiredMatches += required;
+    const initialRequired = relaxedMode ? 0 : required;
+    allocations.set(pool.key, initialRequired);
+    requiredMatches += initialRequired;
   }
 
-  if (requiredMatches > courtCount) {
+  if (!relaxedMode && requiredMatches > courtCount) {
     throw new Error(
       "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 ?吏??앹꽦 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??"
     );
@@ -1371,7 +1411,7 @@ function buildRoundMatchesForTeamBattlePool(
       random
     );
 
-    let bestCandidate: MatchCandidate | null = null;
+    const candidates: MatchCandidate[] = [];
 
     for (const teamAPlayers of teamACombos) {
       if (
@@ -1399,11 +1439,16 @@ function buildRoundMatchesForTeamBattlePool(
           fixedPairMap
         );
 
-        if (candidate && (!bestCandidate || candidate.score < bestCandidate.score)) {
-          bestCandidate = candidate;
+        if (candidate) {
+          candidates.push(candidate);
         }
       }
     }
+
+    const bestCandidate = chooseCandidateFromTopPool(
+      candidates,
+      random
+    );
 
     if (!bestCandidate) {
       throw new Error(
@@ -1453,7 +1498,7 @@ function buildRoundMatchesForPool(
     const remaining = orderedPlayers.filter((_, index) => index !== anchorIndex);
     const combos = shuffleArray(generateCombinations(remaining, 3), random);
 
-    let bestCandidate: MatchCandidate | null = null;
+    const candidates: MatchCandidate[] = [];
 
     for (const combo of combos) {
       const quartet = [anchor, ...combo];
@@ -1481,10 +1526,15 @@ function buildRoundMatchesForPool(
         fixedPairMap
       );
 
-      if (candidate && (!bestCandidate || candidate.score < bestCandidate.score)) {
-        bestCandidate = candidate;
+      if (candidate) {
+        candidates.push(candidate);
       }
     }
+
+    const bestCandidate = chooseCandidateFromTopPool(
+      candidates,
+      random
+    );
 
     if (!bestCandidate) {
       throw new Error(
@@ -1590,7 +1640,7 @@ function validateGenerationInput(
 
   const maxPlayersPerRound = config.courtCount * 4;
 
-  if (players.length > maxPlayersPerRound * 2) {
+  if (!config.relaxedMode && players.length > maxPlayersPerRound * 2) {
     throw new Error(
       "현재 코트 수로는 모든 참가자에게 연속 휴식 없이 대진표를 만들 수 없습니다. 코트를 늘리거나 참가 인원을 다시 확인해 주세요."
     );
@@ -1700,7 +1750,7 @@ function generateTeamBattleRounds(
   random: RandomFn,
   fixedPairMap: Map<string, string>
 ) {
-  const teamLabels = config.teamLabels ?? { A: "?A", B: "?B" };
+  const teamLabels = config.teamLabels ?? { A: "팀A", B: "팀B" };
   const pools = buildTeamBattlePools(
     players,
     config.separateByGender,
@@ -1769,7 +1819,8 @@ function generateTeamBattleRounds(
       previousRested,
       config.minGamesPerPlayer,
       randomOrder,
-      fixedPairMap
+      fixedPairMap,
+      config.relaxedMode
     );
     const roundMatches: SessionBracketMatch[] = [];
     const restedPlayerIds = new Set<string>();
@@ -1852,7 +1903,10 @@ function generateTeamBattleRounds(
     });
   }
 
-  if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
+  if (
+    !config.relaxedMode &&
+    !allPlayersSatisfied(players, states, config.minGamesPerPlayer)
+  ) {
     throw new Error(
       "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트 수나 참가 인원을 다시 확인해 주세요."
     );
@@ -1888,6 +1942,7 @@ export function generateSessionBracket(
       Math.floor(input.minGamesPerPlayer)
     ),
     separateByGender: Boolean(input.separateByGender),
+    relaxedMode: Boolean(input.relaxedMode),
     generationMode:
       input.generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD",
     teamAssignments:
@@ -1897,8 +1952,8 @@ export function generateSessionBracket(
     teamLabels:
       input.generationMode === "TEAM_BATTLE"
         ? {
-            A: input.teamLabels?.A?.trim() || "?A",
-            B: input.teamLabels?.B?.trim() || "?B",
+            A: input.teamLabels?.A?.trim() || "팀A",
+            B: input.teamLabels?.B?.trim() || "팀B",
           }
         : undefined,
     fixedPairs: input.fixedPairs ?? [],
@@ -1989,7 +2044,8 @@ export function generateSessionBracket(
       states,
       previousRested,
       config.minGamesPerPlayer,
-      randomOrder
+      randomOrder,
+      config.relaxedMode
     );
     const roundMatches: SessionBracketMatch[] = [];
     const restedPlayerIds = new Set<string>();
@@ -2068,7 +2124,10 @@ export function generateSessionBracket(
     });
   }
 
-  if (!allPlayersSatisfied(players, states, config.minGamesPerPlayer)) {
+  if (
+    !config.relaxedMode &&
+    !allPlayersSatisfied(players, states, config.minGamesPerPlayer)
+  ) {
     throw new Error(
       "현재 조건으로는 모든 참가자에게 최소 경기 수를 배정할 수 없습니다. 코트를 늘리거나 최소 경기 수를 낮춰 주세요."
     );

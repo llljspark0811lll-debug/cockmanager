@@ -43,11 +43,15 @@ export default function AdminResetPasswordTokenPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error ?? "비밀번호 재설정에 실패했습니다.");
+        alert(
+          data.error ?? "비밀번호 재설정에 실패했습니다."
+        );
         return;
       }
 
-      alert("비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.");
+      alert(
+        "비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요."
+      );
       router.push("/admin/login");
     } finally {
       setLoading(false);

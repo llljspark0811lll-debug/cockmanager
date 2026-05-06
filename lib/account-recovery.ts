@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 
 const PASSWORD_RESET_HOURS = 1;
+const DEFAULT_APP_URL = "https://cockmanager.kr";
 
 export function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -28,7 +29,8 @@ export function getAppBaseUrl() {
   const configured =
     process.env.APP_BASE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    "";
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    DEFAULT_APP_URL;
 
   return configured.replace(/\/+$/, "");
 }
@@ -38,7 +40,7 @@ export function buildPasswordResetUrl(rawToken: string) {
 
   if (!baseUrl) {
     throw new Error(
-      "비밀번호 재설정 링크를 만들 수 없습니다. APP_BASE_URL 또는 NEXT_PUBLIC_APP_URL을 설정해주세요."
+      "비밀번호 재설정 링크를 만들 수 없습니다. APP_BASE_URL 또는 NEXT_PUBLIC_SITE_URL을 설정해주세요."
     );
   }
 
