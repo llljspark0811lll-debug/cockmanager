@@ -4,6 +4,7 @@ import {
   getNextRegistrationStatus,
 } from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
+import { sendTelegramAlert } from "@/lib/telegram";
 
 function hasMissingGuestProfileColumns(error: unknown) {
   const message =
@@ -149,6 +150,22 @@ export async function POST(req: Request) {
         throw error;
       }
     }
+
+    const club = await prisma.club.findUnique({
+      where: { id: session.clubId },
+      select: { name: true },
+    });
+
+    await sendTelegramAlert({
+      event: "SESSION_RESPOND_REGISTER",
+      clubName: club?.name ?? String(session.clubId),
+      sessionTitle: session.title ?? String(session.id),
+      memberName: `${name} (게스트)`,
+      guestCount: 0,
+      status,
+    }).catch((error) => {
+      console.error("[telegram] guest register alert failed", error);
+    });
 
     return NextResponse.json({ success: true, status });
   } catch (error) {

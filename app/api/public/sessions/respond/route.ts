@@ -214,13 +214,18 @@ export async function POST(req: Request) {
         }
       }
 
-      prisma.club.findUnique({ where: { id: session.clubId }, select: { name: true } }).then((club) => {
-        void sendTelegramAlert({
-          event: "SESSION_RESPOND_CANCEL",
-          clubName: club?.name ?? String(session.clubId),
-          sessionTitle: session.title ?? String(session.id),
-          memberName: member.name,
-        });
+      const club = await prisma.club.findUnique({
+        where: { id: session.clubId },
+        select: { name: true },
+      });
+
+      await sendTelegramAlert({
+        event: "SESSION_RESPOND_CANCEL",
+        clubName: club?.name ?? String(session.clubId),
+        sessionTitle: session.title ?? String(session.id),
+        memberName: member.name,
+      }).catch((error) => {
+        console.error("[telegram] session respond cancel alert failed", error);
       });
 
       return NextResponse.json({
@@ -408,14 +413,19 @@ export async function POST(req: Request) {
       }
     }
 
-    const club = await prisma.club.findUnique({ where: { id: session.clubId }, select: { name: true } });
-    void sendTelegramAlert({
+    const club = await prisma.club.findUnique({
+      where: { id: session.clubId },
+      select: { name: true },
+    });
+    await sendTelegramAlert({
       event: "SESSION_RESPOND_REGISTER",
       clubName: club?.name ?? String(session.clubId),
       sessionTitle: session.title ?? String(session.id),
       memberName: member.name,
       guestCount: guestEntries.length,
       status: memberStatus,
+    }).catch((error) => {
+      console.error("[telegram] session respond register alert failed", error);
     });
 
     return NextResponse.json({
