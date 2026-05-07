@@ -440,7 +440,9 @@ export default function PublicSessionPage() {
   const [loadingSession, setLoadingSession] = useState(true);
   const [sessionError, setSessionError] = useState("");
   const [memberName, setMemberName] = useState("");
-  const [phoneLast4, setPhoneLast4] = useState("");
+  const [memberSearchResults, setMemberSearchResults] = useState<{ id: number; name: string; gender: string | null; level: string | null }[]>([]);
+  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  const [memberSearchError, setMemberSearchError] = useState("");
   const [identifiedMember, setIdentifiedMember] = useState<IdentifiedMember | null>(
     null
   );
@@ -543,14 +545,16 @@ export default function PublicSessionPage() {
 
   async function identifyMember(options?: {
     rememberToken?: string;
+    memberId?: number;
     silent?: boolean;
   }) {
     if (!token) return;
     const rememberToken = options?.rememberToken ?? "";
+    const memberId = options?.memberId ?? null;
 
-    if (!rememberToken && (!memberName.trim() || phoneLast4.length !== 4)) {
+    if (!rememberToken && !memberId) {
       if (!options?.silent) {
-        setIdentifyError("이름과 전화번호 뒤 4자리를 입력해주세요.");
+        setIdentifyError("회원을 선택해주세요.");
       }
       return;
     }
@@ -568,8 +572,7 @@ export default function PublicSessionPage() {
         body: JSON.stringify({
           token,
           rememberToken,
-          name: memberName.trim(),
-          phoneLast4,
+          memberId,
         }),
       });
       const data = await response.json();
@@ -610,6 +613,37 @@ export default function PublicSessionPage() {
       }
     } finally {
       setIdentifyLoading(false);
+    }
+  }
+
+  async function searchMembers() {
+    if (!token || !memberName.trim()) return;
+
+    try {
+      setMemberSearchLoading(true);
+      setMemberSearchError("");
+      setMemberSearchResults([]);
+
+      const response = await fetch("/api/public/sessions/search-members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, name: memberName.trim() }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "검색에 실패했습니다.");
+      }
+
+      if ((data.members ?? []).length === 0) {
+        setMemberSearchError("해당 이름의 회원을 찾을 수 없습니다. 이름을 다시 확인해주세요.");
+      } else {
+        setMemberSearchResults(data.members);
+      }
+    } catch (error) {
+      setMemberSearchError(error instanceof Error ? error.message : "검색에 실패했습니다.");
+    } finally {
+      setMemberSearchLoading(false);
     }
   }
 
@@ -1145,37 +1179,63 @@ export default function PublicSessionPage() {
               ) : (
               <>
               <p className="mt-3 text-sm leading-6 text-slate-500">
-                처음 한 번만 이름과 전화번호 뒤 4자리로 본인 확인을 하면, 이후에는 같은 기기에서 자동으로 기억됩니다.
+                처음 한 번만 이름으로 본인을 확인하면, 이후에는 같은 기기에서 자동으로 기억됩니다.
               </p>
 
               {!identifiedMember ? (
                 <div className="mt-6 space-y-3">
-                  <input
-                    value={memberName}
-                    onChange={(event) => setMemberName(event.target.value)}
-                    placeholder="이름"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
-                  />
-                  <input
-                    value={phoneLast4}
-                    onChange={(event) =>
-                      setPhoneLast4(event.target.value.replace(/\D/g, "").slice(0, 4))
-                    }
-                    inputMode="numeric"
-                    maxLength={4}
-                    placeholder="전화번호 뒤 4자리"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      value={memberName}
+                      onChange={(event) => {
+                        setMemberName(event.target.value);
+                        setMemberSearchResults([]);
+                        setMemberSearchError("");
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") searchMembers().catch(() => undefined);
+                      }}
+                      placeholder="이름을 입력하세요"
+                      className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
+                    />
+                    <button
+                      onClick={() => { searchMembers().catch(() => undefined); }}
+                      disabled={memberSearchLoading || !memberName.trim()}
+                      className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      {memberSearchLoading ? "검색 중..." : "검색"}
+                    </button>
+                  </div>
+
+                  {memberSearchResults.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-slate-500">본인을 선택해주세요</p>
+                      {memberSearchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => { identifyMember({ memberId: result.id }).catch(() => undefined); }}
+                          disabled={identifyLoading}
+                          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-bold text-slate-900">{result.name}</span>
+                            <div className="flex gap-2">
+                              <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${genderBadgeClass(result.gender)}`}>
+                                {normalizeGender(result.gender)}
+                              </span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${levelChipClass(result.level)}`}>
+                                {normalizeLevel(result.level)}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {memberSearchError ? <p className="text-sm text-rose-600">{memberSearchError}</p> : null}
                   {identifyError ? <p className="text-sm text-rose-600">{identifyError}</p> : null}
-                  <button
-                    onClick={() => {
-                      identifyMember().catch(() => undefined);
-                    }}
-                    disabled={identifyLoading}
-                    className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                  >
-                    {identifyLoading ? "확인 중..." : "본인 확인하기"}
-                  </button>
+
                   {session.joinToken ? (
                     <Link
                       href={`/join/${session.joinToken}`}

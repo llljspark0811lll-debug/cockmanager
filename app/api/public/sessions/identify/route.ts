@@ -3,7 +3,6 @@ import {
   createPublicMemberToken,
   verifyPublicMemberToken,
 } from "@/lib/public-member-auth";
-import { normalizePhoneNumber } from "@/lib/session-registration";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { NextResponse } from "next/server";
 
@@ -90,10 +89,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const token = String(body.token ?? "").trim();
     const rememberToken = String(body.rememberToken ?? "").trim();
-    const name = String(body.name ?? "").trim();
-    const phoneLast4 = normalizePhoneNumber(
-      String(body.phoneLast4 ?? "")
-    ).slice(-4);
+    const memberId = body.memberId ? Number(body.memberId) : null;
 
     if (!token) {
       return NextResponse.json(
@@ -126,47 +122,32 @@ export async function POST(req: Request) {
         });
       }
     } else {
-      if (!name || phoneLast4.length !== 4) {
+      if (!memberId) {
         return NextResponse.json(
-          {
-            error:
-              "이름과 전화번호 뒤 4자리를 입력해주세요.",
-          },
+          { error: "회원을 선택해주세요." },
           { status: 400 }
         );
       }
 
-      const candidates = await prisma.member.findMany({
+      member = await prisma.member.findFirst({
         where: {
+          id: memberId,
           clubId: session.clubId,
           deleted: false,
-          name,
         },
       });
 
-      const matchedMembers = candidates.filter((candidate) =>
-        normalizePhoneNumber(candidate.phone).endsWith(phoneLast4)
-      );
-
-      if (matchedMembers.length !== 1) {
+      if (!member) {
         return NextResponse.json(
-          {
-            error:
-              "회원 정보를 확인하지 못했습니다. 이름 또는 전화번호 뒤 4자리를 다시 확인해주세요.",
-          },
+          { error: "회원 정보를 찾을 수 없습니다." },
           { status: 404 }
         );
       }
-
-      [member] = matchedMembers;
     }
 
     if (!member) {
       return NextResponse.json(
-        {
-          error:
-            "자동 인식에 실패했습니다. 다시 이름과 전화번호 뒤 4자리를 입력해주세요.",
-        },
+        { error: "자동 인식에 실패했습니다. 다시 확인해주세요." },
         { status: 404 }
       );
     }
