@@ -5,7 +5,10 @@
       "Bash(npx tsc *)",
       "Bash(curl -s \"http://localhost:3000/api/public/sessions/cmng89i6m0001l80412knw3f8\")",
       "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/cockmanager/scripts/gen-insta-v2.js\")",
-      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/cockmanager/scripts/gen-insta-slides.js\")"
+      "Bash(sed -i 's/레벨/급수/g' \"c:/Users/user/cockmanager/scripts/gen-insta-slides.js\")",
+      "PowerShell(head -100)",
+      "Bash(git -C \"c:\\\\Users\\\\user\\\\cockmanager\" remote -v)",
+      "Bash(git -C \"c:\\\\Users\\\\user\\\\badminton-club-web\" remote -v)"
     ]
   }
 }

@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const host = request.headers.get("host") || "";
+  if (host.includes("vercel.app")) {
+    const url = request.nextUrl.clone();
+    url.protocol = "https";
+    url.host = "cockmanager.kr";
+    return NextResponse.redirect(url, 301);
+  }
+
   const { pathname } = request.nextUrl;
 
   if (
@@ -36,5 +44,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
