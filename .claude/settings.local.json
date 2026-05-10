@@ -9,7 +9,10 @@
       "PowerShell(head -100)",
       "Bash(git -C \"c:\\\\Users\\\\user\\\\cockmanager\" remote -v)",
       "Bash(git -C \"c:\\\\Users\\\\user\\\\badminton-club-web\" remote -v)",
-      "WebFetch(domain:blog.naver.com)"
+      "WebFetch(domain:blog.naver.com)",
+      "Bash(node -e \"console.log\\('node works'\\)\")",
+      "Bash(npx --yes tsx --version)",
+      "Bash(npx tsx *)"
     ]
   }
 }
