@@ -725,7 +725,7 @@ function allocateMatchesForRound(
       }
     }
 
-    if (!bestPool || bestPriority <= 0) {
+    if (!bestPool || bestPriority === Number.NEGATIVE_INFINITY) {
       break;
     }
 
@@ -1037,7 +1037,7 @@ function allocateMatchesForRoundTeamBattle(
       }
     }
 
-    if (!bestPool || bestPriority <= 0) {
+    if (!bestPool || bestPriority === Number.NEGATIVE_INFINITY) {
       break;
     }
 
