@@ -159,82 +159,67 @@ async function getUnpaidMembersCount(
   return Math.max(0, activeMemberCount - paidFeeRows.length);
 }
 
-async function getTopMembersForPeriod(
+async function getMemberAttendanceStats(
   clubId: number,
   start: Date,
   end: Date
 ) {
-  const attendanceGroups = await prisma.sessionParticipant.groupBy({
-    by: ["memberId"],
-    where: {
-      memberId: {
-        not: null,
-      },
-      status: "REGISTERED",
-      guestName: null,
-      session: {
-        clubId,
-        status: "CLOSED",
-        date: {
-          gte: start,
-          lt: end,
-        },
-      },
-    },
-    _count: {
-      _all: true,
-    },
+  const totalSessionCount = await prisma.clubSession.count({
+    where: { clubId, status: "CLOSED", date: { gte: start, lt: end } },
   });
 
-  const topMemberIds = attendanceGroups
-    .filter((group) => group.memberId !== null)
-    .map((group) => group.memberId as number);
+  if (totalSessionCount === 0) {
+    return { topMembers: [], absentMembers: [] };
+  }
 
-  const topMemberRows =
-    topMemberIds.length > 0
-      ? await prisma.member.findMany({
-          where: {
-            id: {
-              in: topMemberIds,
-            },
-          },
-          select: {
-            id: true,
-            name: true,
-          },
-        })
-      : [];
+  const [allMembers, attendanceGroups] = await Promise.all([
+    prisma.member.findMany({
+      where: { clubId, deleted: false },
+      select: { id: true, name: true },
+    }),
+    prisma.sessionParticipant.groupBy({
+      by: ["memberId"],
+      where: {
+        memberId: { not: null },
+        status: "REGISTERED",
+        guestName: null,
+        session: { clubId, status: "CLOSED", date: { gte: start, lt: end } },
+      },
+      _count: { _all: true },
+    }),
+  ]);
 
-  const topMemberRowMap = new Map(
-    topMemberRows.map((member) => [member.id, member.name])
+  const attendanceMap = new Map(
+    attendanceGroups
+      .filter((g) => g.memberId !== null)
+      .map((g) => [g.memberId as number, g._count._all])
   );
 
-  return attendanceGroups
-    .filter((group) => group.memberId !== null)
-    .sort((left, right) => {
-      const countDiff = right._count._all - left._count._all;
+  const memberStats = allMembers.map((m) => ({
+    memberId: m.id,
+    name: m.name,
+    attendanceCount: attendanceMap.get(m.id) ?? 0,
+    totalSessionCount,
+  }));
 
-      if (countDiff !== 0) {
-        return countDiff;
-      }
+  const topMembers = [...memberStats]
+    .filter((m) => m.attendanceCount > 0)
+    .sort(
+      (a, b) =>
+        b.attendanceCount - a.attendanceCount ||
+        a.name.localeCompare(b.name, "ko")
+    )
+    .slice(0, 5);
 
-      const leftName =
-        topMemberRowMap.get(left.memberId as number) ?? "";
-      const rightName =
-        topMemberRowMap.get(right.memberId as number) ?? "";
+  const absentMembers = [...memberStats]
+    .sort(
+      (a, b) =>
+        a.attendanceCount - b.attendanceCount ||
+        a.name.localeCompare(b.name, "ko")
+    )
+    .slice(0, 5);
 
-      return leftName.localeCompare(rightName, "ko");
-    })
-    .slice(0, 5)
-    .map((group) => {
-      const memberId = group.memberId as number;
-
-      return {
-        memberId,
-        name: topMemberRowMap.get(memberId) ?? "회원",
-        attendanceCount: group._count._all,
-      };
-    });
+  return { topMembers, absentMembers };
 }
 
 export async function GET(request: Request) {
@@ -268,27 +253,20 @@ export async function GET(request: Request) {
       );
     }
 
-    const [weekStats, monthStats, weekTopMembers, monthTopMembers] =
+    const [weekStats, monthStats, weekMemberStats, monthMemberStats] =
       await Promise.all([
         getPeriodStats(admin.clubId, weekRange.start, weekRange.end),
         getPeriodStats(admin.clubId, monthRange.start, monthRange.end),
-        getTopMembersForPeriod(
-          admin.clubId,
-          weekRange.start,
-          weekRange.end
-        ),
-        getTopMembersForPeriod(
-          admin.clubId,
-          monthRange.start,
-          monthRange.end
-        ),
+        getMemberAttendanceStats(admin.clubId, weekRange.start, weekRange.end),
+        getMemberAttendanceStats(admin.clubId, monthRange.start, monthRange.end),
       ]);
 
     const currentMonthUnpaidMembersCount =
       await getUnpaidMembersCount(admin.clubId, now);
 
     let custom = null;
-    let customTopMembers;
+    let customTopMembers: Awaited<ReturnType<typeof getMemberAttendanceStats>>["topMembers"] | undefined;
+    let customAbsentMembers: Awaited<ReturnType<typeof getMemberAttendanceStats>>["absentMembers"] | undefined;
 
     if (customStartInput && customEndInput) {
       const customStart = startOfDay(customStartInput);
@@ -296,26 +274,19 @@ export async function GET(request: Request) {
         startOfDay(customEndInput),
         1
       );
-      const [customStats, customUnpaidMembersCount, nextTopMembers] =
+      const [customStats, customUnpaidMembersCount, customMemberStats] =
         await Promise.all([
-          getPeriodStats(
-            admin.clubId,
-            customStart,
-            customEndExclusive
-          ),
+          getPeriodStats(admin.clubId, customStart, customEndExclusive),
           getUnpaidMembersCount(admin.clubId, customEndInput),
-          getTopMembersForPeriod(
-            admin.clubId,
-            customStart,
-            customEndExclusive
-          ),
+          getMemberAttendanceStats(admin.clubId, customStart, customEndExclusive),
         ]);
 
       custom = {
         ...customStats,
         unpaidMembersCount: customUnpaidMembersCount,
       };
-      customTopMembers = nextTopMembers;
+      customTopMembers = customMemberStats.topMembers;
+      customAbsentMembers = customMemberStats.absentMembers;
     }
 
     return NextResponse.json({
@@ -329,9 +300,14 @@ export async function GET(request: Request) {
       },
       custom,
       topMembers: {
-        week: weekTopMembers,
-        month: monthTopMembers,
+        week: weekMemberStats.topMembers,
+        month: monthMemberStats.topMembers,
         custom: customTopMembers,
+      },
+      absentMembers: {
+        week: weekMemberStats.absentMembers,
+        month: monthMemberStats.absentMembers,
+        custom: customAbsentMembers,
       },
     });
   } catch (error) {

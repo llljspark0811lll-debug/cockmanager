@@ -245,6 +245,7 @@ export interface DashboardTopMemberStat {
   memberId: number;
   name: string;
   attendanceCount: number;
+  totalSessionCount: number;
 }
 
 export interface DashboardStats {
@@ -252,6 +253,11 @@ export interface DashboardStats {
   month: DashboardStatsPeriod;
   custom?: DashboardStatsPeriod | null;
   topMembers: {
+    week: DashboardTopMemberStat[];
+    month: DashboardTopMemberStat[];
+    custom?: DashboardTopMemberStat[];
+  };
+  absentMembers: {
     week: DashboardTopMemberStat[];
     month: DashboardTopMemberStat[];
     custom?: DashboardTopMemberStat[];

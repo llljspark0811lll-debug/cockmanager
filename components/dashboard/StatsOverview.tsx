@@ -68,10 +68,14 @@ export function StatsOverview({
   const [customTopMembers, setCustomTopMembers] = useState<
     DashboardTopMemberStat[]
   >([]);
+  const [customAbsentMembers, setCustomAbsentMembers] = useState<
+    DashboardTopMemberStat[]
+  >([]);
 
   useEffect(() => {
     setCustomStats(stats?.custom ?? null);
     setCustomTopMembers(stats?.topMembers.custom ?? []);
+    setCustomAbsentMembers(stats?.absentMembers?.custom ?? []);
   }, [stats]);
 
   const periodStats = useMemo(() => {
@@ -91,20 +95,18 @@ export function StatsOverview({
   }, [customStats, period, stats]);
 
   const periodTopMembers = useMemo(() => {
-    if (!stats) {
-      return [];
-    }
-
-    if (period === "WEEK") {
-      return stats.topMembers.week;
-    }
-
-    if (period === "MONTH") {
-      return stats.topMembers.month;
-    }
-
+    if (!stats) return [];
+    if (period === "WEEK") return stats.topMembers.week;
+    if (period === "MONTH") return stats.topMembers.month;
     return customTopMembers;
   }, [customTopMembers, period, stats]);
+
+  const periodAbsentMembers = useMemo(() => {
+    if (!stats) return [];
+    if (period === "WEEK") return stats.absentMembers?.week ?? [];
+    if (period === "MONTH") return stats.absentMembers?.month ?? [];
+    return customAbsentMembers;
+  }, [customAbsentMembers, period, stats]);
 
   const statCards = useMemo<StatCard[]>(() => {
     if (!periodStats) {
@@ -186,6 +188,7 @@ export function StatsOverview({
 
       setCustomStats(data.custom ?? null);
       setCustomTopMembers(data.topMembers?.custom ?? []);
+      setCustomAbsentMembers(data.absentMembers?.custom ?? []);
       setPeriod("CUSTOM");
     } catch (error) {
       setCustomError(
@@ -313,68 +316,111 @@ export function StatsOverview({
             ))}
           </div>
 
-          <article className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">
-                    활동 상위 회원
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    마감된 일정 기준으로 가장 자주 참석한 회원을
-                    빠르게 확인합니다.
-                  </p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <article className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">
+                      활동 상위 회원
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      마감된 일정 기준으로 가장 자주 참석한 회원입니다.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+                    TOP 5
+                  </span>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
-                  TOP {Math.max(periodTopMembers.length, 1)}
-                </span>
               </div>
-            </div>
 
-            <div className="p-4">
-              {periodTopMembers.length > 0 ? (
-                <div className="space-y-2.5">
-                  {periodTopMembers.map((member, index) => {
-                    const maxCount = periodTopMembers[0]?.attendanceCount ?? 1;
-                    const pct = Math.round((member.attendanceCount / Math.max(maxCount, 1)) * 100);
-                    const rankColors = [
-                      "bg-amber-400",
-                      "bg-slate-400",
-                      "bg-orange-400",
-                    ];
-                    const barColor = index < 3 ? rankColors[index] : "bg-sky-400";
-                    return (
-                      <div key={member.memberId} className="flex items-center gap-3">
-                        <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white ${index < 3 ? rankColors[index] : "bg-slate-300"}`}>
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
+              <div className="p-4">
+                {periodTopMembers.length > 0 ? (
+                  <div className="space-y-3">
+                    {periodTopMembers.map((member, index) => {
+                      const pct = Math.round(
+                        (member.attendanceCount / Math.max(member.totalSessionCount ?? 0, 1)) * 100
+                      );
+                      const rankColors = ["bg-amber-400", "bg-slate-400", "bg-orange-400"];
+                      return (
+                        <div key={member.memberId} className="flex items-center gap-3">
+                          <span
+                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white ${index < 3 ? rankColors[index] : "bg-slate-300"}`}
+                          >
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-black text-slate-900">
                               {member.name}
                             </p>
-                            <p className="shrink-0 text-sm font-black text-slate-700">
-                              {member.attendanceCount}회
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {member.attendanceCount}회/{member.totalSessionCount ?? "-"}회 참석
+                              <span className="ml-1.5 font-bold text-sky-700">
+                                (참석률 {pct}%)
+                              </span>
                             </p>
                           </div>
-                          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className={`h-full rounded-full transition-all ${barColor}`}
-                              style={{ width: `${pct}%` }}
-                            />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+                    선택한 기간 집계된 활동 회원이 아직 없습니다.
+                  </div>
+                )}
+              </div>
+            </article>
+
+            <article className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">
+                      활동 하위 회원
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      마감된 일정 기준으로 참석이 가장 적었던 회원입니다.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+                    BOTTOM 5
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                {periodAbsentMembers.length > 0 ? (
+                  <div className="space-y-3">
+                    {periodAbsentMembers.map((member) => {
+                      const pct = Math.round(
+                        (member.attendanceCount / Math.max(member.totalSessionCount ?? 0, 1)) * 100
+                      );
+                      return (
+                        <div key={member.memberId} className="flex items-center gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-black text-slate-900">
+                              {member.name}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {member.attendanceCount}회/{member.totalSessionCount ?? "-"}회 참석
+                              <span className={`ml-1.5 font-bold ${pct === 0 ? "text-rose-600" : "text-amber-600"}`}>
+                                (참석률 {pct}%)
+                              </span>
+                            </p>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
-                  선택한 기간 집계된 활동 회원이 아직 없습니다.
-                </div>
-              )}
-            </div>
-          </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+                    선택한 기간 집계된 데이터가 없습니다.
+                  </div>
+                )}
+              </div>
+            </article>
+          </div>
         </div>
       ) : (
         <div className="mt-5 rounded-[1.5rem] bg-slate-50 px-4 py-12 text-center text-sm text-slate-400">
