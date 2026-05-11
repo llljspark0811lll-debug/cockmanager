@@ -380,7 +380,7 @@ export function StatsOverview({
                       활동 하위 회원
                     </h3>
                     <p className="mt-1 text-sm text-slate-500">
-                      마감된 일정 기준으로 참석이 가장 적었던 회원입니다.
+                      마감된 일정 기준으로 각장 적게 참석한 회원입니다.
                     </p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
