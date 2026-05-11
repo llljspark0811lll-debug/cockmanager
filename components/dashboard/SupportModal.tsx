@@ -29,32 +29,38 @@ const MAX_LENGTH = 2000;
 type SupportModalProps = {
   open: boolean;
   onClose: () => void;
+  adminEmail?: string;
 };
 
-export function SupportModal({ open, onClose }: SupportModalProps) {
+export function SupportModal({ open, onClose, adminEmail }: SupportModalProps) {
   const [category, setCategory] = useState<Category | null>(null);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   function handleClose() {
     onClose();
-    // 닫힌 뒤 상태 초기화 (애니메이션 끝나고)
     setTimeout(() => {
       setCategory(null);
       setMessage("");
       setError("");
       setSent(false);
+      setConfirming(false);
     }, 200);
   }
 
-  async function handleSubmit() {
+  function handleSubmitClick() {
     if (!category) { setError("문의 유형을 선택해주세요."); return; }
     if (!message.trim()) { setError("문의 내용을 입력해주세요."); return; }
-
-    setSubmitting(true);
     setError("");
+    setConfirming(true);
+  }
+
+  async function handleConfirm() {
+    setConfirming(false);
+    setSubmitting(true);
     try {
       const res = await fetch("/api/support", {
         method: "POST",
@@ -170,7 +176,7 @@ export function SupportModal({ open, onClose }: SupportModalProps) {
 
             {/* 전송 버튼 */}
             <button
-              onClick={() => { handleSubmit().catch(() => undefined); }}
+              onClick={handleSubmitClick}
               disabled={submitting || !category || !message.trim()}
               className="mt-4 w-full rounded-2xl bg-sky-600 py-3 text-sm font-bold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -180,6 +186,41 @@ export function SupportModal({ open, onClose }: SupportModalProps) {
             <p className="mt-3 text-center text-xs text-slate-400">
               등록된 관리자 이메일로 직접 답변드립니다
             </p>
+
+            {/* 이메일 확인 다이얼로그 */}
+            {confirming ? (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+                <div className="absolute inset-0 bg-slate-950/40" onClick={() => setConfirming(false)} />
+                <div className="relative z-10 w-full max-w-sm rounded-[1.75rem] bg-white p-6 shadow-2xl">
+                  <h3 className="text-base font-black text-slate-900">문의 전송 전 확인</h3>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    아래 이메일로 답변이 발송됩니다.
+                    <br />
+                    이메일 주소가 맞는지 확인해주세요.
+                  </p>
+                  <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 break-all">
+                    {adminEmail ?? "등록된 이메일 없음"}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">
+                    이메일이 다르다면 개인 설정에서 변경 후 다시 문의해주세요.
+                  </p>
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      onClick={() => { handleConfirm().catch(() => undefined); }}
+                      className="flex-1 rounded-2xl bg-sky-600 py-3 text-sm font-bold text-white transition hover:bg-sky-700"
+                    >
+                      확인, 전송하기
+                    </button>
+                    <button
+                      onClick={() => setConfirming(false)}
+                      className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

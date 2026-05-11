@@ -2132,6 +2132,7 @@ export default function DashboardPage() {
       <SupportModal
         open={supportModalOpen}
         onClose={() => setSupportModalOpen(false)}
+        adminEmail={clubInfo?.adminEmail ?? ""}
       />
 
       <div className="mx-auto max-w-7xl space-y-6">
