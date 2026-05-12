@@ -254,40 +254,65 @@ function ParticipantCard({ participant }: { participant: Participant }) {
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`h-6 w-6 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
 function PendingMembersSection({
   members,
 }: {
   members: { id: number; name: string }[];
 }) {
-  return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <div className="flex items-center gap-3">
-        <h3 className="text-2xl font-black text-slate-900">미투표 회원 현황</h3>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
-          {members.length}명
-        </span>
-      </div>
-      <p className="mt-2 text-sm leading-6 text-slate-500">
-        아직 참석·불참 응답을 하지 않은 회원입니다.
-      </p>
+  const [open, setOpen] = useState(false);
 
-      {members.length === 0 ? (
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-400">
-          모든 회원이 응답을 완료했습니다 🎉
+  return (
+    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-4 p-6 text-left sm:p-8"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-2xl font-black text-slate-900">미투표 회원 현황</h3>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
+            {members.length}명
+          </span>
         </div>
-      ) : (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {members.map((member) => (
-            <div
-              key={member.id}
-              className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-600"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-              {member.name}
+        <ChevronIcon open={open} />
+      </button>
+
+      {open ? (
+        <div className="border-t border-slate-100 px-6 pb-6 sm:px-8 sm:pb-8">
+          <p className="pt-5 text-sm leading-6 text-slate-500">
+            아직 참석·불참 응답을 하지 않은 회원입니다.
+          </p>
+          {members.length === 0 ? (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-400">
+              모든 회원이 응답을 완료했습니다 🎉
             </div>
-          ))}
+          ) : (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-600"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  {member.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -335,63 +360,81 @@ function ParticipantGroups({
   participants: Participant[];
   emptyMessage: string;
 }) {
+  const [open, setOpen] = useState(false);
   const groups = useMemo(() => buildBoard(participants), [participants]);
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <h3 className="text-2xl font-black text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-500">
-        남/여 구분 후 급수 순으로 자동 정렬됩니다.
-      </p>
-      <div className="mt-5">
-        <ParticipantSummary participants={participants} />
-      </div>
-
-      {participants.length === 0 ? (
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-400">
-          {emptyMessage}
+    <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between gap-4 p-6 text-left sm:p-8"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-2xl font-black text-slate-900">{title}</h3>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-500">
+              {participants.length}명
+            </span>
+          </div>
+          <div className="mt-3">
+            <ParticipantSummary participants={participants} />
+          </div>
         </div>
-      ) : (
-        <div className="mt-6 space-y-5">
-          {groups.map((group) => (
-            <div
-              key={group.genderKey}
-              className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 sm:p-5"
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1 text-sm font-bold ${genderBadgeClass(
-                    group.genderKey
-                  )}`}
-                >
-                  {group.genderLabel}
-                </span>
-                <span className="text-sm font-semibold text-slate-500">
-                  {group.participants.length}명
-                </span>
-              </div>
+        <ChevronIcon open={open} />
+      </button>
 
-              <div className="mt-4 space-y-4">
-                {group.levels.map((levelGroup) => (
-                  <div key={`${group.genderKey}-${levelGroup.level}`}>
-                    <div className="mb-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
-                      {levelGroup.level}
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {levelGroup.participants.map((participant) => (
-                        <ParticipantCard
-                          key={`${title}-${participant.id}`}
-                          participant={participant}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {open ? (
+        <div className="border-t border-slate-100 px-6 pb-6 sm:px-8 sm:pb-8">
+          <p className="pt-5 text-sm leading-6 text-slate-500">
+            남/여 구분 후 급수 순으로 자동 정렬됩니다.
+          </p>
+          {participants.length === 0 ? (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-400">
+              {emptyMessage}
             </div>
-          ))}
+          ) : (
+            <div className="mt-6 space-y-5">
+              {groups.map((group) => (
+                <div
+                  key={group.genderKey}
+                  className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 sm:p-5"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full border px-3 py-1 text-sm font-bold ${genderBadgeClass(
+                        group.genderKey
+                      )}`}
+                    >
+                      {group.genderLabel}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-500">
+                      {group.participants.length}명
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    {group.levels.map((levelGroup) => (
+                      <div key={`${group.genderKey}-${levelGroup.level}`}>
+                        <div className="mb-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
+                          {levelGroup.level}
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {levelGroup.participants.map((participant) => (
+                            <ParticipantCard
+                              key={`${title}-${participant.id}`}
+                              participant={participant}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
