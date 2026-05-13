@@ -23,6 +23,7 @@ model Club {
   payments      Payment[]
   sessions      ClubSession[]
   specialFees   SpecialFee[]
+  positions     ClubPosition[]
 }
 
 model Admin {
@@ -61,11 +62,25 @@ model Member {
   clubId Int
   club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
+  positionId  Int?
+  position    ClubPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
   fees                    Fee[]
   sessionComments         SessionComment[]
   sessionParticipants     SessionParticipant[] @relation("SessionMember")
   hostedGuestParticipants SessionParticipant[] @relation("GuestHost")
   specialFeePayments      SpecialFeePayment[]
+}
+
+model ClubPosition {
+  id      Int    @id @default(autoincrement())
+  name    String
+  order   Int
+  clubId  Int
+  club    Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  members Member[]
+
+  @@index([clubId, order])
 }
 
 model MemberRequest {

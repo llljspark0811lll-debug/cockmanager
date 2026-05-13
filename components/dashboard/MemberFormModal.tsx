@@ -1,5 +1,6 @@
 import { GENDERS, LEVELS } from "@/lib/dashboard-constants";
 import type {
+  ClubPosition,
   Member,
   MemberFormState,
 } from "@/components/dashboard/types";
@@ -10,6 +11,7 @@ type MemberFormModalProps = {
   editingMember: Member | null;
   form: MemberFormState;
   customFieldLabel: string;
+  positions: ClubPosition[];
   tutorialTargetId?: string;
   onChange: (form: MemberFormState) => void;
   onClose: () => void;
@@ -21,6 +23,7 @@ export function MemberFormModal({
   editingMember,
   form,
   customFieldLabel,
+  positions,
   tutorialTargetId,
   onChange,
   onClose,
@@ -55,10 +58,7 @@ export function MemberFormModal({
                 <input
                   value={form.name}
                   onChange={(event) =>
-                    onChange({
-                      ...form,
-                      name: event.target.value,
-                    })
+                    onChange({ ...form, name: event.target.value })
                   }
                   placeholder="홍길동"
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
@@ -74,12 +74,7 @@ export function MemberFormModal({
                     <button
                       key={gender}
                       type="button"
-                      onClick={() =>
-                        onChange({
-                          ...form,
-                          gender,
-                        })
-                      }
+                      onClick={() => onChange({ ...form, gender })}
                       className={`rounded-2xl border px-3 py-3 text-sm font-bold transition ${
                         form.gender === gender
                           ? gender === "남"
@@ -101,10 +96,7 @@ export function MemberFormModal({
                 <select
                   value={form.level}
                   onChange={(event) =>
-                    onChange({
-                      ...form,
-                      level: event.target.value,
-                    })
+                    onChange({ ...form, level: event.target.value })
                   }
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400"
                 >
@@ -119,16 +111,33 @@ export function MemberFormModal({
 
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-slate-600">
+                  직위
+                </span>
+                <select
+                  value={form.positionId}
+                  onChange={(event) =>
+                    onChange({ ...form, positionId: event.target.value })
+                  }
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400"
+                >
+                  <option value="">미지정</option>
+                  {positions.map((p) => (
+                    <option key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-slate-600">
                   생년월일
                 </span>
                 <input
                   type="date"
                   value={form.birth}
                   onChange={(event) =>
-                    onChange({
-                      ...form,
-                      birth: event.target.value,
-                    })
+                    onChange({ ...form, birth: event.target.value })
                   }
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
                 />
@@ -151,17 +160,14 @@ export function MemberFormModal({
                 />
               </label>
 
-              <label className="space-y-2">
+              <label className="space-y-2 md:col-span-2">
                 <span className="text-sm font-semibold text-slate-600">
                   {customFieldLabel}
                 </span>
                 <input
                   value={form.customFieldValue}
                   onChange={(event) =>
-                    onChange({
-                      ...form,
-                      customFieldValue: event.target.value,
-                    })
+                    onChange({ ...form, customFieldValue: event.target.value })
                   }
                   placeholder={`${customFieldLabel} 입력`}
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
@@ -175,10 +181,7 @@ export function MemberFormModal({
                 <textarea
                   value={form.note}
                   onChange={(event) =>
-                    onChange({
-                      ...form,
-                      note: event.target.value,
-                    })
+                    onChange({ ...form, note: event.target.value })
                   }
                   placeholder="운영 메모"
                   className="h-24 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"

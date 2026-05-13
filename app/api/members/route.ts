@@ -65,6 +65,10 @@ export async function GET(req: Request) {
         deleted: true,
         deletedAt: true,
         withdrawnAt: true,
+        positionId: true,
+        position: {
+          select: { id: true, name: true, order: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -96,6 +100,7 @@ export async function POST(req: Request) {
       level,
       customFieldValue,
       note,
+      positionId,
     } = body;
 
     const normalizedName = String(name ?? "").trim();
@@ -138,6 +143,7 @@ export async function POST(req: Request) {
           note: note ? String(note).trim() : "",
           clubId: admin.clubId,
           status: "approved",
+          positionId: positionId ? Number(positionId) : null,
         },
       });
 
@@ -193,6 +199,7 @@ export async function PUT(req: Request) {
       level,
       customFieldValue,
       note,
+      positionId,
     } = body;
     const memberId = Number(id);
     const normalizedName = String(name ?? "").trim();
@@ -242,6 +249,12 @@ export async function PUT(req: Request) {
           ? String(customFieldValue).trim()
           : "",
         note: note ? String(note).trim() : "",
+        positionId:
+          positionId === undefined
+            ? undefined
+            : positionId
+              ? Number(positionId)
+              : null,
       },
     });
 

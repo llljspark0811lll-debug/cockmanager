@@ -18,6 +18,7 @@ import { FinancePanel } from "@/components/dashboard/FinancePanel";
 import { JoinRequestLinkPanel } from "@/components/dashboard/JoinRequestLinkPanel";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
+import { PositionSettingsModal } from "@/components/dashboard/PositionSettingsModal";
 import { PersonalSettingsModal } from "@/components/dashboard/PersonalSettingsModal";
 import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
@@ -28,6 +29,7 @@ import { SupportModal } from "@/components/dashboard/SupportModal";
 import { DeleteAccountModal } from "@/components/dashboard/DeleteAccountModal";
 import type {
   ClubInfo,
+  ClubPosition,
   ClubSession,
   DashboardStats,
   DashboardTab,
@@ -86,6 +88,7 @@ const initialForm: MemberFormState = {
   level: "",
   customFieldValue: "",
   note: "",
+  positionId: "",
 };
 
 async function readJson(response: Response) {
@@ -133,6 +136,7 @@ export default function DashboardPage() {
 
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [positions, setPositions] = useState<ClubPosition[]>([]);
   const [requests, setRequests] = useState<MemberRequest[]>([]);
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [specialFees, setSpecialFees] = useState<SpecialFee[]>([]);
@@ -181,6 +185,7 @@ export default function DashboardPage() {
   const [savingPersonalSettings, setSavingPersonalSettings] =
     useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [positionSettingsOpen, setPositionSettingsOpen] = useState(false);
   const [approvingRequestIds, setApprovingRequestIds] =
     useState<number[]>([]);
   const [processingAllRequests, setProcessingAllRequests] =
@@ -373,6 +378,11 @@ export default function DashboardPage() {
     } finally {
       setLoadingMembers(false);
     }
+  }
+
+  async function refreshPositions() {
+    const data = await requestJson<ClubPosition[]>("/api/positions");
+    setPositions(data);
   }
 
   async function refreshFeeMembers() {
@@ -750,6 +760,7 @@ export default function DashboardPage() {
       refreshMembers().catch((error: Error) => {
         alert(error.message);
       });
+      refreshPositions().catch(() => undefined);
     }
 
     if (activeTab === "requests" && !requestsLoaded) {
@@ -1059,6 +1070,7 @@ export default function DashboardPage() {
       level: member.level,
       customFieldValue: member.customFieldValue || "",
       note: member.note || "",
+      positionId: member.positionId ? String(member.positionId) : "",
     });
     setShowMemberModal(true);
   }
@@ -1684,6 +1696,37 @@ export default function DashboardPage() {
     }
   }
 
+  async function handlePositionAdd(name: string) {
+    await requestJson<ClubPosition>("/api/positions", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    await refreshPositions();
+  }
+
+  async function handlePositionRename(id: number, name: string) {
+    await requestJson<ClubPosition>(`/api/positions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name }),
+    });
+    await refreshPositions();
+  }
+
+  async function handlePositionDelete(id: number) {
+    await requestJson(`/api/positions/${id}`, { method: "DELETE" });
+    await Promise.all([refreshPositions(), refreshMembers()]);
+  }
+
+  async function handlePositionReorder(
+    reordered: { id: number; order: number }[]
+  ) {
+    await requestJson<ClubPosition[]>("/api/positions", {
+      method: "PUT",
+      body: JSON.stringify({ positions: reordered }),
+    });
+    await Promise.all([refreshPositions(), refreshMembers()]);
+  }
+
   function openPersonalSettingsModal() {
     setPersonalClubNameDraft(clubInfo?.name ?? "");
     setPersonalAdminEmailDraft(clubInfo?.adminEmail ?? "");
@@ -2178,11 +2221,13 @@ export default function DashboardPage() {
           >
             <MembersTable
               members={activeMembers}
+              positions={positions}
               customFieldLabel={
                 clubInfo?.customFieldLabel ?? "소속클럽"
               }
               onAddMember={openCreateMemberModal}
               onEdit={openEditMemberModal}
+              onOpenPositionSettings={() => setPositionSettingsOpen(true)}
               onDelete={(id) => {
                 handleMemberDelete(id).catch((error: Error) => {
                   alert(error.message);
@@ -2365,6 +2410,32 @@ export default function DashboardPage() {
         ) : null}
       </div>
 
+      <PositionSettingsModal
+        open={positionSettingsOpen}
+        positions={positions}
+        onClose={() => setPositionSettingsOpen(false)}
+        onPositionAdd={(name) =>
+          handlePositionAdd(name).catch((error: Error) => {
+            alert(error.message);
+          })
+        }
+        onPositionRename={(id, name) =>
+          handlePositionRename(id, name).catch((error: Error) => {
+            alert(error.message);
+          })
+        }
+        onPositionDelete={(id) =>
+          handlePositionDelete(id).catch((error: Error) => {
+            alert(error.message);
+          })
+        }
+        onPositionReorder={(reordered) =>
+          handlePositionReorder(reordered).catch((error: Error) => {
+            alert(error.message);
+          })
+        }
+      />
+
       <MemberFormModal
         open={showMemberModal}
         editingMember={editingMember}
@@ -2372,6 +2443,7 @@ export default function DashboardPage() {
         customFieldLabel={
           clubInfo?.customFieldLabel ?? "소속클럽"
         }
+        positions={positions}
         tutorialTargetId="member-form-modal"
         onChange={setForm}
         onClose={() => {

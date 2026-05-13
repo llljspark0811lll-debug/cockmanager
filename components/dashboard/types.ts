@@ -15,6 +15,12 @@ export interface Fee {
   paid: boolean;
 }
 
+export interface ClubPosition {
+  id: number;
+  name: string;
+  order: number;
+}
+
 export interface Member {
   id: number;
   name: string;
@@ -28,6 +34,8 @@ export interface Member {
   customFieldValue: string;
   deleted?: boolean;
   fees?: Fee[];
+  positionId?: number | null;
+  position?: ClubPosition | null;
 }
 
 export interface FeeMember {
@@ -272,4 +280,5 @@ export interface MemberFormState {
   level: string;
   customFieldValue: string;
   note: string;
+  positionId: string;
 }

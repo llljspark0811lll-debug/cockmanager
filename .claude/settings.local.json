@@ -15,7 +15,16 @@
       "Bash(npx tsx *)",
       "Bash(xargs grep -l \"SESSION_UPDATE\\\\|clubSession.update\")",
       "Bash(cd /mnt/c/Users/user/cockmanager && npx tsc --noEmit 2>&1 | head -20)",
-      "Read(//mnt/c/Users/user/**)"
+      "Read(//mnt/c/Users/user/**)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\cockmanager\" -Recurse -Name)",
+      "Bash(Select-Object -First 50)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\cockmanager\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(mkdir -p \"/mnt/c/Users/user/cockmanager/app/api/positions/[id]\" 2>/dev/null; echo \"done\")",
+      "Bash(npx prisma *)"
+    ],
+    "additionalDirectories": [
+      "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"
     ]
   }
 }
