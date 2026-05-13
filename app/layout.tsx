@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = "https://cockmanager.kr";
-const siteTitle = "콕매니저🏸";
-const siteDescription = "배드민턴 클럽/소모임 운영 관리 프로그램";
+const siteTitle = "콕매니저 | 배드민턴 자동대진 · 클럽/소모임 운영 관리";
+const siteDescription =
+  "배드민턴 클럽/소모임을 위한 자동대진, 회원 관리, 출석 체크, 월회비 관리 프로그램. 총무 업무를 클릭 한 번으로 해결하세요.";
 
 function getMetadataBase() {
   return new URL(siteUrl);
@@ -25,6 +26,16 @@ export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   title: siteTitle,
   description: siteDescription,
+  keywords: [
+    "배드민턴 자동대진",
+    "배드민턴 대진표",
+    "배드민턴 클럽 관리",
+    "배드민턴 소모임 운영",
+    "배드민턴 총무 프로그램",
+    "배드민턴 회원 관리",
+    "배드민턴 회비 관리",
+    "콕매니저",
+  ],
   applicationName: siteTitle,
   manifest: "/manifest.webmanifest",
   appleWebApp: {

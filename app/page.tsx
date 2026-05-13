@@ -22,17 +22,15 @@ export default function Home() {
               </p>
 
               <h1 className="webview-safe-text text-base font-semibold leading-relaxed text-slate-600 sm:text-lg md:text-2xl">
-                전국 배드민턴 클럽/소모임
+                배드민턴 클럽/소모임 대진표,
                 <br />
-                자동 운영 관리 시스템
+                이제 클릭 한 번으로 자동 생성
               </h1>
 
               <p className="webview-safe-text max-w-2xl text-sm leading-6 text-slate-500 md:text-base md:leading-7">
-                회원 관리부터 가입 승인, 운동 일정, 출석, 각종 회비까지.
+                자동 대진표 생성부터 회원 관리, 출석 체크, 월회비까지.
                 <br />
-                총무가 카카오톡, 엑셀을 오가며 하던 운영을 한 곳에서 관리하는
-                <br />
-                배드민턴 클럽/소모임 자동 운영 관리 시스템입니다.
+                총무가 카카오톡·엑셀로 하던 복잡한 일을 편리하게 관리합니다.
               </p>
             </div>
 
@@ -53,12 +51,12 @@ export default function Home() {
 
             <div className="mt-6 grid gap-2 sm:mt-8 sm:hidden">
               <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3">
-                <p className="text-sm font-bold text-slate-900">회원 · 승인 · 탈퇴</p>
-                <p className="mt-1 text-sm text-slate-500">신규 가입부터 회원 상태 관리까지 한 번에 정리</p>
+                <p className="text-sm font-bold text-slate-900">자동대진 · 운동일정</p>
+                <p className="mt-1 text-sm text-slate-500">코트 수와 인원에 맞게 대진표 자동 생성</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3">
-                <p className="text-sm font-bold text-slate-900">일정 · 참석 · 게스트</p>
-                <p className="mt-1 text-sm text-slate-500">링크 하나로 참석 명단과 대기 인원까지 관리</p>
+                <p className="text-sm font-bold text-slate-900">회원 · 승인 · 탈퇴</p>
+                <p className="mt-1 text-sm text-slate-500">신규 가입부터 회원 상태 관리까지 한 번에 정리</p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3">
                 <p className="text-sm font-bold text-slate-900">월회비 · 수시회비</p>
@@ -69,6 +67,18 @@ export default function Home() {
             <div className="mt-12 hidden gap-3 md:grid md:grid-cols-3">
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/90 px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Auto Bracket
+                </p>
+                <p className="mt-3 text-base font-bold text-slate-900">
+                  자동대진 · 운동일정
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  코트 수와 인원에 맞게 클릭 한 번으로 대진표를 자동 생성합니다.
+                </p>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/90 px-5 py-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                   Member
                 </p>
                 <p className="mt-3 text-base font-bold text-slate-900">
@@ -76,18 +86,6 @@ export default function Home() {
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   신규 가입부터 회원 상태 관리까지 한 흐름으로 정리합니다.
-                </p>
-              </div>
-
-              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/90 px-5 py-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Session
-                </p>
-                <p className="mt-3 text-base font-bold text-slate-900">
-                  일정 · 출석 · 게스트
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  링크 하나로 참석 명단과 대기 인원까지 자연스럽게 관리합니다.
                 </p>
               </div>
 
@@ -103,6 +101,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
           </div>
 
           <aside className="hidden rounded-[2.5rem] border border-slate-900 bg-slate-950 p-8 text-white shadow-[0_30px_100px_rgba(15,23,42,0.22)] sm:block">
@@ -116,9 +115,9 @@ export default function Home() {
                 바로 시작하세요
               </p>
               <p className="mt-4 text-sm leading-7 text-slate-300">
-                클럽을 만들고 관리자 계정으로 로그인하면
+                관리자 계정을 만들고 로그인하면
                 <br />
-                회원, 일정, 회비를 바로 관리할 수 있습니다.
+                우리 클럽을 자동으로 관리할 수 있습니다.
               </p>
             </div>
 
@@ -143,9 +142,9 @@ export default function Home() {
                 이런 클럽/소모임에 잘 맞습니다
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
-                <li>참석 조사와 명단 정리가 번거로운 클럽</li>
+                <li>매번 대진표 짜는 게 번거로운 클럽</li>
+                <li>회원 참석 조사와 명단 정리가 필요한 클럽</li>
                 <li>월회비와 수시회비를 함께 관리하는 클럽</li>
-                <li>총무가 카카오톡과 엑셀을 같이 쓰고 있는 클럽</li>
               </ul>
             </div>
           </aside>
