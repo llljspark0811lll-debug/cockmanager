@@ -352,15 +352,92 @@ export async function PUT(req: Request) {
       select: { name: true },
     });
 
+    const sessionChanges: { field: string; before: string; after: string }[] =
+      [];
+
+    const formatDate = (d: Date) =>
+      new Date(d).toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      });
+
+    const formatCapacity = (v: number | null) =>
+      v === null ? "제한 없음" : `${v}명`;
+
+    const statusLabel: Record<string, string> = {
+      OPEN: "모집 중",
+      CLOSED: "마감",
+      CANCELED: "취소",
+    };
+
+    if (existingSession.title !== updatedSession.title) {
+      sessionChanges.push({
+        field: "일정명",
+        before: existingSession.title,
+        after: updatedSession.title,
+      });
+    }
+    if (existingSession.location !== updatedSession.location) {
+      sessionChanges.push({
+        field: "장소",
+        before: existingSession.location || "(없음)",
+        after: updatedSession.location || "(없음)",
+      });
+    }
+    if (
+      new Date(existingSession.date).toDateString() !==
+      new Date(updatedSession.date).toDateString()
+    ) {
+      sessionChanges.push({
+        field: "날짜",
+        before: formatDate(existingSession.date),
+        after: formatDate(updatedSession.date),
+      });
+    }
+    if (existingSession.startTime !== updatedSession.startTime) {
+      sessionChanges.push({
+        field: "시작 시간",
+        before: existingSession.startTime,
+        after: updatedSession.startTime,
+      });
+    }
+    if (existingSession.endTime !== updatedSession.endTime) {
+      sessionChanges.push({
+        field: "종료 시간",
+        before: existingSession.endTime,
+        after: updatedSession.endTime,
+      });
+    }
+    if (existingSession.capacity !== updatedSession.capacity) {
+      sessionChanges.push({
+        field: "정원",
+        before: formatCapacity(existingSession.capacity),
+        after: formatCapacity(updatedSession.capacity),
+      });
+    }
+    if (existingSession.status !== updatedSession.status) {
+      sessionChanges.push({
+        field: "상태",
+        before: statusLabel[existingSession.status] ?? existingSession.status,
+        after: statusLabel[updatedSession.status] ?? updatedSession.status,
+      });
+    }
+    if (existingSession.description !== updatedSession.description) {
+      sessionChanges.push({
+        field: "설명",
+        before: existingSession.description || "(없음)",
+        after: updatedSession.description || "(없음)",
+      });
+    }
+
     void sendTelegramAlert({
       event: "SESSION_UPDATE",
       clubName: club?.name ?? String(admin.clubId),
       title: updatedSession.title,
-      date: new Date(updatedSession.date).toLocaleDateString("ko-KR", {
-        month: "long",
-        day: "numeric",
-        weekday: "short",
-      }),
+      date: formatDate(updatedSession.date),
+      changes: sessionChanges,
     });
 
     if (!refreshedSession) {

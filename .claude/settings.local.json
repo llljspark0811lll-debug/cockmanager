@@ -12,7 +12,10 @@
       "WebFetch(domain:blog.naver.com)",
       "Bash(node -e \"console.log\\('node works'\\)\")",
       "Bash(npx --yes tsx --version)",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(xargs grep -l \"SESSION_UPDATE\\\\|clubSession.update\")",
+      "Bash(cd /mnt/c/Users/user/cockmanager && npx tsc --noEmit 2>&1 | head -20)",
+      "Read(//mnt/c/Users/user/**)"
     ]
   }
 }

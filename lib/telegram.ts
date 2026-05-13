@@ -26,7 +26,13 @@ export type TelegramAlertInput =
   | { event: "MEMBER_UPDATE"; clubName: string; name: string }
   | { event: "MEMBER_DELETE"; clubName: string; name: string }
   | { event: "SESSION_CREATE"; clubName: string; title: string; date: string }
-  | { event: "SESSION_UPDATE"; clubName: string; title: string; date: string }
+  | {
+      event: "SESSION_UPDATE";
+      clubName: string;
+      title: string;
+      date: string;
+      changes: { field: string; before: string; after: string }[];
+    }
   | { event: "SESSION_DELETE"; clubName: string; title: string; date: string }
   | {
       event: "SESSION_RESPOND_REGISTER";
@@ -217,13 +223,20 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `날짜: ${input.date}`,
       ].join("\n");
 
-    case "SESSION_UPDATE":
+    case "SESSION_UPDATE": {
+      const changeLines = input.changes.map(
+        (c) => `  • ${c.field}: ${c.before} → ${c.after}`
+      );
       return [
         "🛠️ 운동 일정 수정",
         `클럽: ${input.clubName}`,
         `일정: ${input.title}`,
         `날짜: ${input.date}`,
+        ...(changeLines.length > 0
+          ? ["", "변경 내역:", ...changeLines]
+          : ["", "(변경 내역 없음)"]),
       ].join("\n");
+    }
 
     case "SESSION_DELETE":
       return [
