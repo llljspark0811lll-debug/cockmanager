@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = "https://cockmanager.kr";
-const siteTitle = "콕매니저 | 배드민턴 자동대진 · 클럽/소모임 운영 관리";
+const siteTitle = "콕매니저🏸 | 배드민턴 자동대진 · 클럽/소모임 운영 관리";
 const siteDescription =
   "배드민턴 클럽/소모임을 위한 자동대진, 회원 관리, 출석 체크, 월회비 관리 프로그램. 총무 업무를 클릭 한 번으로 해결하세요.";
 
