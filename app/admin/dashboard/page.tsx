@@ -1709,7 +1709,7 @@ export default function DashboardPage() {
       method: "PUT",
       body: JSON.stringify({ name }),
     });
-    await refreshPositions();
+    await Promise.all([refreshPositions(), refreshMembers()]);
   }
 
   async function handlePositionDelete(id: number) {
