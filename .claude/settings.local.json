@@ -24,7 +24,9 @@
       "Bash(npx prisma *)",
       "Bash(node -e ' *)",
       "Bash(node)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"

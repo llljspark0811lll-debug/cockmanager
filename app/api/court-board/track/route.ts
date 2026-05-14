@@ -24,12 +24,14 @@ export async function POST(req: Request) {
 
     if (!session) return NextResponse.json({ ok: false });
 
+    console.log("[court-board/track] sending alert for session", parsedSessionId);
     await sendTelegramAlert({
       event: "COURT_BOARD_START",
       clubName: club?.name ?? "",
       sessionTitle: session.title,
       courtCount: 2,
     });
+    console.log("[court-board/track] alert sent");
 
     return NextResponse.json({ ok: true });
   } catch (error) {
