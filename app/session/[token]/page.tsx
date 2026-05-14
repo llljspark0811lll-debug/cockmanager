@@ -517,6 +517,26 @@ export default function PublicSessionPage() {
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsTotalPages, setCommentsTotalPages] = useState(1);
   const [commentsTotalCount, setCommentsTotalCount] = useState(0);
+  type PublicCourtPlayer = { participantId: number; name: string };
+  type PublicCourt = { id: number; teamA: PublicCourtPlayer[]; teamB: PublicCourtPlayer[] };
+  type PublicRound = { roundNumber: number; courts: PublicCourt[]; results: Array<{ courtId: number; winner: "A" | "B" | "DRAW" | null }> };
+  type PublicBoardData = { v: 2; courtCount: number; rounds: PublicRound[] } | PublicCourt[];
+
+  const [courtBoard, setCourtBoard] = useState<{
+    isPublic: boolean;
+    currentRound: PublicRound | null;
+  } | null>(null);
+
+  function parsePublicBoard(raw: PublicBoardData): PublicRound | null {
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) return null;
+      return { roundNumber: 1, courts: raw as PublicCourt[], results: [] };
+    }
+    if (raw.v === 2 && raw.rounds.length > 0) {
+      return raw.rounds[raw.rounds.length - 1];
+    }
+    return null;
+  }
 
   // 클럽 단위 인증 키 — 세션이 로드되면 joinToken(클럽 고유값)으로 업데이트됨
   const clubJoinTokenRef = useRef<string | null>(null);
@@ -547,6 +567,27 @@ export default function PublicSessionPage() {
       );
     } finally {
       setLoadingSession(false);
+    }
+  }
+
+  async function fetchCourtBoard() {
+    if (!token) return;
+    try {
+      const response = await fetch(`/api/public/court-board?token=${encodeURIComponent(token)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data) {
+        setCourtBoard(null);
+        return;
+      }
+      setCourtBoard({
+        isPublic: data.isPublic ?? true,
+        currentRound: parsePublicBoard(data.courts as PublicBoardData),
+      });
+    } catch {
+      // 무시
     }
   }
 
@@ -709,6 +750,7 @@ export default function PublicSessionPage() {
 
   useEffect(() => {
     fetchComments(1).catch(() => undefined);
+    fetchCourtBoard().catch(() => undefined);
 
     // 세션 데이터를 먼저 로드해 clubJoinTokenRef를 설정한 뒤 자동 인증 시도
     fetchSessionData().then(() => {
@@ -730,11 +772,13 @@ export default function PublicSessionPage() {
     const interval = window.setInterval(() => {
       fetchSessionData().catch(() => undefined);
       fetchComments(commentsPage, { silent: true }).catch(() => undefined);
+      fetchCourtBoard().catch(() => undefined);
     }, 5000);
 
     const handleFocus = () => {
       fetchSessionData().catch(() => undefined);
       fetchComments(commentsPage, { silent: true }).catch(() => undefined);
+      fetchCourtBoard().catch(() => undefined);
     };
 
     window.addEventListener("focus", handleFocus);
@@ -1133,6 +1177,75 @@ export default function PublicSessionPage() {
             </div>
           </div>
         </section>
+
+        {courtBoard?.currentRound && courtBoard.currentRound.courts.some(c => c.teamA.length > 0 || c.teamB.length > 0) ? (
+          <section className="rounded-[2rem] border border-violet-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black text-slate-900">실시간 대진</h2>
+              <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                {courtBoard.currentRound.roundNumber}R · LIVE
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-400">관리자가 실시간으로 업데이트합니다. 5초마다 자동 반영됩니다.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {courtBoard.currentRound.courts.map((court) => {
+                const result = courtBoard.currentRound!.results.find(r => r.courtId === court.id);
+                const winner = result?.winner ?? null;
+                return (
+                <div
+                  key={court.id}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"
+                >
+                  <div className="bg-slate-900 px-3 py-1.5 text-center text-xs font-black text-white">
+                    코트 {court.id}
+                  </div>
+                  <div className="p-2.5">
+                    <div className="mb-1.5">
+                      <p className="mb-1 text-[10px] font-semibold text-sky-600">팀A</p>
+                      {court.teamA.length === 0 ? (
+                        <p className="text-[11px] text-slate-300">미배정</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {court.teamA.map((player) => (
+                            <span
+                              key={player.participantId}
+                              className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700"
+                            >
+                              {player.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="my-1 text-center text-[9px] font-black text-slate-300">VS</div>
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold text-rose-500">팀B</p>
+                      {court.teamB.length === 0 ? (
+                        <p className="text-[11px] text-slate-300">미배정</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {court.teamB.map((player) => (
+                            <span
+                              key={player.participantId}
+                              className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600"
+                            >
+                              {player.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {winner && (
+                      <div className={`mt-2 rounded-lg px-2 py-1 text-center text-[10px] font-bold ${winner === "A" ? "bg-sky-100 text-sky-700" : winner === "B" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                        {winner === "A" ? "A팀 승" : winner === "B" ? "B팀 승" : "무승부"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );})}
+            </div>
+          </section>
+        ) : null}
 
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div>

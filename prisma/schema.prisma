@@ -186,6 +186,7 @@ model ClubSession {
 
   comments     SessionComment[]
   bracket      SessionBracket?
+  courtBoard   CourtBoard?
   participants SessionParticipant[]
 }
 
@@ -194,6 +195,17 @@ model SessionBracket {
   config    Json
   rounds    Json
   summary   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessionId Int         @unique
+  session   ClubSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model CourtBoard {
+  id        Int      @id @default(autoincrement())
+  isPublic  Boolean  @default(false)
+  courts    Json     @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

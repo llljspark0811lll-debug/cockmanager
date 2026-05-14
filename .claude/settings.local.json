@@ -23,7 +23,8 @@
       "Bash(mkdir -p \"/mnt/c/Users/user/cockmanager/app/api/positions/[id]\" 2>/dev/null; echo \"done\")",
       "Bash(npx prisma *)",
       "Bash(node -e ' *)",
-      "Bash(node)"
+      "Bash(node)",
+      "Bash(npx next *)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"

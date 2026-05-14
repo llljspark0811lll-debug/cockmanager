@@ -272,6 +272,25 @@ export interface DashboardStats {
   };
 }
 
+export interface CourtPlayer {
+  participantId: number;
+  name: string;
+}
+
+export interface Court {
+  id: number;
+  teamA: CourtPlayer[];
+  teamB: CourtPlayer[];
+}
+
+export interface CourtBoard {
+  id: number;
+  sessionId: number;
+  isPublic: boolean;
+  courts: Court[];
+  updatedAt: string;
+}
+
 export interface MemberFormState {
   name: string;
   gender: string;

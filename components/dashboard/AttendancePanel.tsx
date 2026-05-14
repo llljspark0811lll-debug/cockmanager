@@ -22,6 +22,7 @@ type AttendancePanelProps = {
   onSelectSession: (id: number) => void;
   tutorialDefaultsActive?: boolean;
   onBracketGenerated?: () => void;
+  onOpenCourtBoard?: (sessionId: number) => void;
 };
 
 type ParticipantSortOption = "name" | "gender" | "level" | "recent";
@@ -186,6 +187,7 @@ export function AttendancePanel({
   onSelectSession,
   tutorialDefaultsActive = false,
   onBracketGenerated,
+  onOpenCourtBoard,
 }: AttendancePanelProps) {
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -568,6 +570,7 @@ export function AttendancePanel({
           session={selectedSession}
           tutorialDefaultsActive={tutorialDefaultsActive}
           onBracketGenerated={onBracketGenerated}
+          onOpenCourtBoard={onOpenCourtBoard}
         />
       ) : null}
     </div>

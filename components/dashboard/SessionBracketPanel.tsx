@@ -16,6 +16,7 @@ type SessionBracketPanelProps = {
   session: ClubSession;
   tutorialDefaultsActive?: boolean;
   onBracketGenerated?: () => void;
+  onOpenCourtBoard?: (sessionId: number) => void;
 };
 
 type BracketApiResponse = {
@@ -122,6 +123,7 @@ export function SessionBracketPanel({
   session,
   tutorialDefaultsActive = false,
   onBracketGenerated,
+  onOpenCourtBoard,
 }: SessionBracketPanelProps) {
   const [generationMode, setGenerationMode] = useState<
     "STANDARD" | "TEAM_BATTLE"
@@ -1310,8 +1312,25 @@ export function SessionBracketPanel({
               ? "이미지 준비 중..."
               : "이미지 저장"}
           </button>
-
         </div>
+
+        {onOpenCourtBoard ? (
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+            <div>
+              <p className="text-sm font-black text-violet-900">실시간 코트 배정</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                자동 대진 대신 직접 선수를 코트에 배정하고 현장에서 실시간으로 경기를 관리합니다.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenCourtBoard(session.id)}
+              disabled={session.status !== "CLOSED"}
+              className="shrink-0 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-violet-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-violet-300"
+            >
+              실시간 대진 시작 →
+            </button>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium leading-6 text-rose-700">

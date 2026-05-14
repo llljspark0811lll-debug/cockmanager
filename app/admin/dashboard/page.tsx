@@ -18,6 +18,7 @@ import { FinancePanel } from "@/components/dashboard/FinancePanel";
 import { JoinRequestLinkPanel } from "@/components/dashboard/JoinRequestLinkPanel";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
+import { CourtBoardModal } from "@/components/dashboard/CourtBoardModal";
 import { PositionSettingsModal } from "@/components/dashboard/PositionSettingsModal";
 import { PersonalSettingsModal } from "@/components/dashboard/PersonalSettingsModal";
 import { RequestsTable } from "@/components/dashboard/RequestsTable";
@@ -186,6 +187,7 @@ export default function DashboardPage() {
     useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [positionSettingsOpen, setPositionSettingsOpen] = useState(false);
+  const [courtBoardSessionId, setCourtBoardSessionId] = useState<number | null>(null);
   const [approvingRequestIds, setApprovingRequestIds] =
     useState<number[]>([]);
   const [processingAllRequests, setProcessingAllRequests] =
@@ -2385,6 +2387,7 @@ export default function DashboardPage() {
               onBracketGenerated={() => {
                 setTutorialBracketGenerated(true);
               }}
+              onOpenCourtBoard={(sessionId) => setCourtBoardSessionId(sessionId)}
             />
           )
         ) : null}
@@ -2410,6 +2413,17 @@ export default function DashboardPage() {
           />
         ) : null}
       </div>
+
+      <CourtBoardModal
+        open={courtBoardSessionId !== null}
+        clubName={clubInfo?.name ?? ""}
+        session={
+          courtBoardSessionId !== null
+            ? (sessions.find((s) => s.id === courtBoardSessionId) ?? null)
+            : null
+        }
+        onClose={() => setCourtBoardSessionId(null)}
+      />
 
       <PositionSettingsModal
         open={positionSettingsOpen}
