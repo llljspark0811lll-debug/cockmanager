@@ -600,7 +600,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
           </div>
           {/* 모바일: 세션명(왼쪽) + 완료경기(오른쪽) 한 줄 */}
           <div className="flex items-center justify-between gap-2 md:hidden">
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+            <span className="whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
               {session.title}
             </span>
             {boardData.history.length > 0 && (
