@@ -304,6 +304,17 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
   const assignedIds = getAllAssignedIds(boardData.courts);
   const poolParticipants = registeredParticipants.filter((p) => !assignedIds.has(p.id));
 
+  // 열릴 때마다 트래킹 알람 (skip-reload 여부 무관)
+  useEffect(() => {
+    if (!open || !session) return;
+    fetch("/api/court-board/track", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: session.id }),
+    }).catch(() => undefined);
+  }, [open, session?.id]);
+
   // 로드 — 같은 세션은 재로드 안 함 (닫기→다시열기 시 메모리 데이터 유지)
   useEffect(() => {
     if (!open || !session) return;

@@ -54,19 +54,6 @@ export async function GET(req: Request) {
 
     const board = await prisma.courtBoard.findUnique({ where: { sessionId } });
 
-    // 알람 전송 (쿼리와 분리)
-    try {
-      const clubName = await getClubName(admin.clubId);
-      await sendTelegramAlert({
-        event: "COURT_BOARD_START",
-        clubName,
-        sessionTitle: session.title,
-        courtCount: parseBoardJson(board?.courts).courtCount ?? 2,
-      });
-    } catch (alertErr) {
-      console.error("[court-board] GET alert error:", alertErr);
-    }
-
     return NextResponse.json(board ?? null);
   } catch (error) {
     console.error("[court-board] GET error:", error);
