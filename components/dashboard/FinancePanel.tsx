@@ -1,4 +1,4 @@
-﻿import { type ReactNode, useEffect, useState } from "react";
+﻿import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { FeesTable } from "@/components/dashboard/FeesTable";
 import type {
   Fee,
@@ -222,6 +222,18 @@ export function FinancePanel({
     title: "",
     memo: "",
   });
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 5;
+  const ledgerTotalPages = Math.max(1, Math.ceil(ledgerEntries.length / LEDGER_PAGE_SIZE));
+  const paginatedLedgerEntries = useMemo(() => {
+    const start = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
+    return ledgerEntries.slice(start, start + LEDGER_PAGE_SIZE);
+  }, [ledgerEntries, ledgerPage]);
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [ledgerEntries.length]);
+
   const isLedgerEnabled = financeDraft.ledgerEnabled;
 
   useEffect(() => {
@@ -680,7 +692,7 @@ export function FinancePanel({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {ledgerEntries.map((entry) => (
+                  {paginatedLedgerEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-50">
                       <td className="px-4 py-4">
                         <span
@@ -764,6 +776,42 @@ export function FinancePanel({
                 </tbody>
               </table>
             </div>
+            {ledgerTotalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                <span className="text-xs text-slate-400">
+                  {ledgerEntries.length}건 중 {(ledgerPage - 1) * LEDGER_PAGE_SIZE + 1}–{Math.min(ledgerPage * LEDGER_PAGE_SIZE, ledgerEntries.length)}건
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                    disabled={ledgerPage === 1}
+                    className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+                  >
+                    이전
+                  </button>
+                  {Array.from({ length: ledgerTotalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setLedgerPage(p)}
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                        p === ledgerPage
+                          ? "bg-slate-900 text-white"
+                          : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setLedgerPage((p) => Math.min(ledgerTotalPages, p + 1))}
+                    disabled={ledgerPage === ledgerTotalPages}
+                    className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-30"
+                  >
+                    다음
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}
