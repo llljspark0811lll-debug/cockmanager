@@ -2306,6 +2306,7 @@ export default function DashboardPage() {
                 )
               : (
                 <FinancePanel
+                  clubName={clubInfo?.name ?? ""}
                   members={feeMembers}
                   fees={fees}
                   selectedYear={selectedYear}
