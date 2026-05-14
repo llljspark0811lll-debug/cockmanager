@@ -62,8 +62,8 @@ export async function GET(req: Request) {
       where: { sessionId },
     });
 
-    // 버튼 클릭 = 모달 열기 = GET 호출 → 알람
-    void sendTelegramAlert({
+    // 버튼 클릭 = 모달 열기 = GET 호출 → 알람 (await: 응답 전 전송 보장)
+    await sendTelegramAlert({
       event: "COURT_BOARD_START",
       clubName: session.club.name,
       sessionTitle: session.title,
@@ -166,7 +166,7 @@ export async function PUT(req: Request) {
         const newTotal = newCourt.teamA.length + newCourt.teamB.length;
 
         if (newTotal > oldTotal) {
-          void sendTelegramAlert({
+          await sendTelegramAlert({
             event: "COURT_BOARD_COURT_ASSIGNED",
             clubName,
             sessionTitle,
@@ -181,7 +181,7 @@ export async function PUT(req: Request) {
       const oldMatchIds = new Set(oldHistory.map((m) => m.matchId));
       for (const match of newHistory) {
         if (!oldMatchIds.has(match.matchId)) {
-          void sendTelegramAlert({
+          await sendTelegramAlert({
             event: "COURT_BOARD_MATCH_COMPLETE",
             clubName,
             sessionTitle,
