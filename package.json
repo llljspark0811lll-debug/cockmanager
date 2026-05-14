@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/update-sw-version.js && prisma migrate resolve --applied 202603270003_add_session_guests || true && prisma migrate deploy && prisma generate && next build",
+    "build": "node scripts/update-sw-version.js && node scripts/resolve-migrations.js && prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "db:reset": "node scripts/reset-db.js",
