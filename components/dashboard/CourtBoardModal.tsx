@@ -189,21 +189,19 @@ function CourtPlayerChip({
   const teamBg = team === "A" ? "bg-sky-50 border-sky-100" : "bg-rose-50 border-rose-100";
 
   return (
-    <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${teamBg}`}>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-black text-slate-800">{player.name}</p>
-        <p className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-          {isGuest ? (
-            <span className="rounded bg-violet-100 px-1 text-[9px] font-bold text-violet-600">게스트</span>
-          ) : (
-            <span className="rounded bg-emerald-100 px-1 text-[9px] font-bold text-emerald-700">회원</span>
-          )}
-          {gender && gender !== "-" && (
-            <span className={gender === "남" ? "text-sky-500" : "text-rose-400"}>{gender}</span>
-          )}
-          {tag && <span className={levelClass}>{tag}</span>}
-        </p>
-      </div>
+    <div className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${teamBg}`}>
+      <span className="min-w-0 flex-1 truncate text-base font-black text-slate-800">{player.name}</span>
+      <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-500">
+        {isGuest ? (
+          <span className="rounded bg-violet-100 px-1 text-[10px] font-bold text-violet-600">게스트</span>
+        ) : (
+          <span className="rounded bg-emerald-100 px-1 text-[10px] font-bold text-emerald-700">회원</span>
+        )}
+        {gender && gender !== "-" && (
+          <span className={gender === "남" ? "text-sky-500" : "text-rose-400"}>{gender}</span>
+        )}
+        {tag && <span className={levelClass}>{tag}</span>}
+      </span>
       <button
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white hover:text-rose-500 active:scale-95"
