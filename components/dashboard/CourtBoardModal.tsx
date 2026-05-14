@@ -558,21 +558,45 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
 
       {/* 헤더 */}
       <div className="flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-200 bg-white px-3 py-2 shadow-sm md:px-4 md:py-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 md:gap-2.5">
-          <h2 className="text-base font-black text-slate-900 md:text-lg">
-            {clubName && <span className="text-sky-500">[{clubName}] </span>}실시간 대진
-          </h2>
-          <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600 md:max-w-none md:px-3 md:py-1">
-            {session.title}
-          </span>
-          {boardData.history.length > 0 && (
-            <button
-              onClick={() => setShowHistory((v) => !v)}
-              className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100 md:px-3 md:py-1"
-            >
-              완료 {boardData.history.length}경기 {showHistory ? "▲" : "▼"}
-            </button>
-          )}
+        <div className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-2.5">
+          {/* 제목: 모바일은 팀이름 줄바꿈 후 실시간 대진 */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h2 className="text-base font-black text-slate-900 md:text-lg">
+              {clubName && (
+                <>
+                  <span className="text-sky-500">[{clubName}]</span>
+                  <br className="md:hidden" />
+                </>
+              )}
+              실시간 대진
+            </h2>
+            {/* PC: 제목 옆에 뱃지/완료 버튼 */}
+            <span className="hidden max-w-none truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 md:inline-block">
+              {session.title}
+            </span>
+            {boardData.history.length > 0 && (
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="hidden shrink-0 rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700 transition hover:bg-violet-100 md:inline-block"
+              >
+                완료 {boardData.history.length}경기 {showHistory ? "▲" : "▼"}
+              </button>
+            )}
+          </div>
+          {/* 모바일: 세션명(왼쪽) + 완료경기(오른쪽) 한 줄 */}
+          <div className="flex items-center justify-between gap-2 md:hidden">
+            <span className="truncate rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
+              {session.title}
+            </span>
+            {boardData.history.length > 0 && (
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+              >
+                완료 {boardData.history.length}경기 {showHistory ? "▲" : "▼"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
