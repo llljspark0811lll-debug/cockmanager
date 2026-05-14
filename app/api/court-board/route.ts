@@ -96,11 +96,17 @@ export async function PUT(req: Request) {
     const { id, courts, isPublic } = await req.json();
     const parsedId = Number(id);
 
-    const existing = await prisma.courtBoard.findFirst({
-      where: { id: parsedId, session: { clubId: admin.clubId } },
+    const existing = await prisma.courtBoard.findUnique({
+      where: { id: parsedId },
       select: { id: true, courts: true, sessionId: true },
     });
     if (!existing) return notFoundResponse("코트보드를 찾을 수 없습니다.");
+
+    const ownerSession = await prisma.clubSession.findFirst({
+      where: { id: existing.sessionId, clubId: admin.clubId },
+      select: { id: true },
+    });
+    if (!ownerSession) return notFoundResponse("코트보드를 찾을 수 없습니다.");
 
     const updated = await prisma.courtBoard.update({
       where: { id: parsedId },

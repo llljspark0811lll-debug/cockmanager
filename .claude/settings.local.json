@@ -26,7 +26,10 @@
       "Bash(node)",
       "Bash(npx next *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"
