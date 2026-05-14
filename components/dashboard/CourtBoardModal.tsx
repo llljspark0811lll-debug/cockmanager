@@ -42,6 +42,7 @@ type CourtBoardModalProps = {
 
 const MAX_COURTS = 8;
 const MIN_COURTS = 1;
+const MAX_TEAM_SIZE = 2;
 
 function buildEmptyCourt(id: number): Court {
   return { id, teamA: [], teamB: [] };
@@ -137,16 +138,16 @@ function PoolChip({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full flex-col items-start rounded-2xl border-2 px-4 py-2.5 text-left transition active:scale-95 ${
+      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-2.5 text-left transition active:scale-95 ${
         isSelected
           ? "border-sky-400 bg-sky-500 shadow-md"
           : "border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50"
       }`}
     >
-      <span className={`text-sm font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
+      <span className={`min-w-0 flex-1 truncate text-base font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
         {name}
       </span>
-      <span className={`mt-0.5 flex items-center gap-1 text-[11px] font-semibold leading-tight ${isSelected ? "text-sky-100" : "text-slate-500"}`}>
+      <span className={`flex shrink-0 items-center gap-1 text-[11px] font-semibold ${isSelected ? "text-sky-100" : "text-slate-500"}`}>
         {isGuest ? (
           <span className={`rounded px-1 text-[10px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-violet-100 text-violet-600"}`}>
             게스트
@@ -410,6 +411,11 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
     if (!selectedParticipantId) return;
     const participant = registeredParticipants.find((p) => p.id === selectedParticipantId);
     if (!participant) return;
+
+    const court = boardData.courts.find((c) => c.id === courtId);
+    if (!court) return;
+    const teamPlayers = team === "A" ? court.teamA : court.teamB;
+    if (teamPlayers.length >= MAX_TEAM_SIZE) return;
 
     const player: CourtPlayer = {
       participantId: selectedParticipantId,
@@ -729,28 +735,27 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
 
                       {/* 팀A */}
                       <div
-                        onClick={() => isTargeting ? handleAssignToTeam(court.id, "A") : undefined}
-                        className={`px-3 py-3 transition ${isTargeting ? "cursor-pointer hover:bg-sky-50" : ""}`}
+                        onClick={() => (isTargeting && court.teamA.length < MAX_TEAM_SIZE) ? handleAssignToTeam(court.id, "A") : undefined}
+                        className={`px-3 py-3 transition ${(isTargeting && court.teamA.length < MAX_TEAM_SIZE) ? "cursor-pointer hover:bg-sky-50" : ""}`}
                       >
                         <p className="mb-2 text-xs font-bold uppercase tracking-wide text-sky-500">팀 A</p>
-                        <div className="flex min-h-[3rem] flex-col gap-2">
-                          {court.teamA.length === 0 ? (
-                            <div className={`flex h-12 items-center justify-center rounded-xl border-2 border-dashed text-sm font-semibold transition ${
+                        <div className="flex flex-col gap-2">
+                          {court.teamA.map((player) => (
+                            <CourtPlayerChip
+                              key={player.participantId}
+                              player={player}
+                              participant={participantMap.get(player.participantId)}
+                              team="A"
+                              onRemove={() => handleRemoveFromCourt(court.id, "A", player.participantId)}
+                            />
+                          ))}
+                          {Array.from({ length: MAX_TEAM_SIZE - court.teamA.length }).map((_, i) => (
+                            <div key={`a-empty-${i}`} className={`flex h-12 items-center justify-center rounded-xl border-2 border-dashed text-sm font-semibold transition ${
                               isTargeting ? "border-sky-300 text-sky-400" : "border-slate-200 text-slate-300"
                             }`}>
                               {isTargeting ? "탭하여 배정" : "비어있음"}
                             </div>
-                          ) : (
-                            court.teamA.map((player) => (
-                              <CourtPlayerChip
-                                key={player.participantId}
-                                player={player}
-                                participant={participantMap.get(player.participantId)}
-                                team="A"
-                                onRemove={() => handleRemoveFromCourt(court.id, "A", player.participantId)}
-                              />
-                            ))
-                          )}
+                          ))}
                         </div>
                       </div>
 
@@ -759,28 +764,27 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
 
                       {/* 팀B */}
                       <div
-                        onClick={() => isTargeting ? handleAssignToTeam(court.id, "B") : undefined}
-                        className={`px-3 py-3 transition ${isTargeting ? "cursor-pointer hover:bg-rose-50" : ""}`}
+                        onClick={() => (isTargeting && court.teamB.length < MAX_TEAM_SIZE) ? handleAssignToTeam(court.id, "B") : undefined}
+                        className={`px-3 py-3 transition ${(isTargeting && court.teamB.length < MAX_TEAM_SIZE) ? "cursor-pointer hover:bg-rose-50" : ""}`}
                       >
                         <p className="mb-2 text-xs font-bold uppercase tracking-wide text-rose-500">팀 B</p>
-                        <div className="flex min-h-[3rem] flex-col gap-2">
-                          {court.teamB.length === 0 ? (
-                            <div className={`flex h-12 items-center justify-center rounded-xl border-2 border-dashed text-sm font-semibold transition ${
+                        <div className="flex flex-col gap-2">
+                          {court.teamB.map((player) => (
+                            <CourtPlayerChip
+                              key={player.participantId}
+                              player={player}
+                              participant={participantMap.get(player.participantId)}
+                              team="B"
+                              onRemove={() => handleRemoveFromCourt(court.id, "B", player.participantId)}
+                            />
+                          ))}
+                          {Array.from({ length: MAX_TEAM_SIZE - court.teamB.length }).map((_, i) => (
+                            <div key={`b-empty-${i}`} className={`flex h-12 items-center justify-center rounded-xl border-2 border-dashed text-sm font-semibold transition ${
                               isTargeting ? "border-rose-300 text-rose-400" : "border-slate-200 text-slate-300"
                             }`}>
                               {isTargeting ? "탭하여 배정" : "비어있음"}
                             </div>
-                          ) : (
-                            court.teamB.map((player) => (
-                              <CourtPlayerChip
-                                key={player.participantId}
-                                player={player}
-                                participant={participantMap.get(player.participantId)}
-                                team="B"
-                                onRemove={() => handleRemoveFromCourt(court.id, "B", player.participantId)}
-                              />
-                            ))
-                          )}
+                          ))}
                         </div>
                       </div>
 
