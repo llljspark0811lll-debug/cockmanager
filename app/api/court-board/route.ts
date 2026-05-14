@@ -25,10 +25,11 @@ type BoardData = {
 };
 
 function parseBoardJson(raw: unknown): BoardData {
-  if (!raw || typeof raw !== "object") return {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as BoardData;
 }
 
+// GET: 실시간 대진 모달 열기 (버튼 클릭) → START 알람
 export async function GET(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -46,7 +47,11 @@ export async function GET(req: Request) {
 
     const session = await prisma.clubSession.findFirst({
       where: { id: sessionId, clubId: admin.clubId },
-      select: { id: true },
+      select: {
+        id: true,
+        title: true,
+        club: { select: { name: true } },
+      },
     });
 
     if (!session) {
@@ -55,6 +60,14 @@ export async function GET(req: Request) {
 
     const board = await prisma.courtBoard.findUnique({
       where: { sessionId },
+    });
+
+    // 버튼 클릭 = 모달 열기 = GET 호출 → 알람
+    void sendTelegramAlert({
+      event: "COURT_BOARD_START",
+      clubName: session.club.name,
+      sessionTitle: session.title,
+      courtCount: (parseBoardJson(board?.courts).courtCount) ?? 2,
     });
 
     return NextResponse.json(board ?? null);
@@ -77,37 +90,18 @@ export async function POST(req: Request) {
 
     const session = await prisma.clubSession.findFirst({
       where: { id: parsedSessionId, clubId: admin.clubId },
-      select: {
-        id: true,
-        title: true,
-        club: { select: { name: true } },
-      },
+      select: { id: true },
     });
 
     if (!session) {
       return notFoundResponse("운동 일정을 찾을 수 없습니다.");
     }
 
-    const existing = await prisma.courtBoard.findUnique({
-      where: { sessionId: parsedSessionId },
-      select: { id: true },
-    });
-
     const board = await prisma.courtBoard.upsert({
       where: { sessionId: parsedSessionId },
       create: { sessionId: parsedSessionId, courts: [], isPublic: false },
       update: {},
     });
-
-    // 새로 생성된 경우에만 알람 (기존 board가 없었을 때)
-    if (!existing) {
-      void sendTelegramAlert({
-        event: "COURT_BOARD_START",
-        clubName: session.club.name,
-        sessionTitle: session.title,
-        courtCount: 2,
-      });
-    }
 
     return NextResponse.json(board);
   } catch (error) {
@@ -165,19 +159,13 @@ export async function PUT(req: Request) {
       const oldHistory: CompletedMatch[] = oldData.history ?? [];
       const newHistory: CompletedMatch[] = newData.history ?? [];
 
-      // 코트 배정 알람: 양 팀 모두 선수가 생긴 코트 (이전엔 한 팀 이상 비어있었던 코트)
+      // 코트 배정 알람: 어느 팀이든 선수 수가 늘어난 코트
       for (const newCourt of newCourts) {
-        const hasA = newCourt.teamA.length > 0;
-        const hasB = newCourt.teamB.length > 0;
-        if (!hasA || !hasB) continue;
-
         const oldCourt = oldCourts.find((c) => c.id === newCourt.id);
-        const wasIncomplete =
-          !oldCourt ||
-          oldCourt.teamA.length === 0 ||
-          oldCourt.teamB.length === 0;
+        const oldTotal = (oldCourt?.teamA?.length ?? 0) + (oldCourt?.teamB?.length ?? 0);
+        const newTotal = newCourt.teamA.length + newCourt.teamB.length;
 
-        if (wasIncomplete) {
+        if (newTotal > oldTotal) {
           void sendTelegramAlert({
             event: "COURT_BOARD_COURT_ASSIGNED",
             clubName,
