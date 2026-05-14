@@ -226,6 +226,46 @@ function winnerBadgeClass(w: MatchWinner) {
   return "bg-slate-50 text-slate-400";
 }
 
+// ── 모바일 전용 컴팩트 풀 칩 ─────────────────────────────────────
+function MobilePoolChip({
+  participant,
+  isSelected,
+  onClick,
+}: {
+  participant: SessionParticipant;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const isGuest = Boolean(participant.guestName);
+  const name = getParticipantDisplayName(participant);
+  const gender = getParticipantGenderLabel(participant);
+  const tag = getPlayerTag(participant);
+
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 flex flex-col items-start rounded-xl border-2 px-3 py-2 text-left transition active:scale-95 ${
+        isSelected
+          ? "border-sky-400 bg-sky-500 shadow-md"
+          : "border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50"
+      }`}
+    >
+      <span className={`text-xs font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
+        {name}
+      </span>
+      <span className={`mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight ${isSelected ? "text-sky-100" : "text-slate-500"}`}>
+        <span className={`rounded px-0.5 text-[9px] font-bold ${isSelected ? "bg-white/20 text-white" : isGuest ? "bg-violet-100 text-violet-600" : "bg-emerald-100 text-emerald-700"}`}>
+          {isGuest ? "게" : "회"}
+        </span>
+        {gender !== "-" && (
+          <span className={isSelected ? "text-sky-100" : gender === "남" ? "text-sky-600" : "text-rose-500"}>{gender}</span>
+        )}
+        {tag && <span className={isSelected ? "text-sky-100" : ""}>{tag}</span>}
+      </span>
+    </button>
+  );
+}
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
 export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoardModalProps) {
   const [boardId, setBoardId] = useState<number | null>(null);
@@ -517,25 +557,25 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
       )}
 
       {/* 헤더 */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
-          <h2 className="text-lg font-black text-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-200 bg-white px-3 py-2 shadow-sm md:px-4 md:py-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 md:gap-2.5">
+          <h2 className="text-base font-black text-slate-900 md:text-lg">
             {clubName && <span className="text-sky-500">[{clubName}] </span>}실시간 대진
           </h2>
-          <span className="truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+          <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600 md:max-w-none md:px-3 md:py-1">
             {session.title}
           </span>
           {boardData.history.length > 0 && (
             <button
               onClick={() => setShowHistory((v) => !v)}
-              className="shrink-0 rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+              className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100 md:px-3 md:py-1"
             >
               완료 {boardData.history.length}경기 {showHistory ? "▲" : "▼"}
             </button>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
           {/* 자동저장 상태 */}
           {saveStatus === "saving" && (
             <span className="text-xs text-slate-400">저장 중...</span>
@@ -544,7 +584,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
             <span className="text-xs font-semibold text-emerald-500">✓ 저장됨</span>
           )}
 
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 px-2.5 py-2">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 px-2 py-1.5 md:px-2.5 md:py-2">
             <button
               onClick={() => handleChangeCourtCount(-1)}
               disabled={boardData.courtCount <= MIN_COURTS}
@@ -566,14 +606,14 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
 
           <button
             onClick={handleReset}
-            className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100 active:scale-95"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-100 active:scale-95 md:px-3.5 md:py-2"
           >
             초기화
           </button>
 
           <button
             onClick={handleClose}
-            className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95"
+            className="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95 md:px-3.5 md:py-2"
           >
             닫기
           </button>
@@ -583,10 +623,36 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
       {loading ? (
         <div className="flex flex-1 items-center justify-center text-sm text-slate-400">불러오는 중...</div>
       ) : (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
 
           {/* ── 왼쪽: 코트 영역 ── */}
           <div className="flex flex-1 flex-col overflow-hidden">
+
+            {/* 모바일 대기 선수 스트립 (md 미만) */}
+            <div className="shrink-0 border-b-2 border-slate-200 bg-slate-50 md:hidden">
+              <div className="flex items-center gap-2 px-3 pb-1 pt-2">
+                <span className="text-xs font-black text-slate-700">대기 {poolParticipants.length}명</span>
+                {selectedParticipantId ? (
+                  <span className="text-xs font-semibold text-sky-600">→ 코트 팀A/B를 탭하세요</span>
+                ) : (
+                  <span className="text-xs text-slate-400">선수 탭 → 코트 팀 탭하여 배정</span>
+                )}
+              </div>
+              <div className="flex gap-2 overflow-x-auto px-3 pb-2">
+                {poolParticipants.length === 0 ? (
+                  <p className="py-1 text-xs text-slate-400">모든 선수가 코트에 배정됐습니다.</p>
+                ) : (
+                  poolParticipants.map((p) => (
+                    <MobilePoolChip
+                      key={p.id}
+                      participant={p}
+                      isSelected={selectedParticipantId === p.id}
+                      onClick={() => handleSelectPool(p.id)}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
             {/* 완료 히스토리 */}
             {showHistory && boardData.history.length > 0 && (
               <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -700,14 +766,14 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
               </div>
             </div>
 
-            {/* 하단 안내 */}
-            <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-xs text-slate-400">
+            {/* 하단 안내 (md 이상에서만 표시) */}
+            <div className="hidden border-t border-slate-100 bg-slate-50 px-4 py-2 text-center text-xs text-slate-400 md:block">
               오른쪽 대기 선수 탭 → 코트 팀A/팀B 탭 = 배정 &nbsp;·&nbsp; ✕ = 대기 복귀 &nbsp;·&nbsp; 경기 완료 = 복귀 + 기록
             </div>
           </div>
 
-          {/* ── 오른쪽: 대기 선수 패널 ── */}
-          <div className="flex w-64 shrink-0 flex-col border-l-2 border-slate-200 bg-slate-50">
+          {/* ── 오른쪽: 대기 선수 패널 (md 이상에서만 표시) ── */}
+          <div className="hidden w-64 shrink-0 flex-col border-l-2 border-slate-200 bg-slate-50 md:flex">
             {/* 패널 헤더 */}
             <div className="border-b border-slate-200 bg-white px-4 py-3">
               <p className="text-sm font-black text-slate-700">
