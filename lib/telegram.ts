@@ -137,7 +137,30 @@ export type TelegramAlertInput =
       amount: number;
       memberName?: string | null;
     }
-  | { event: "LEDGER_RESET"; clubName: string };
+  | { event: "LEDGER_RESET"; clubName: string }
+  | {
+      event: "COURT_BOARD_START";
+      clubName: string;
+      sessionTitle: string;
+      courtCount: number;
+    }
+  | {
+      event: "COURT_BOARD_COURT_ASSIGNED";
+      clubName: string;
+      sessionTitle: string;
+      courtNumber: number;
+      teamA: string[];
+      teamB: string[];
+    }
+  | {
+      event: "COURT_BOARD_MATCH_COMPLETE";
+      clubName: string;
+      sessionTitle: string;
+      courtNumber: number;
+      teamA: string[];
+      teamB: string[];
+      winner: "A" | "B" | null;
+    };
 
 function getTelegramConfig() {
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -397,6 +420,39 @@ function buildAlertMessage(input: TelegramAlertInput): string {
 
     case "LEDGER_RESET":
       return ["♻️ 장부 초기화", `클럽: ${input.clubName}`].join("\n");
+
+    case "COURT_BOARD_START":
+      return [
+        "🎯 실시간 대진 시작",
+        `클럽: ${input.clubName}`,
+        `일정: ${input.sessionTitle}`,
+        `코트 수: ${input.courtCount}코트`,
+      ].join("\n");
+
+    case "COURT_BOARD_COURT_ASSIGNED":
+      return [
+        "📋 코트 배정 완료",
+        `클럽: ${input.clubName}`,
+        `일정: ${input.sessionTitle}`,
+        `코트 ${input.courtNumber}번`,
+        `A팀: ${input.teamA.join(", ")}`,
+        `B팀: ${input.teamB.join(", ")}`,
+      ].join("\n");
+
+    case "COURT_BOARD_MATCH_COMPLETE": {
+      const winnerLabel =
+        input.winner === "A" ? "A팀 승" :
+        input.winner === "B" ? "B팀 승" : "결과 없음";
+      return [
+        "🏆 경기 완료",
+        `클럽: ${input.clubName}`,
+        `일정: ${input.sessionTitle}`,
+        `코트 ${input.courtNumber}번`,
+        `A팀: ${input.teamA.join(", ")}`,
+        `B팀: ${input.teamB.join(", ")}`,
+        `결과: ${winnerLabel}`,
+      ].join("\n");
+    }
   }
 }
 
