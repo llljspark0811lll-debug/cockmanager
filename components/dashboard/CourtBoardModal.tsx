@@ -572,8 +572,8 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
       )}
 
       {/* 헤더 */}
-      <div className="flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-200 bg-white px-3 py-2 shadow-sm md:px-4 md:py-3">
-        <div className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-y-2 border-b border-slate-200 bg-white px-3 py-2 shadow-sm md:items-center md:px-4 md:py-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5 md:flex-row md:items-center md:gap-2.5 md:gap-y-0">
           {/* 제목: 모바일은 팀이름 줄바꿈 후 실시간 대진 */}
           <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="text-base font-black text-slate-900 md:text-lg">
