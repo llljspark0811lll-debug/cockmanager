@@ -709,6 +709,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
             <div className="shrink-0 border-b-2 border-slate-200 bg-slate-50 md:hidden">
               <div className="flex items-center gap-2 px-3 pb-1 pt-2">
                 <span className="text-xs font-black text-slate-700">대기 {poolParticipants.length}명</span>
+                <span className="text-xs text-slate-400">· G = 경기 횟수</span>
                 {selectedParticipantId ? (
                   <span className="text-xs font-semibold text-sky-600">→ 코트 팀A/B를 탭하세요</span>
                 ) : (
@@ -861,7 +862,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
               {selectedParticipantId ? (
                 <p className="mt-1 text-xs font-semibold text-sky-600">→ 코트의 팀A 또는 팀B를 탭하세요</p>
               ) : (
-                <p className="mt-1 text-xs text-slate-400">선수를 탭해서 선택하세요</p>
+                <p className="mt-1 text-xs text-slate-400">선수를 탭해서 선택하세요 · G = 경기 횟수</p>
               )}
             </div>
 
