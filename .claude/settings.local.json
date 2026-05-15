@@ -29,7 +29,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)",
-      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)"
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)",
+      "PowerShell($env:DATABASE_URL = \"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\"; cd \"c:\\\\Users\\\\user\\\\cockmanager\"; npx prisma migrate resolve --rolled-back 202603270003_add_session_guests 2>&1)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\" npx prisma migrate resolve --rolled-back 202603270003_add_session_guests)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"
