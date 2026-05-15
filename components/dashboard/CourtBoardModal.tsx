@@ -119,14 +119,36 @@ function getPlayerTag(participant: SessionParticipant): string {
   return "";
 }
 
+function computeGameCounts(history: CompletedMatch[]): Map<number, number> {
+  const counts = new Map<number, number>();
+  for (const match of history) {
+    for (const player of [...match.teamA, ...match.teamB]) {
+      counts.set(player.participantId, (counts.get(player.participantId) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+// ── 게임 카운트 뱃지 ─────────────────────────────────────────────
+function GameCountBadge({ count, selected }: { count: number; selected?: boolean }) {
+  if (count === 0) return null;
+  return (
+    <span className={`shrink-0 text-sm font-black ${selected ? "text-white/90" : "text-amber-500"}`}>
+      {count}G
+    </span>
+  );
+}
+
 // ── 대기 선수 풀 칩 ──────────────────────────────────────────────
 function PoolChip({
   participant,
   isSelected,
+  gameCount,
   onClick,
 }: {
   participant: SessionParticipant;
   isSelected: boolean;
+  gameCount: number;
   onClick: () => void;
 }) {
   const isGuest = Boolean(participant.guestName);
@@ -147,6 +169,7 @@ function PoolChip({
       <span className={`min-w-0 flex-1 truncate text-base font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
         {name}
       </span>
+      <GameCountBadge count={gameCount} selected={isSelected} />
       <span className={`flex shrink-0 items-center gap-1 text-[11px] font-semibold ${isSelected ? "text-sky-100" : "text-slate-500"}`}>
         {isGuest ? (
           <span className={`rounded px-1 text-[10px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-violet-100 text-violet-600"}`}>
@@ -175,11 +198,13 @@ function CourtPlayerChip({
   player,
   participant,
   team,
+  gameCount,
   onRemove,
 }: {
   player: CourtPlayer;
   participant: SessionParticipant | undefined;
   team: "A" | "B";
+  gameCount: number;
   onRemove: () => void;
 }) {
   const isGuest = Boolean(participant?.guestName);
@@ -191,6 +216,7 @@ function CourtPlayerChip({
   return (
     <div className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${teamBg}`}>
       <span className="min-w-0 flex-1 truncate text-base font-black text-slate-800">{player.name}</span>
+      <GameCountBadge count={gameCount} />
       <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-500">
         {isGuest ? (
           <span className="rounded bg-violet-100 px-1 text-[10px] font-bold text-violet-600">게스트</span>
@@ -229,10 +255,12 @@ function winnerBadgeClass(w: MatchWinner) {
 function MobilePoolChip({
   participant,
   isSelected,
+  gameCount,
   onClick,
 }: {
   participant: SessionParticipant;
   isSelected: boolean;
+  gameCount: number;
   onClick: () => void;
 }) {
   const isGuest = Boolean(participant.guestName);
@@ -249,9 +277,16 @@ function MobilePoolChip({
           : "border-slate-200 bg-white hover:border-sky-300 hover:bg-sky-50"
       }`}
     >
-      <span className={`text-xs font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
-        {name}
-      </span>
+      <div className="flex items-center gap-1.5">
+        <span className={`text-xs font-black leading-tight ${isSelected ? "text-white" : "text-slate-800"}`}>
+          {name}
+        </span>
+        {gameCount > 0 && (
+          <span className={`text-xs font-black ${isSelected ? "text-white/90" : "text-amber-500"}`}>
+            {gameCount}G
+          </span>
+        )}
+      </div>
       <span className={`mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight ${isSelected ? "text-sky-100" : "text-slate-500"}`}>
         <span className={`rounded px-0.5 text-[9px] font-bold ${isSelected ? "bg-white/20 text-white" : isGuest ? "bg-violet-100 text-violet-600" : "bg-emerald-100 text-emerald-700"}`}>
           {isGuest ? "게" : "회"}
@@ -299,6 +334,9 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
 
   // 참가자 id → 객체 맵
   const participantMap = new Map(registeredParticipants.map((p) => [p.id, p]));
+
+  // history에서 참가자별 게임 카운트 계산
+  const gameCounts = computeGameCounts(boardData.history);
 
   const assignedIds = getAllAssignedIds(boardData.courts);
   const poolParticipants = registeredParticipants.filter((p) => !assignedIds.has(p.id));
@@ -686,6 +724,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                       key={p.id}
                       participant={p}
                       isSelected={selectedParticipantId === p.id}
+                      gameCount={gameCounts.get(p.id) ?? 0}
                       onClick={() => handleSelectPool(p.id)}
                     />
                   ))
@@ -744,6 +783,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                               player={player}
                               participant={participantMap.get(player.participantId)}
                               team="A"
+                              gameCount={gameCounts.get(player.participantId) ?? 0}
                               onRemove={() => handleRemoveFromCourt(court.id, "A", player.participantId)}
                             />
                           ))}
@@ -773,6 +813,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                               player={player}
                               participant={participantMap.get(player.participantId)}
                               team="B"
+                              gameCount={gameCounts.get(player.participantId) ?? 0}
                               onRemove={() => handleRemoveFromCourt(court.id, "B", player.participantId)}
                             />
                           ))}
@@ -837,6 +878,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                       key={p.id}
                       participant={p}
                       isSelected={selectedParticipantId === p.id}
+                      gameCount={gameCounts.get(p.id) ?? 0}
                       onClick={() => handleSelectPool(p.id)}
                     />
                   ))}
