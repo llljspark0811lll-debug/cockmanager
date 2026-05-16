@@ -118,8 +118,12 @@ function textBlock(
     .join("")}</text>`;
 }
 
+function stripTrialPrefix(name: string) {
+  return name.replace(/^\[체험( 게스트)?\]\s*/, "");
+}
+
 function playerText(player: SessionBracketPlayerEntry) {
-  return `${player.name} ${normalizeGenderLabel(player.gender)} · ${player.level}`;
+  return `${stripTrialPrefix(player.name)} ${normalizeGenderLabel(player.gender)} · ${player.level}`;
 }
 
 function teamText(players: SessionBracketPlayerEntry[]) {

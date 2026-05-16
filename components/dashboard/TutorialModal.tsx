@@ -353,6 +353,7 @@ export function TutorialModal({
     setStep("welcome");
     setSampleSessionId(null);
     setErrorMsg("");
+    onSwitchTab("members");
     onClose();
   }
 
@@ -396,21 +397,21 @@ export function TutorialModal({
 
       <div
         ref={cardRef}
-        className={`pointer-events-auto absolute left-1/2 z-[91] w-[min(92vw,27rem)] -translate-x-1/2 rounded-[1.25rem] border border-white/70 bg-white/95 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:-translate-y-1/2 md:translate-x-0 ${step === "generate" ? "top-4 bottom-auto" : "bottom-4 top-auto"}`}
+        className={`pointer-events-auto absolute left-1/2 z-[91] flex w-[min(92vw,27rem)] -translate-x-1/2 flex-col rounded-[1.25rem] border border-white/70 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:max-h-[90vh] md:-translate-y-1/2 md:translate-x-0 ${step === "generate" ? "top-4 bottom-auto max-h-[45vh]" : "bottom-2 top-auto max-h-[42vh]"}`}
       >
-        <div>
+        <div className="overflow-y-auto p-5 pb-0">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
             콕매니저 첫 체험
           </p>
           <h2 className="mt-2 text-xl font-black leading-7 text-slate-900">
             {stepMeta.title}
           </h2>
+          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
+            {stepMeta.description}
+          </p>
         </div>
 
-        <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
-          {stepMeta.description}
-        </p>
-
+        <div className="shrink-0 p-5 pt-3">
         {isLoading ? (
           <div className="mt-5 flex justify-center">
             <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-sky-500" />
@@ -424,7 +425,7 @@ export function TutorialModal({
         ) : null}
 
         {!isLoading ? (
-          <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="mt-4 flex items-center justify-between gap-3">
             {isWelcome ? (
               <button
                 onClick={() => {
@@ -564,7 +565,7 @@ export function TutorialModal({
         ) : null}
 
         {!isWelcome && !isLoading && !isDone ? (
-          <div className="mt-5 flex justify-center gap-1.5">
+          <div className="mt-4 flex justify-center gap-1.5">
             {progressSteps.map((item) => (
               <div
                 key={item}
@@ -575,6 +576,7 @@ export function TutorialModal({
             ))}
           </div>
         ) : null}
+        </div>
       </div>
     </div>
   );

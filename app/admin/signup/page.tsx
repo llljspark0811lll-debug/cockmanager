@@ -58,8 +58,8 @@ export default function AdminSignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-lg">
+    <main className="min-h-screen bg-gray-100 px-4 py-10">
+      <div className="mx-auto w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-lg">
         <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">
           새 클럽/소모임 만들기
         </h1>
