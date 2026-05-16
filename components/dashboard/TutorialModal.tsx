@@ -103,6 +103,7 @@ export function TutorialModal({
   const [sampleSessionId, setSampleSessionId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 
   const stepMeta = useMemo<StepMeta>(() => {
     switch (step) {
@@ -289,6 +290,11 @@ export function TutorialModal({
     }
   }, [bracketGenerated, open, step]);
 
+  // step 바뀔 때마다 카드 스크롤 상단으로 리셋
+  useEffect(() => {
+    scrollAreaRef.current?.scrollTo({ top: 0 });
+  }, [step]);
+
   async function handleStart() {
     setStep("seeding");
     setErrorMsg("");
@@ -399,7 +405,7 @@ export function TutorialModal({
         ref={cardRef}
         className={`pointer-events-auto absolute left-1/2 z-[91] flex w-[min(92vw,27rem)] -translate-x-1/2 flex-col rounded-[1.25rem] border border-white/70 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:max-h-[90vh] md:-translate-y-1/2 md:translate-x-0 ${step === "generate" ? "top-4 bottom-auto max-h-[45vh]" : "bottom-2 top-auto max-h-[42vh]"}`}
       >
-        <div className="overflow-y-auto p-5 pb-0">
+        <div ref={scrollAreaRef} className="overflow-y-auto p-5 pb-0">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
             콕매니저 첫 체험
           </p>

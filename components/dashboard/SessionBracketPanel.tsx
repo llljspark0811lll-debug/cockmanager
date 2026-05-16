@@ -10,6 +10,7 @@ import { normalizeGenderLabel } from "@/components/dashboard/utils";
 import {
   buildBracketImageFiles,
   downloadFiles,
+  stripTrialPrefix,
 } from "@/components/dashboard/session-bracket-export";
 
 type SessionBracketPanelProps = {
@@ -1514,7 +1515,7 @@ export function SessionBracketPanel({
                                           ].join(" ")}
                                         >
                                           <span className="whitespace-nowrap">
-                                            {player.name}
+                                            {stripTrialPrefix(player.name)}
                                           </span>
                                           <span
                                             className={[
@@ -1555,7 +1556,7 @@ export function SessionBracketPanel({
                               key={`${round.roundNumber}-${player.playerId}`}
                               className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600"
                             >
-                              {player.name}
+                              {stripTrialPrefix(player.name)}
                             </span>
                           ))}
                         </div>
@@ -1585,7 +1586,7 @@ export function SessionBracketPanel({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-black text-slate-900">
-                          {player.name}
+                          {stripTrialPrefix(player.name)}
                         </p>
                         <p className="mt-1 truncate text-xs text-slate-500">
                           {playerBadgeLabel(player)}

@@ -69,6 +69,7 @@ export default function AdminSignupPage() {
             placeholder="클럽/소모임 이름"
             className="w-full rounded-lg border p-3"
             value={form.clubName}
+            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -81,6 +82,7 @@ export default function AdminSignupPage() {
             className="w-full rounded-lg border p-3"
             value={form.username}
             inputMode="text"
+            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -96,6 +98,7 @@ export default function AdminSignupPage() {
             placeholder="비밀번호"
             className="w-full rounded-lg border p-3"
             value={form.password}
+            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -108,6 +111,7 @@ export default function AdminSignupPage() {
             placeholder="비밀번호 확인"
             className="w-full rounded-lg border p-3"
             value={form.confirmPassword}
+            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
               setForm({
                 ...form,
@@ -121,6 +125,7 @@ export default function AdminSignupPage() {
               placeholder="관리자 이메일"
               className="w-full rounded-lg border p-3"
               value={form.email}
+              onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
               onChange={(event) =>
                 setForm({
                   ...form,

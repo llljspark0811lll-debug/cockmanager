@@ -118,7 +118,7 @@ function textBlock(
     .join("")}</text>`;
 }
 
-function stripTrialPrefix(name: string) {
+export function stripTrialPrefix(name: string) {
   return name.replace(/^\[체험( 게스트)?\]\s*/, "");
 }
 

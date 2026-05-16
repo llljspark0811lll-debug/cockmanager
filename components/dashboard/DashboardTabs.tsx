@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { DashboardTab } from "@/components/dashboard/types";
 
 type DashboardTabsProps = {
@@ -24,11 +25,18 @@ export function DashboardTabs({
   requestsCount,
   onChange,
 }: DashboardTabsProps) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [activeTab]);
+
   return (
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:none] snap-x snap-mandatory">
       {tabs.map((tab) => (
         <button
           key={tab.id}
+          ref={activeTab === tab.id ? activeRef : null}
           onClick={() => onChange(tab.id)}
           data-tutorial-id={`tab-${tab.id}`}
           className={`inline-flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${
