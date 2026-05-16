@@ -58,7 +58,8 @@ export default function AdminSignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 px-4 py-10">
+    // pt-10: 상단 여백 / pb-[60vh]: 키보드가 올라와도 스크롤 공간 확보
+    <main className="bg-gray-100 px-4 pt-10 pb-[60vh]">
       <div className="mx-auto w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-lg">
         <h1 className="mb-6 text-center text-2xl font-bold text-slate-900">
           새 클럽/소모임 만들기
@@ -69,12 +70,8 @@ export default function AdminSignupPage() {
             placeholder="클럽/소모임 이름"
             className="w-full rounded-lg border p-3"
             value={form.clubName}
-            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
-              setForm({
-                ...form,
-                clubName: event.target.value,
-              })
+              setForm({ ...form, clubName: event.target.value })
             }
           />
           <input
@@ -82,12 +79,8 @@ export default function AdminSignupPage() {
             className="w-full rounded-lg border p-3"
             value={form.username}
             inputMode="text"
-            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
-              setForm({
-                ...form,
-                username: event.target.value,
-              })
+              setForm({ ...form, username: event.target.value })
             }
           />
           <p className="-mt-2 text-xs leading-5 text-slate-500">
@@ -98,12 +91,8 @@ export default function AdminSignupPage() {
             placeholder="비밀번호"
             className="w-full rounded-lg border p-3"
             value={form.password}
-            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
-              setForm({
-                ...form,
-                password: event.target.value,
-              })
+              setForm({ ...form, password: event.target.value })
             }
           />
           <input
@@ -111,12 +100,8 @@ export default function AdminSignupPage() {
             placeholder="비밀번호 확인"
             className="w-full rounded-lg border p-3"
             value={form.confirmPassword}
-            onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
             onChange={(event) =>
-              setForm({
-                ...form,
-                confirmPassword: event.target.value,
-              })
+              setForm({ ...form, confirmPassword: event.target.value })
             }
           />
           <div className="space-y-2">
@@ -125,12 +110,8 @@ export default function AdminSignupPage() {
               placeholder="관리자 이메일"
               className="w-full rounded-lg border p-3"
               value={form.email}
-              onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" })}
               onChange={(event) =>
-                setForm({
-                  ...form,
-                  email: event.target.value,
-                })
+                setForm({ ...form, email: event.target.value })
               }
             />
             <p className="text-xs leading-5 text-slate-500">
