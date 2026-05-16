@@ -88,7 +88,7 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-[420px] rounded-2xl bg-white p-10 shadow-xl">
         <h1 className="mb-2 text-center text-2xl font-bold text-gray-900">
-          콕매니저 관리자 로그인
+          관리자 로그인
         </h1>
 
         <p className="mb-6 text-center text-sm text-gray-500">
