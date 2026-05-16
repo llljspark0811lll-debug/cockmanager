@@ -232,9 +232,7 @@ export function TutorialModal({
         ? ["bracket-generate-button"]
         : step === "bracketView"
           ? ["bracket-rounds"]
-          : step === "export"
-            ? ["bracket-export-button"]
-            : [];
+          : [];
 
     const isAllowedTarget = (target: EventTarget | null) => {
       if (!(target instanceof HTMLElement)) return false;
