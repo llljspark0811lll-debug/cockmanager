@@ -1474,38 +1474,137 @@ function buildRoundMatchesForTeamBattlePool(
   }));
 }
 
-function buildRoundMatchesForPool(
+function calculateMixedMatchCount(maleCount: number, femaleCount: number): number {
+  // 엄격한 4의 배수 조건 없이 최대한 많은 혼복 코트 수를 반환
+  return Math.min(Math.floor(maleCount / 2), Math.floor(femaleCount / 2));
+}
+
+function evaluateMixedGenderPairing(
+  maleCouple: InternalPlayer[],
+  femaleCouple: InternalPlayer[],
+  division: DivisionKey,
+  label: string,
+  courtNumber: number,
+  partnerHistory: Map<string, number>,
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>,
+  fixedPairMap: Map<string, string>
+): MatchCandidate | null {
+  const [m1, m2] = maleCouple;
+  const [f1, f2] = femaleCouple;
+  if (!m1 || !m2 || !f1 || !f2) return null;
+
+  // 혼복 팀 배정만 허용: (남+여) vs (남+여)
+  const pairings: [InternalPlayer[], InternalPlayer[]][] = [
+    [[m1, f1], [m2, f2]],
+    [[m1, f2], [m2, f1]],
+  ];
+
+  let bestCandidate: MatchCandidate | null = null;
+
+  for (const [teamAPlayers, teamBPlayers] of pairings) {
+    if (!isPairingValidForFixedPairs(teamAPlayers, teamBPlayers, fixedPairMap)) {
+      continue;
+    }
+
+    const teamATotal = teamAPlayers.reduce((total, p) => total + p.score, 0);
+    const teamBTotal = teamBPlayers.reduce((total, p) => total + p.score, 0);
+    const balanceGap = Math.abs(teamATotal - teamBTotal);
+    const quartet = [...teamAPlayers, ...teamBPlayers];
+    const scoreSpread =
+      Math.max(...quartet.map((p) => p.score)) -
+      Math.min(...quartet.map((p) => p.score));
+
+    const partnerPenalty =
+      (partnerHistory.get(
+        keyForPair(teamAPlayers[0]!.playerId, teamAPlayers[1]!.playerId)
+      ) ?? 0) *
+        FIXED_PAIR_REPEAT_WEIGHT +
+      (partnerHistory.get(
+        keyForPair(teamBPlayers[0]!.playerId, teamBPlayers[1]!.playerId)
+      ) ?? 0) *
+        FIXED_PAIR_REPEAT_WEIGHT;
+
+    const opponentPenalty = [
+      [teamAPlayers[0]!, teamBPlayers[0]!],
+      [teamAPlayers[0]!, teamBPlayers[1]!],
+      [teamAPlayers[1]!, teamBPlayers[0]!],
+      [teamAPlayers[1]!, teamBPlayers[1]!],
+    ].reduce(
+      (total, [left, right]) =>
+        total +
+        (opponentHistory.get(keyForPair(left.playerId, right.playerId)) ?? 0) *
+          OPPONENT_REPEAT_WEIGHT,
+      0
+    );
+
+    const fixedPairBalancePenalty = getFixedPairBalanceProtectionPenalty(
+      teamAPlayers,
+      teamBPlayers,
+      teamATotal,
+      teamBTotal,
+      balanceGap,
+      fixedPairMap
+    );
+
+    const score =
+      balanceGap * BALANCE_GAP_WEIGHT +
+      partnerPenalty +
+      opponentPenalty +
+      fixedPairBalancePenalty +
+      scoreSpread * 3 +
+      getPairingRandomBias(teamAPlayers, teamBPlayers, randomOrder);
+
+    const candidate: MatchCandidate = {
+      score,
+      playerIds: quartet.map((p) => p.playerId),
+      match: {
+        courtNumber,
+        label,
+        division,
+        balanceGap,
+        teamA: { players: teamAPlayers, totalScore: teamATotal },
+        teamB: { players: teamBPlayers, totalScore: teamBTotal },
+      },
+    };
+
+    if (!bestCandidate || candidate.score < bestCandidate.score) {
+      bestCandidate = candidate;
+    }
+  }
+
+  return bestCandidate;
+}
+
+function buildStandardMatchesFromPool(
   pool: Pool,
-  selectedPlayers: InternalPlayer[],
+  players: InternalPlayer[],
   firstCourtNumber: number,
   partnerHistory: Map<string, number>,
   opponentHistory: Map<string, number>,
   randomOrder: Map<string, number>,
   random: RandomFn,
   fixedPairMap: Map<string, string>
-) {
-  const orderedPlayers = shuffleArray(selectedPlayers, random);
+): { matches: SessionBracketMatch[]; nextCourtNumber: number } {
+  const ordered = [...players];
   const matches: SessionBracketMatch[] = [];
   let nextCourtNumber = firstCourtNumber;
 
-  while (orderedPlayers.length >= 4) {
-    const anchorIndex = Math.floor(random() * orderedPlayers.length);
-    const anchor = orderedPlayers[anchorIndex]!;
-    const remaining = orderedPlayers.filter((_, index) => index !== anchorIndex);
+  while (ordered.length >= 4) {
+    const anchorIndex = Math.floor(random() * ordered.length);
+    const anchor = ordered[anchorIndex]!;
+    const remaining = ordered.filter((_, index) => index !== anchorIndex);
     const combos = shuffleArray(generateCombinations(remaining, 3), random);
-
     const candidates: MatchCandidate[] = [];
 
     for (const combo of combos) {
       const quartet = [anchor, ...combo];
       const quartetIds = new Set(quartet.map((p) => p.playerId));
-
-      // 怨좎젙 ?뚰듃?덇? ??荑쇳뀩?먮뒗 ?녿뒗???꾩쭅 ?⑥? ?좎닔 以묒뿉 ?덈떎硫???遺꾨━ ??嫄대꼫?
       const splitsPair = quartet.some((player) => {
         const partnerId = fixedPairMap.get(player.playerId);
         return (
           partnerId !== undefined &&
-          orderedPlayers.some((p) => p.playerId === partnerId) &&
+          ordered.some((p) => p.playerId === partnerId) &&
           !quartetIds.has(partnerId)
         );
       });
@@ -1521,20 +1620,13 @@ function buildRoundMatchesForPool(
         randomOrder,
         fixedPairMap
       );
-
-      if (candidate) {
-        candidates.push(candidate);
-      }
+      if (candidate) candidates.push(candidate);
     }
 
-    const bestCandidate = chooseCandidateFromTopPool(
-      candidates,
-      random
-    );
-
+    const bestCandidate = chooseCandidateFromTopPool(candidates, random);
     if (!bestCandidate) {
       throw new Error(
-        `${pool.label} ?吏꾪몴瑜?援ъ꽦?섏? 紐삵뻽?듬땲?? 怨좎젙 ?뚰듃???ㅼ젙 ?먮뒗 李멸????섏? 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??`
+        `${pool.label} 대진을 구성하지 못했습니다. 고정 파트너 설정 또는 참가 인원을 다시 확인해 주세요.`
       );
     }
 
@@ -1551,14 +1643,227 @@ function buildRoundMatchesForPool(
     matches.push(flippedMatch);
     nextCourtNumber += 1;
 
-    for (let index = orderedPlayers.length - 1; index >= 0; index -= 1) {
-      if (selectedIdSet.has(orderedPlayers[index]!.playerId)) {
-        orderedPlayers.splice(index, 1);
+    for (let index = ordered.length - 1; index >= 0; index -= 1) {
+      if (selectedIdSet.has(ordered[index]!.playerId)) {
+        ordered.splice(index, 1);
       }
     }
   }
 
-  return shuffleArray(matches, random).map((match, index) => ({
+  return { matches, nextCourtNumber };
+}
+
+function adjustSelectedForGenderBalance(
+  selected: InternalPlayer[],
+  poolPlayers: InternalPlayer[],
+  previousRested: Set<string>,
+  states: Map<string, PlayerState>
+): InternalPlayer[] {
+  const females = selected.filter((p) => p.gender === "여");
+  const males = selected.filter((p) => p.gender === "남");
+  const minCount = Math.min(males.length, females.length);
+
+  if (minCount === 0 || minCount % 2 === 0) return selected;
+
+  const selectedIds = new Set(selected.map((p) => p.playerId));
+  const isSmaller = males.length <= females.length ? "남" : "여";
+  const isLarger = isSmaller === "남" ? "여" : "남";
+
+  const smallerSelected = selected.filter((p) => p.gender === isSmaller);
+  const largerResting = poolPlayers.filter(
+    (p) =>
+      !selectedIds.has(p.playerId) &&
+      p.gender === isLarger &&
+      !previousRested.has(p.playerId)
+  );
+
+  if (largerResting.length === 0) return selected;
+
+  const swappableSmaller = smallerSelected.filter(
+    (s) => !previousRested.has(s.playerId)
+  );
+  if (swappableSmaller.length === 0) return selected;
+
+  const playerOut = swappableSmaller.sort(
+    (a, b) =>
+      (states.get(b.playerId)?.games ?? 0) -
+      (states.get(a.playerId)?.games ?? 0)
+  )[0]!;
+  const playerIn = largerResting.sort(
+    (a, b) =>
+      (states.get(a.playerId)?.games ?? 0) -
+      (states.get(b.playerId)?.games ?? 0)
+  )[0]!;
+
+  return selected
+    .filter((p) => p.playerId !== playerOut.playerId)
+    .concat([playerIn]);
+}
+function buildRoundMatchesForPool(
+  pool: Pool,
+  selectedPlayers: InternalPlayer[],
+  firstCourtNumber: number,
+  partnerHistory: Map<string, number>,
+  opponentHistory: Map<string, number>,
+  randomOrder: Map<string, number>,
+  random: RandomFn,
+  fixedPairMap: Map<string, string>
+) {
+  const allMatches: SessionBracketMatch[] = [];
+  let nextCourtNumber = firstCourtNumber;
+
+  // 통합 복식(ALL) 모드이고 남녀가 모두 있을 때 혼복 우선 배정
+  if (pool.key === "ALL") {
+    const males = selectedPlayers.filter((p) => p.gender === "남");
+    const females = selectedPlayers.filter((p) => p.gender === "여");
+
+    if (males.length >= 2 && females.length >= 2) {
+      const mixedCount = calculateMixedMatchCount(males.length, females.length);
+      const shuffledM = shuffleArray(males, random);
+      const shuffledF = shuffleArray(females, random);
+
+      let remainingMixedM = shuffledM.slice(0, 2 * mixedCount);
+      let remainingMixedF = shuffledF.slice(0, 2 * mixedCount);
+      let leftoverM = shuffleArray(shuffledM.slice(2 * mixedCount), random);
+      let leftoverF = shuffleArray(shuffledF.slice(2 * mixedCount), random);
+
+      // Phase 1: 혼복 대진 구성 (남여 vs 남여)
+      while (remainingMixedM.length >= 2 && remainingMixedF.length >= 2) {
+        const mCombos = shuffleArray(
+          generateCombinations(remainingMixedM, 2),
+          random
+        );
+        const fCombos = shuffleArray(
+          generateCombinations(remainingMixedF, 2),
+          random
+        );
+        const candidates: MatchCandidate[] = [];
+
+        for (const mc of mCombos) {
+          if (wouldSplitFixedPair(mc, remainingMixedM, fixedPairMap)) continue;
+          for (const fc of fCombos) {
+            if (wouldSplitFixedPair(fc, remainingMixedF, fixedPairMap)) continue;
+            const candidate = evaluateMixedGenderPairing(
+              mc,
+              fc,
+              pool.key,
+              pool.label,
+              nextCourtNumber,
+              partnerHistory,
+              opponentHistory,
+              randomOrder,
+              fixedPairMap
+            );
+            if (candidate) candidates.push(candidate);
+          }
+        }
+
+        const best = chooseCandidateFromTopPool(candidates, random);
+        if (!best) break;
+
+        const flipped =
+          random() < 0.5
+            ? best.match
+            : {
+                ...best.match,
+                teamA: best.match.teamB,
+                teamB: best.match.teamA,
+              };
+        allMatches.push(flipped);
+        nextCourtNumber += 1;
+
+        const usedIds = new Set(best.playerIds);
+        remainingMixedM = remainingMixedM.filter(
+          (p) => !usedIds.has(p.playerId)
+        );
+        remainingMixedF = remainingMixedF.filter(
+          (p) => !usedIds.has(p.playerId)
+        );
+      }
+
+      // 혼복 배정 실패한 잔여 인원은 동성 풀에 합류
+      leftoverM = shuffleArray([...leftoverM, ...remainingMixedM], random);
+      leftoverF = shuffleArray([...leftoverF, ...remainingMixedF], random);
+
+      // Phase 2a: 남남 vs 남남 (남자 여유분이 4명 이상인 경우)
+      const mResult = buildStandardMatchesFromPool(
+        pool,
+        leftoverM,
+        nextCourtNumber,
+        partnerHistory,
+        opponentHistory,
+        randomOrder,
+        random,
+        fixedPairMap
+      );
+      allMatches.push(...mResult.matches);
+      nextCourtNumber = mResult.nextCourtNumber;
+      const usedMIds = new Set(
+        mResult.matches.flatMap((m) => [
+          ...m.teamA.players,
+          ...m.teamB.players,
+        ]).map((p) => p.playerId)
+      );
+      leftoverM = leftoverM.filter((p) => !usedMIds.has(p.playerId));
+
+      // Phase 2b: 여여 vs 여여 (여자 여유분이 4명 이상인 경우)
+      const fResult = buildStandardMatchesFromPool(
+        pool,
+        leftoverF,
+        nextCourtNumber,
+        partnerHistory,
+        opponentHistory,
+        randomOrder,
+        random,
+        fixedPairMap
+      );
+      allMatches.push(...fResult.matches);
+      nextCourtNumber = fResult.nextCourtNumber;
+      const usedFIds = new Set(
+        fResult.matches.flatMap((m) => [
+          ...m.teamA.players,
+          ...m.teamB.players,
+        ]).map((p) => p.playerId)
+      );
+      leftoverF = leftoverF.filter((p) => !usedFIds.has(p.playerId));
+
+      // Phase 2c: 불가피한 잔여 인원 (수학적으로 순수 배정 불가한 경우)
+      const unavoidable = shuffleArray([...leftoverM, ...leftoverF], random);
+      if (unavoidable.length >= 4) {
+        const uResult = buildStandardMatchesFromPool(
+          pool,
+          unavoidable,
+          nextCourtNumber,
+          partnerHistory,
+          opponentHistory,
+          randomOrder,
+          random,
+          fixedPairMap
+        );
+        allMatches.push(...uResult.matches);
+        nextCourtNumber = uResult.nextCourtNumber;
+      }
+
+      return shuffleArray(allMatches, random).map((match, index) => ({
+        ...match,
+        courtNumber: firstCourtNumber + index,
+      }));
+    }
+  }
+
+  // 남복/여복 분리 모드 또는 단일 성별인 경우 기존 알고리즘
+  const result = buildStandardMatchesFromPool(
+    pool,
+    shuffleArray(selectedPlayers, random),
+    firstCourtNumber,
+    partnerHistory,
+    opponentHistory,
+    randomOrder,
+    random,
+    fixedPairMap
+  );
+
+  return shuffleArray(result.matches, random).map((match, index) => ({
     ...match,
     courtNumber: firstCourtNumber + index,
   }));
@@ -2058,8 +2363,17 @@ export function generateSessionBracket(
         randomOrder,
         fixedPairMap
       );
+      const finalSelected =
+        pool.key === "ALL"
+          ? adjustSelectedForGenderBalance(
+              selectedPlayers,
+              pool.players,
+              previousRested,
+              states
+            )
+          : selectedPlayers;
       const selectedIdSet = new Set(
-        selectedPlayers.map((player) => player.playerId)
+        finalSelected.map((player) => player.playerId)
       );
       const restingPlayers = pool.players.filter(
         (player) => !selectedIdSet.has(player.playerId)
@@ -2071,7 +2385,7 @@ export function generateSessionBracket(
 
       const poolMatches = buildRoundMatchesForPool(
         pool,
-        selectedPlayers,
+        finalSelected,
         nextCourtNumber,
         partnerHistory,
         opponentHistory,

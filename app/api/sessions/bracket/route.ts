@@ -511,6 +511,7 @@ export async function POST(req: Request) {
       clubName: club?.name ?? String(admin.clubId),
       sessionTitle: session.title,
       generationMode,
+      separateByGender,
     });
 
     return NextResponse.json({

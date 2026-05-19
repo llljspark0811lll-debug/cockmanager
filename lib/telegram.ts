@@ -53,6 +53,7 @@ export type TelegramAlertInput =
       clubName: string;
       sessionTitle: string;
       generationMode: BracketGenerationMode;
+      separateByGender: boolean;
     }
   | {
       event: "SUPPORT_INQUIRY";
@@ -297,6 +298,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `유형: ${getBracketModeLabel(input.generationMode)}`,
+        `성별 분리: ${input.separateByGender ? "남복/여복 분리" : "통합 복식"}`,
       ].join("\n");
 
     case "SUPPORT_INQUIRY":
