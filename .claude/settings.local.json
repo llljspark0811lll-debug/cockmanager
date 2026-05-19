@@ -31,7 +31,11 @@
       "Bash(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)",
       "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\Users\\\\user\\\\cockmanager\\\\prisma\\\\migrations\\\\202605140002_ensure_court_board\" -Force)",
       "PowerShell($env:DATABASE_URL = \"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\"; cd \"c:\\\\Users\\\\user\\\\cockmanager\"; npx prisma migrate resolve --rolled-back 202603270003_add_session_guests 2>&1)",
-      "Bash(DATABASE_URL=\"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\" npx prisma migrate resolve --rolled-back 202603270003_add_session_guests)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\" npx prisma migrate resolve --rolled-back 202603270003_add_session_guests)",
+      "Bash(npx ts-node -e ' *)",
+      "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DIRECT_URL=\"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\"; echo \"SELECT cs.id, cs.title, cs.`\"exerciseDate`\", cs.`\"clubId`\" FROM `\"ClubSession`\" cs WHERE cs.`\"exerciseDate`\" >= '2026-05-17' AND cs.`\"exerciseDate`\" < '2026-05-18' ORDER BY cs.id;\" | npx prisma db execute --url $env:DIRECT_URL --stdin 2>&1)",
+      "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; echo \"SELECT cs.id, cs.title, cs.`\"exerciseDate`\", cs.`\"clubId`\" FROM `\"ClubSession`\" cs WHERE cs.`\"exerciseDate`\" >= '2026-05-17' AND cs.`\"exerciseDate`\" < '2026-05-18' ORDER BY cs.id;\" | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1)",
+      "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; $sql = 'SELECT cs.id, cs.title FROM \"ClubSession\" cs WHERE cs.\"exerciseDate\" >= ''2026-05-17'' AND cs.\"exerciseDate\" < ''2026-05-18'' ORDER BY cs.id;'; $sql | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1; Write-Host \"EXIT:$LASTEXITCODE\")"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"

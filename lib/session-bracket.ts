@@ -511,10 +511,6 @@ function sortPlayersForSelection(
       return leftState.lastPlayedRound - rightState.lastPlayedRound;
     }
 
-    if (left.score !== right.score) {
-      return right.score - left.score;
-    }
-
     const leftRandom = randomOrder.get(left.playerId) ?? 0;
     const rightRandom = randomOrder.get(right.playerId) ?? 0;
 
