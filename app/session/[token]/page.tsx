@@ -1293,7 +1293,7 @@ export default function PublicSessionPage() {
                         key={value}
                         type="button"
                         onClick={() => setGuestAge(guestAge === value ? "" : value)}
-                        className={`rounded-2xl border py-3 text-[10px] font-bold transition text-center whitespace-nowrap overflow-hidden ${
+                        className={`rounded-2xl border py-3 text-[10px] md:text-sm font-bold transition text-center whitespace-nowrap overflow-hidden ${
                           guestAge === value
                             ? "bg-sky-500 text-white border-sky-500"
                             : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
@@ -1488,7 +1488,7 @@ export default function PublicSessionPage() {
                                 {[{ label: "10/20대", value: "20" }, { label: "30대", value: "30" }, { label: "40대", value: "40" }, { label: "50대", value: "50" }, { label: "60대", value: "60" }].map(({ label, value }) => (
                                   <button key={value} type="button"
                                     onClick={() => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, age: item.age === value ? "" : value } : item) } : previous)}
-                                    className={`rounded-2xl border py-3 text-[10px] font-bold transition text-center whitespace-nowrap overflow-hidden ${guest.age === value ? "bg-sky-500 text-white border-sky-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+                                    className={`rounded-2xl border py-3 text-[10px] md:text-sm font-bold transition text-center whitespace-nowrap overflow-hidden ${guest.age === value ? "bg-sky-500 text-white border-sky-500" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
                                   >{label}</button>
                                 ))}
                               </div>
