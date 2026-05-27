@@ -161,6 +161,14 @@ export type TelegramAlertInput =
       teamA: string[];
       teamB: string[];
       winner: "A" | "B" | null;
+    }
+  | {
+      event: "SUBSCRIPTION_REQUEST";
+      clubId: number;
+      clubName: string;
+      plan: string;
+      amount: number;
+      depositorName: string;
     };
 
 function getTelegramConfig() {
@@ -455,6 +463,15 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `결과: ${winnerLabel}`,
       ].join("\n");
     }
+
+    case "SUBSCRIPTION_REQUEST":
+      return [
+        "💳 구독 입금 신청",
+        `클럽ID: ${input.clubId} | 클럽명: ${input.clubName}`,
+        `플랜: ${input.plan} | 금액: ${formatWon(input.amount)}`,
+        `입금자명: ${input.depositorName}`,
+        `👉 /op 에서 확인 후 승인하세요`,
+      ].join("\n");
   }
 }
 

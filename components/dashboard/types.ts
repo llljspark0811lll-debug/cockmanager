@@ -226,7 +226,7 @@ export interface ClubInfo {
   id: number;
   name: string;
   publicJoinToken: string;
-  calculatedStatus: "TRIAL" | "ACTIVE" | "BLOCKED" | "EXPIRED";
+  calculatedStatus: "TRIAL" | "ACTIVE" | "EXEMPT" | "BLOCKED" | "EXPIRED";
   subscriptionEnd?: string | Date | null;
   customFieldLabel: string;
   adminEmail: string;

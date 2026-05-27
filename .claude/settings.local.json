@@ -35,10 +35,14 @@
       "Bash(npx ts-node -e ' *)",
       "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DIRECT_URL=\"postgresql://postgres:sovmfhrmfoa1234@db.xkmlzgrjcoyfgtnevbgv.supabase.co:5432/postgres?sslmode=require\"; echo \"SELECT cs.id, cs.title, cs.`\"exerciseDate`\", cs.`\"clubId`\" FROM `\"ClubSession`\" cs WHERE cs.`\"exerciseDate`\" >= '2026-05-17' AND cs.`\"exerciseDate`\" < '2026-05-18' ORDER BY cs.id;\" | npx prisma db execute --url $env:DIRECT_URL --stdin 2>&1)",
       "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; echo \"SELECT cs.id, cs.title, cs.`\"exerciseDate`\", cs.`\"clubId`\" FROM `\"ClubSession`\" cs WHERE cs.`\"exerciseDate`\" >= '2026-05-17' AND cs.`\"exerciseDate`\" < '2026-05-18' ORDER BY cs.id;\" | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1)",
-      "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; $sql = 'SELECT cs.id, cs.title FROM \"ClubSession\" cs WHERE cs.\"exerciseDate\" >= ''2026-05-17'' AND cs.\"exerciseDate\" < ''2026-05-18'' ORDER BY cs.id;'; $sql | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1; Write-Host \"EXIT:$LASTEXITCODE\")"
+      "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; $sql = 'SELECT cs.id, cs.title FROM \"ClubSession\" cs WHERE cs.\"exerciseDate\" >= ''2026-05-17'' AND cs.\"exerciseDate\" < ''2026-05-18'' ORDER BY cs.id;'; $sql | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1; Write-Host \"EXIT:$LASTEXITCODE\")",
+      "Bash(mkdir -p \"/mnt/c/Users/user/cockmanager/app/api/subscription/request\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\api\\\\subscription\\\\request\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\op\")"
     ],
     "additionalDirectories": [
-      "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions"
+      "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",
+      "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\subscription"
     ]
   }
 }

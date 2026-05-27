@@ -84,9 +84,15 @@ export async function POST(req: Request) {
     const hashedPassword = await bcrypt.hash(String(password), 10);
 
     const result = await prisma.$transaction(async (tx) => {
+      // 6월 1일 이전 가입 클럽은 기존 클럽과 동일하게 7월 1일 만료 통일
+      const LAUNCH_DATE = new Date("2026-06-01T00:00:00+09:00");
+      const trialEnd = Date.now() < LAUNCH_DATE.getTime()
+        ? new Date("2026-07-01T00:00:00+09:00")
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       const club = await tx.club.create({
         data: {
           name: trimmedClubName,
+          subscriptionEnd: trialEnd,
         },
       });
 

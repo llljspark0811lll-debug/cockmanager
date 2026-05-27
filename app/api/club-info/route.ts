@@ -56,7 +56,6 @@ export async function GET() {
 
     const calculatedStatus = getCalculatedSubscriptionStatus({
       subscriptionStatus: club.subscriptionStatus,
-      createdAt: club.createdAt,
       subscriptionEnd: club.subscriptionEnd,
     });
 

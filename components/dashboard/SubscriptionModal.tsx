@@ -6,20 +6,17 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/subscription";
 const BANK_ACCOUNT = "카카오뱅크 3333-1114-9690-1";
 const ACCOUNT_HOLDER = "박준성";
 
-type SubscriptionOverlayProps = {
-  visible: boolean;
+type SubscriptionModalProps = {
   clubName: string;
-  onDismiss: () => void;
+  onClose: () => void;
 };
 
-export function SubscriptionOverlay({ visible, clubName, onDismiss }: SubscriptionOverlayProps) {
+export function SubscriptionModal({ clubName, onClose }: SubscriptionModalProps) {
   const [step, setStep] = useState<"plan" | "account" | "done">("plan");
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [depositorName, setDepositorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  if (!visible) return null;
 
   async function handleSubmit() {
     if (!selectedPlan || !depositorName.trim()) {
@@ -45,33 +42,18 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-2xl">
-        <div className="flex items-start justify-between">
-          <div className="flex-1" />
-          <div className="text-center text-5xl flex-1">🏸</div>
-          <div className="flex-1 flex justify-end">
-            {step === "plan" && (
-              <button
-                onClick={onDismiss}
-                className="text-slate-400 hover:text-slate-600 text-xl leading-none"
-                aria-label="닫기"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-slate-900">콕매니저🏸 구독 신청</h2>
+          {step !== "done" && (
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+          )}
         </div>
-        <h2 className="mt-4 text-center text-2xl font-black text-slate-900">
-          체험 기간이 끝났습니다
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-500">
-          계속 이용하려면 구독이 필요합니다.
-        </p>
 
         {step === "plan" && (
           <>
-            <div className="mt-6 space-y-3">
+            <div className="mt-5 space-y-3">
               {(Object.entries(SUBSCRIPTION_PLANS) as [SubscriptionPlan, typeof SUBSCRIPTION_PLANS[SubscriptionPlan]][]).map(
                 ([key, plan]) => (
                   <button
@@ -90,7 +72,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
                       </span>
                     </div>
                     {key === "YEARLY" && (
-                      <p className="mt-0.5 text-xs text-emerald-600 font-medium">
+                      <p className="mt-0.5 text-xs font-medium text-emerald-600">
                         월 환산 {Math.round(plan.amount / 12).toLocaleString()}원 · 가장 저렴해요
                       </p>
                     )}
@@ -106,7 +88,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
             <button
               onClick={() => { if (selectedPlan) setStep("account"); }}
               disabled={!selectedPlan}
-              className="mt-5 w-full rounded-2xl bg-sky-600 py-4 font-black text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
+              className="mt-5 w-full rounded-2xl bg-sky-600 py-4 font-black text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300"
             >
               다음
             </button>
@@ -115,7 +97,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
 
         {step === "account" && selectedPlan && (
           <>
-            <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+            <div className="mt-5 rounded-2xl bg-slate-50 p-5">
               <p className="text-sm font-medium text-slate-500">입금 계좌</p>
               <p className="mt-1 text-lg font-black text-slate-900">{BANK_ACCOUNT}</p>
               <p className="mt-0.5 text-sm text-slate-600">예금주: {ACCOUNT_HOLDER}</p>
@@ -137,7 +119,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
                 type="text"
                 value={depositorName}
                 onChange={e => setDepositorName(e.target.value)}
-                placeholder={`예) ${clubName}관리자`}
+                placeholder={`${clubName}`}
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-sky-400"
               />
               <p className="mt-1 text-xs text-slate-400">
@@ -166,15 +148,12 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
         {step === "done" && (
           <div className="mt-8 text-center">
             <div className="text-5xl">✅</div>
-            <p className="mt-4 font-bold text-slate-900">입금 신청이 완료됐습니다!</p>
-            <p className="mt-2 text-sm text-slate-500">
-              입금 확인 후 12시간 이내로 구독이 활성화됩니다.
-            </p>
+            <p className="mt-4 font-bold text-slate-900">입금 신청 완료!</p>
             <button
-              onClick={onDismiss}
+              onClick={onClose}
               className="mt-6 w-full rounded-2xl bg-sky-600 py-3 font-bold text-white hover:bg-sky-700"
             >
-              회원 조회로 돌아가기
+              닫기
             </button>
           </div>
         )}

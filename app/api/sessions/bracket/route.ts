@@ -17,13 +17,13 @@ import { NextResponse } from "next/server";
 type BracketMode = "STANDARD" | "TEAM_BATTLE";
 
 const RELAXED_MODE_MESSAGE =
-  "?꾩옱 議곌굔?먯꽌??紐⑤뱺 ?좎닔??寃쎄린?? ?댁떇?? 諛몃윴?ㅻ? 留뚯”?섎뒗 ?吏꾪몴瑜?留뚮뱾 ???놁뒿?덈떎.";
+  "현재 조건에서는 모든 선수의 경기수, 휴식수, 밸런스를 만족하는 대진표를 만들 수 없습니다.";
 
 const RELAXABLE_ERROR_PATTERNS = [
-  "?곗냽 ?댁떇 ?놁씠",
-  "吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎",
-  "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗튂?????놁뒿?덈떎",
-  "理쒖냼 寃쎄린 ?섎? 諛곗젙?????놁뒿?덈떎",
+  "연속 휴식 없이",
+  "직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다",
+  "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다",
+  "최소 경기 수를 배정할 수 없습니다",
 ];
 
 function canProceedWithRelaxedMode(errorMessage: string) {
@@ -34,9 +34,9 @@ function canProceedWithRelaxedMode(errorMessage: string) {
 
 function buildRelaxedModeWarnings() {
   return [
-    "?쇰? ?좎닔????寃쎄린 ?곗냽 ?댁떇?????덉뒿?덈떎.",
-    "媛숈? ?뚰듃?덈굹 ?곷?瑜??ㅼ떆 留뚮궇 ???덉뒿?덈떎.",
-    "?쇰? ?좎닔??寃쎄린 ?섎굹 諛몃윴?ㅺ? ?꾨꼍?섍쾶 留욎? ?딆쓣 ???덉뒿?덈떎.",
+    "일부 선수는 두 경기 연속 휴식할 수 있습니다.",
+    "같은 파트너나 상대를 다시 만날 수 있습니다.",
+    "일부 선수의 경기 수나 밸런스가 완벽하게 맞지 않을 수 있습니다.",
   ];
 }
 
@@ -305,7 +305,7 @@ function buildBracketPlayers(
 ) {
   const players: SessionBracketPlayerInput[] = [];
 
-  const stripSamplePrefix = (name: string) => name.replace(/^\[泥댄뿕\]\s*/, "").replace(/^\[泥댄뿕\s*寃뚯뒪??]\s*/, "");
+  const stripSamplePrefix = (name: string) => name.replace(/^\[샘플\]\s*/, "").replace(/^\[샘플[^\]]*\]\s*/, "").replace(/^\[泥댄뿕\s*寃뚯뒪??]\s*/, "");
 
   for (const participant of participants) {
     if (participant.member) {
@@ -371,7 +371,7 @@ export async function GET(req: Request) {
 
     if (!Number.isFinite(sessionId)) {
       return NextResponse.json(
-        { error: "?몄뀡 ?뺣낫瑜??ㅼ떆 ?뺤씤?댁＜?몄슂." },
+        { error: "올바른 세션 ID를 다시 확인해 주세요." },
         { status: 400 }
       );
     }
@@ -381,7 +381,7 @@ export async function GET(req: Request) {
     const session = await findSessionForBracket(sessionId, admin.clubId);
 
     if (!session) {
-      return notFoundResponse("?대룞 ?쇱젙??李얠쓣 ???놁뒿?덈떎.");
+    return notFoundResponse("운동 일정을 찾을 수 없습니다.");
     }
 
     return NextResponse.json({
@@ -393,7 +393,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "?먮룞 ?吏꾪몴 ?뺣낫瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??" },
+      { error: "자동 대진표 정보를 불러오지 못했습니다." },
       { status: 500 }
     );
   }
@@ -446,7 +446,7 @@ export async function POST(req: Request) {
       !Number.isFinite(minGamesPerPlayer)
     ) {
       return NextResponse.json(
-        { error: "?먮룞 ?吏꾪몴 ?ㅼ젙 媛믪쓣 ?ㅼ떆 ?뺤씤?댁＜?몄슂." },
+      { error: "자동 대진표 설정 값을 다시 확인해 주세요." },
         { status: 400 }
       );
     }
@@ -456,13 +456,13 @@ export async function POST(req: Request) {
     const session = await findSessionForBracket(sessionId, admin.clubId);
 
     if (!session) {
-      return notFoundResponse("?대룞 ?쇱젙??李얠쓣 ???놁뒿?덈떎.");
+    return notFoundResponse("운동 일정을 찾을 수 없습니다.");
     }
 
     if (session.status !== "CLOSED") {
       return NextResponse.json(
         {
-          error: "?먮룞 ?吏꾪몴??留덇컧 泥섎━???대룞 ?쇱젙?먯꽌留??앹꽦?????덉뒿?덈떎.",
+          error: "자동 대진표는 마감 처리된 운동 일정에서만 생성할 수 있습니다.",
         },
         { status: 400 }
       );
@@ -542,7 +542,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: "?먮룞 ?吏꾪몴 ?앹꽦???ㅽ뙣?덉뒿?덈떎." },
+      { error: "자동 대진표 생성에 실패했습니다." },
       { status: 500 }
     );
   }

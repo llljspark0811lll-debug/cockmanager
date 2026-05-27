@@ -211,6 +211,8 @@ export function SessionBracketPanel({
       setError("");
       setBracket(null);
 
+      let autoSwitching = false;
+
       try {
           const response = await fetch(
           `/api/sessions/bracket?sessionId=${session.id}&generationMode=${generationMode}`,
@@ -230,6 +232,27 @@ export function SessionBracketPanel({
 
         if (cancelled) {
           return;
+        }
+
+        // STANDARD 모드에서 저장된 대진표가 없을 때,
+        // 팀 대항 대진표가 있으면 자동으로 팀 대항 모드로 전환합니다.
+        if (!data.bracket && generationMode === "STANDARD") {
+          try {
+            const tbRes = await fetch(
+              `/api/sessions/bracket?sessionId=${session.id}&generationMode=TEAM_BATTLE`,
+              { credentials: "include" }
+            );
+            if (tbRes.ok && !cancelled) {
+              const tbData = (await tbRes.json()) as BracketApiResponse;
+              if (tbData.bracket && !cancelled) {
+                autoSwitching = true;
+                setGenerationMode("TEAM_BATTLE");
+                return;
+              }
+            }
+          } catch {
+            // 자동 감지 실패 시 무시하고 빈 상태로 표시
+          }
         }
 
         setBracket(data.bracket);
@@ -287,7 +310,7 @@ export function SessionBracketPanel({
           );
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && !autoSwitching) {
           setLoading(false);
           setLoaded(true);
         }

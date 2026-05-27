@@ -17,13 +17,31 @@ model Club {
   tutorialCompleted  Boolean  @default(false)
   createdAt          DateTime @default(now())
 
-  admins        Admin[]
-  members       Member[]
-  memberRequest MemberRequest[]
-  payments      Payment[]
-  sessions      ClubSession[]
-  specialFees   SpecialFee[]
-  positions     ClubPosition[]
+  admins               Admin[]
+  members              Member[]
+  memberRequest        MemberRequest[]
+  payments             Payment[]
+  sessions             ClubSession[]
+  specialFees          SpecialFee[]
+  positions            ClubPosition[]
+  subscriptionRequests SubscriptionRequest[]
+}
+
+model SubscriptionRequest {
+  id            Int       @id @default(autoincrement())
+  plan          String    // "MONTHLY" | "QUARTERLY" | "YEARLY"
+  amount        Int
+  depositorName String
+  status        String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  note          String?
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+
+  clubId Int
+  club   Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId])
+  @@index([status, createdAt])
 }
 
 model Admin {

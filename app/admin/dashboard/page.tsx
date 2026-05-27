@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { nanoid } from "nanoid";
+
 import { AttendancePanel } from "@/components/dashboard/AttendancePanel";
 import { ClubSettingsPanel } from "@/components/dashboard/ClubSettingsPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -25,6 +25,7 @@ import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
 import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
+import { TrialBanner } from "@/components/dashboard/TrialBanner";
 import { TutorialModal } from "@/components/dashboard/TutorialModal";
 import { SupportModal } from "@/components/dashboard/SupportModal";
 import { DeleteAccountModal } from "@/components/dashboard/DeleteAccountModal";
@@ -46,11 +47,6 @@ import type {
   SpecialFee,
 } from "@/components/dashboard/types";
 import { toDateInputValue } from "@/components/dashboard/utils";
-import {
-  getPaymentMode,
-  getSubscriptionAmount,
-  getTossClientKey,
-} from "@/lib/payments-client";
 
 function buildLedgerDateRange(year: number, month: number): LedgerDateRange {
   const start = new Date(year, month - 1, 1);
@@ -62,24 +58,6 @@ function buildLedgerDateRange(year: number, month: number): LedgerDateRange {
   };
 }
 
-declare global {
-  interface Window {
-    TossPayments?: (clientKey: string) => {
-      payment: (input: { customerKey: string }) => {
-        requestPayment: (input: {
-          method: string;
-          amount: { currency: string; value: number };
-          orderId: string;
-          orderName: string;
-          successUrl: string;
-          failUrl: string;
-          customerEmail?: string;
-          customerName?: string;
-        }) => Promise<void>;
-      };
-    };
-  }
-}
 
 const initialForm: MemberFormState = {
   name: "",
@@ -166,9 +144,6 @@ export default function DashboardPage() {
   const [editingMember, setEditingMember] =
     useState<Member | null>(null);
   const [form, setForm] = useState<MemberFormState>(initialForm);
-  const [sdkReady, setSdkReady] = useState(false);
-  const [paymentLoading, setPaymentLoading] =
-    useState(false);
   const [customFieldLabelDraft, setCustomFieldLabelDraft] =
     useState("소속클럽");
   const [customFieldLabelDirty, setCustomFieldLabelDirty] =
@@ -244,9 +219,18 @@ export default function DashboardPage() {
   const [tutorialBracketGenerated, setTutorialBracketGenerated] =
     useState(false);
 
-  const paymentMode = getPaymentMode();
-  const subscriptionAmount = getSubscriptionAmount();
-  const tossClientKey = getTossClientKey();
+  // Trial banner: show when 1–10 days remaining (day 20–29 of 30-day trial)
+  const subscriptionEndDate = clubInfo?.subscriptionEnd
+    ? new Date(clubInfo.subscriptionEnd)
+    : null;
+  const trialDaysRemaining = subscriptionEndDate
+    ? Math.ceil((subscriptionEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const showTrialBanner =
+    clubInfo?.calculatedStatus === "TRIAL" &&
+    trialDaysRemaining !== null &&
+    trialDaysRemaining >= 1 &&
+    trialDaysRemaining <= 10;
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   const publicJoinLink =
@@ -272,6 +256,29 @@ export default function DashboardPage() {
   const isExpired =
     clubInfo?.calculatedStatus === "EXPIRED" ||
     clubInfo?.calculatedStatus === "BLOCKED";
+  const [overlayDismissed, setOverlayDismissed] = useState(false);
+
+  // 만료 오버레이를 한 번 닫으면 localStorage에 저장 → 재로그인 시 자동 팝업 안 뜸
+  // 구독이 다시 활성화되면 플래그 초기화 (다음 만료 시 다시 한 번 노출)
+  useEffect(() => {
+    if (!clubInfo) return;
+    const key = `sub_overlay_dismissed_${clubInfo.id}`;
+    if (isExpired) {
+      if (localStorage.getItem(key) === "1") {
+        setOverlayDismissed(true);
+      }
+    } else {
+      // 구독 활성 상태일 때 플래그 초기화 (다음 만료 시 다시 팝업)
+      localStorage.removeItem(key);
+      setOverlayDismissed(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubInfo?.id, isExpired]);
+
+  // 만료 시 무료로 사용 가능한 탭
+  const FREE_TABS: DashboardTab[] = ["members", "sessions", "requests", "fees"];
+  const PAID_TABS: DashboardTab[] = ["attendance", "deleted", "stats"];
+  const disabledTabs: DashboardTab[] = isExpired && overlayDismissed ? PAID_TABS : [];
   const hasCachedFeesForSelectedYear = Boolean(
     feesCache[selectedYear]
   );
@@ -959,29 +966,6 @@ export default function DashboardPage() {
     };
   }, [activeTab, selectedSessionId]);
 
-  useEffect(() => {
-    if (window.TossPayments) {
-      setSdkReady(true);
-      return;
-    }
-
-    const existingScript = document.querySelector(
-      'script[data-toss-sdk="true"]'
-    ) as HTMLScriptElement | null;
-
-    if (existingScript) {
-      existingScript.addEventListener("load", () =>
-        setSdkReady(true)
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://js.tosspayments.com/v2/standard";
-    script.dataset.tossSdk = "true";
-    script.onload = () => setSdkReady(true);
-    document.head.appendChild(script);
-  }, []);
 
   useEffect(() => {
     window.history.pushState(
@@ -1014,47 +998,6 @@ export default function DashboardPage() {
     };
   }, [router]);
 
-  async function handlePayment() {
-    if (!clubInfo) {
-      alert("클럽/소모임 정보를 불러오는 중입니다.");
-      return;
-    }
-
-    if (!sdkReady || !window.TossPayments) {
-      alert("결제 모듈을 불러오는 중입니다.");
-      return;
-    }
-
-    setPaymentLoading(true);
-
-    try {
-      const tossPayments = window.TossPayments(tossClientKey);
-      const payment = tossPayments.payment({
-        customerKey: nanoid(),
-      });
-
-      await payment.requestPayment({
-        method: "CARD",
-        amount: {
-          currency: "KRW",
-          value: subscriptionAmount,
-        },
-        orderId: nanoid(),
-        orderName: `${clubInfo.name} 클럽 구독 결제`,
-        successUrl: `${window.location.origin}/admin/dashboard/payment-success`,
-        failUrl: `${window.location.origin}/admin/dashboard/payment-fail`,
-        customerName: `${clubInfo.name} 관리자`,
-      });
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "결제 요청 중 오류가 발생했습니다.";
-      alert(message);
-    } finally {
-      setPaymentLoading(false);
-    }
-  }
 
   function openCreateMemberModal() {
     setEditingMember(null);
@@ -2137,16 +2080,26 @@ export default function DashboardPage() {
   return (
     <main className="webview-safe min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef5ff_45%,#ffffff_100%)] px-4 py-6 md:px-6">
       <SubscriptionOverlay
-        visible={isExpired}
-        paymentLoading={paymentLoading}
-        paymentMode={paymentMode}
-        amount={subscriptionAmount}
-        onPay={() => {
-          handlePayment().catch((error: Error) => {
-            alert(error.message);
-          });
+        visible={isExpired && !overlayDismissed}
+        clubName={clubInfo?.name ?? ""}
+        onDismiss={() => {
+          setOverlayDismissed(true);
+          // localStorage에 저장 → 이후 재로그인 시 팝업 안 뜸
+          if (clubInfo) {
+            localStorage.setItem(`sub_overlay_dismissed_${clubInfo.id}`, "1");
+          }
+          // 만료 상태에서 닫으면 무료 탭(회원/일정)으로 강제 이동
+          if (!FREE_TABS.includes(activeTab)) {
+            setActiveTab("members");
+          }
         }}
       />
+      {showTrialBanner && trialDaysRemaining !== null && (
+        <TrialBanner
+          daysRemaining={trialDaysRemaining}
+          clubName={clubInfo?.name ?? ""}
+        />
+      )}
       <DashboardTutorial
         open={tutorialOpen}
         step={tutorialSteps[tutorialStepIndex]}
@@ -2206,6 +2159,8 @@ export default function DashboardPage() {
                 clubInfo?.pendingRequestCount ?? requests.length
               }
               onChange={setActiveTab}
+              disabledTabs={disabledTabs}
+              onDisabledTabClick={() => setOverlayDismissed(false)}
             />
           </div>
         </div>

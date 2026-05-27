@@ -960,13 +960,13 @@ function allocateMatchesForRoundTeamBattle(
 
     if (pool.teamAPlayers.length < 2 && (needsGamesA || hasPreviousRestersA)) {
       throw new Error(
-        `${pool.label} ?앹꽦?먮뒗 ${pool.label.includes("?⑤났") ? "A? ?⑥옄" : pool.label.includes("?щ났") ? "A? ?ъ옄" : "A?"} 李멸??먭? 理쒖냼 2紐??댁긽 ?꾩슂?⑸땲??`
+        `${pool.label} 생성하는 ${pool.label.includes("남복") ? "A팀 남자" : pool.label.includes("여복") ? "A팀 여자" : "A팀"} 인원이 최소 2명 이상 필요합니다`
       );
     }
 
     if (pool.teamBPlayers.length < 2 && (needsGamesB || hasPreviousRestersB)) {
       throw new Error(
-        `${pool.label} ?앹꽦?먮뒗 ${pool.label.includes("?⑤났") ? "B? ?⑥옄" : pool.label.includes("?щ났") ? "B? ?ъ옄" : "B?"} 李멸??먭? 理쒖냼 2紐??댁긽 ?꾩슂?⑸땲??`
+        `${pool.label} 생성하는 ${pool.label.includes("남복") ? "B팀 남자" : pool.label.includes("여복") ? "B팀 여자" : "B팀"} 인원이 최소 2명 이상 필요합니다`
       );
     }
 
@@ -987,7 +987,7 @@ function allocateMatchesForRoundTeamBattle(
 
     if (!relaxedMode && required > matchLimit) {
       throw new Error(
-        `${pool.label}?먯꽌 吏곸쟾 ?쇱슫?쒕? ???몄썝??紐⑤몢 ?대쾲 ?쇱슫?쒖뿉 ?ｌ쓣 ???놁뒿?덈떎. ? ?몄썝 ?먮뒗 肄뷀듃 ?섎? ?ㅼ떆 ?뺤씤??二쇱꽭??`
+        `${pool.label}에서 직전 라운드를 쉰 인원을 모두 이번 라운드에 넣을 수 없습니다. 코트 수 또는 참가 인원을 다시 확인해 주세요.`
       );
     }
 
@@ -998,7 +998,7 @@ function allocateMatchesForRoundTeamBattle(
 
   if (!relaxedMode && requiredMatches > courtCount) {
     throw new Error(
-      "吏곸쟾 ?쇱슫???댁떇 ?몄썝??紐⑤몢 ?ㅼ쓬 ?쇱슫?쒖뿉 諛곗젙?????놁뒿?덈떎. 肄뷀듃 ?섎? ?섎━嫄곕굹 ?吏??앹꽦 議곌굔???ㅼ떆 ?뺤씤??二쇱꽭??"
+      "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다. 코트를 늘리거나 대진 생성 조건을 다시 확인해 주세요."
     );
   }
 
@@ -1448,7 +1448,7 @@ function buildRoundMatchesForTeamBattlePool(
 
     if (!bestCandidate) {
       throw new Error(
-        `${pool.label} ?吏꾩쓣 援ъ꽦?섏? 紐삵뻽?듬땲?? ? 諛곗젙 ?먮뒗 怨좎젙 ?뚰듃???ㅼ젙???ㅼ떆 ?뺤씤??二쇱꽭??`
+        `${pool.label} 대진을 구성하지 못했습니다. 팀 배정 또는 고정 파트너 설정을 다시 확인해 주세요.`
       );
     }
 
@@ -2083,14 +2083,14 @@ function generateTeamBattleRounds(
   ).length;
   if (teamACount !== teamBCount) {
     warnings.push(
-      `${teamLabels.A} ${teamACount}紐?/ ${teamLabels.B} ${teamBCount}紐낆쑝濡?? ?몄썝 李⑥씠媛 ?덉뼱 ?쒖そ ????댁떇 ?몄썝????留롮븘吏????덉뒿?덈떎.`
+      `${teamLabels.A} ${teamACount}명 / ${teamLabels.B} ${teamBCount}명으로 인원 차이가 있어 일부 선수의 경기 수가 다를 수 있습니다.`
     );
   }
 
   for (const pool of pools) {
     if (pool.teamAPlayers.length !== pool.teamBPlayers.length) {
       warnings.push(
-        `${pool.label} ?몄썝 李⑥씠濡??쇱슫?쒕퀎 ?댁떇 ?몄썝??怨좊Ⅴ寃??섎돇吏 ?딆쓣 ???덉뒿?덈떎.`
+        `${pool.label} 인원 차이로 휴식자의 경기 수가 균등하지 않을 수 있습니다.`
       );
     }
   }

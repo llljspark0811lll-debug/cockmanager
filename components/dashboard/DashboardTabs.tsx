@@ -5,6 +5,8 @@ type DashboardTabsProps = {
   activeTab: DashboardTab;
   requestsCount: number;
   onChange: (tab: DashboardTab) => void;
+  disabledTabs?: DashboardTab[];
+  onDisabledTabClick?: () => void;
 };
 
 const tabs: Array<{
@@ -24,6 +26,8 @@ export function DashboardTabs({
   activeTab,
   requestsCount,
   onChange,
+  disabledTabs = [],
+  onDisabledTabClick,
 }: DashboardTabsProps) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
 
@@ -33,26 +37,38 @@ export function DashboardTabs({
 
   return (
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:none] snap-x snap-mandatory">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          ref={activeTab === tab.id ? activeRef : null}
-          onClick={() => onChange(tab.id)}
-          data-tutorial-id={`tab-${tab.id}`}
-          className={`inline-flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-            activeTab === tab.id
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
-          }`}
-        >
-          {tab.label}
-          {tab.id === "requests" && requestsCount > 0 ? (
-            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white">
-              {requestsCount}
-            </span>
-          ) : null}
-        </button>
-      ))}
+      {tabs.map((tab) => {
+        const isDisabled = disabledTabs.includes(tab.id);
+        return (
+          <button
+            key={tab.id}
+            ref={activeTab === tab.id ? activeRef : null}
+            onClick={() => {
+              if (isDisabled) {
+                onDisabledTabClick?.();
+              } else {
+                onChange(tab.id);
+              }
+            }}
+            data-tutorial-id={`tab-${tab.id}`}
+            className={`inline-flex shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+              isDisabled
+                ? "bg-white text-slate-300 ring-1 ring-inset ring-slate-100 cursor-not-allowed"
+                : activeTab === tab.id
+                ? "bg-slate-900 text-white shadow-md"
+                : "bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            {isDisabled && <span className="text-xs">🔒</span>}
+            {tab.label}
+            {tab.id === "requests" && requestsCount > 0 && !isDisabled ? (
+              <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                {requestsCount}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }
