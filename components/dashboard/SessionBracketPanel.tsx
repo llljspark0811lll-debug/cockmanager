@@ -151,56 +151,62 @@ function ScoreInputRow({
   const bothEntered = parsed.a !== null && !isNaN(parsed.a) && parsed.b !== null && !isNaN(parsed.b);
 
   return (
-    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
-      <span className="text-xs font-bold text-slate-500 shrink-0">점수</span>
-      <span className="text-xs font-bold text-sky-700 shrink-0">{teamLabelA}</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        value={a}
-        onChange={(e) => setA(e.target.value.replace(/[^0-9]/g, ""))}
-        onFocus={(e) => e.target.select()}
-        placeholder=""
-        className="w-14 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-sky-700 outline-none focus:border-sky-400"
-      />
-      <span className="text-xs font-bold text-slate-400">:</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        value={b}
-        onChange={(e) => setB(e.target.value.replace(/[^0-9]/g, ""))}
-        onFocus={(e) => e.target.select()}
-        placeholder=""
-        className="w-14 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-emerald-700 outline-none focus:border-sky-400"
-      />
-      <span className="text-xs font-bold text-emerald-700 shrink-0">{teamLabelB}</span>
-      <button
-        type="button"
-        disabled={saving || !bothEntered}
-        onClick={() => void onSave(roundNumber, courtNumber, parsed.a, parsed.b)}
-        className="ml-1 rounded-xl bg-sky-600 px-3 py-1.5 text-xs font-black text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {saving ? "저장 중" : "저장"}
-      </button>
-      {(initialA !== null || initialB !== null) && (
+    <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+      {/* 1줄: 점수 입력 */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-slate-500 shrink-0">점수</span>
+        <span className="text-xs font-bold text-sky-700 shrink-0">{teamLabelA}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={a}
+          onChange={(e) => setA(e.target.value.replace(/[^0-9]/g, ""))}
+          onFocus={(e) => e.target.select()}
+          placeholder=""
+          className="w-14 min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-sky-700 outline-none focus:border-sky-400"
+        />
+        <span className="text-xs font-bold text-slate-400">:</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={b}
+          onChange={(e) => setB(e.target.value.replace(/[^0-9]/g, ""))}
+          onFocus={(e) => e.target.select()}
+          placeholder=""
+          className="w-14 min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-emerald-700 outline-none focus:border-sky-400"
+        />
+        <span className="text-xs font-bold text-emerald-700 shrink-0">{teamLabelB}</span>
+      </div>
+      {/* 2줄: 버튼 */}
+      <div className="flex items-center gap-2">
         <button
           type="button"
-          disabled={saving}
-          onClick={() => void onSave(roundNumber, courtNumber, null, null)}
-          className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+          disabled={saving || !bothEntered}
+          onClick={() => void onSave(roundNumber, courtNumber, parsed.a, parsed.b)}
+          className="rounded-xl bg-sky-600 px-4 py-1.5 text-xs font-black text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          삭제
+          {saving ? "저장 중" : "저장"}
         </button>
-      )}
-      <button
-        type="button"
-        onClick={onCancel}
-        className="ml-auto text-xs text-slate-400 hover:text-slate-600"
-      >
-        취소
-      </button>
+        {(initialA !== null || initialB !== null) && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void onSave(roundNumber, courtNumber, null, null)}
+            className="rounded-xl border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+          >
+            삭제
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="ml-auto text-xs text-slate-400 hover:text-slate-600"
+        >
+          취소
+        </button>
+      </div>
     </div>
   );
 }
