@@ -537,7 +537,7 @@ export function TutorialModal({
                   onClick={() => setStep("export")}
                   className="rounded-2xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-sky-700"
                 >
-                  이미지 저장하기 →
+                  대진표 저장하기 →
                 </button>
               </>
             ) : step === "export" ? (

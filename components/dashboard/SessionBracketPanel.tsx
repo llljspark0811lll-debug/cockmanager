@@ -1528,7 +1528,7 @@ export function SessionBracketPanel({
             data-tutorial-id="bracket-export-button"
             className="flex-1 rounded-2xl border border-amber-300 bg-amber-50 px-2 py-2.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
-            {exportingMode === "download" ? "준비 중..." : "이미지 저장"}
+            {exportingMode === "download" ? "준비 중..." : "대진표 저장"}
           </button>
           {bracket && (
             <button
