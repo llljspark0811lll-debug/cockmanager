@@ -25,6 +25,7 @@ import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
 import { SpecialFeesPanel } from "@/components/dashboard/SpecialFeesPanel";
 import { SubscriptionOverlay } from "@/components/dashboard/SubscriptionOverlay";
+import { SubscriptionStatusBar } from "@/components/dashboard/SubscriptionStatusBar";
 import { TrialBanner } from "@/components/dashboard/TrialBanner";
 import { TutorialModal } from "@/components/dashboard/TutorialModal";
 import { SupportModal } from "@/components/dashboard/SupportModal";
@@ -231,6 +232,14 @@ export default function DashboardPage() {
     trialDaysRemaining !== null &&
     trialDaysRemaining >= 1 &&
     trialDaysRemaining <= 10;
+  const showActiveBanner =
+    clubInfo?.calculatedStatus === "ACTIVE" &&
+    trialDaysRemaining !== null &&
+    trialDaysRemaining >= 1 &&
+    trialDaysRemaining <= 10;
+  const showStatusBar =
+    clubInfo?.calculatedStatus === "ACTIVE" && !showActiveBanner;
+  const showExemptBar = clubInfo?.calculatedStatus === "EXEMPT";
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   const publicJoinLink =
@@ -2097,6 +2106,27 @@ export default function DashboardPage() {
       {showTrialBanner && trialDaysRemaining !== null && (
         <TrialBanner
           daysRemaining={trialDaysRemaining}
+          clubName={clubInfo?.name ?? ""}
+          mode="trial"
+        />
+      )}
+      {showActiveBanner && trialDaysRemaining !== null && (
+        <TrialBanner
+          daysRemaining={trialDaysRemaining}
+          clubName={clubInfo?.name ?? ""}
+          mode="active"
+        />
+      )}
+      {showStatusBar && (
+        <SubscriptionStatusBar
+          status="ACTIVE"
+          subscriptionEnd={clubInfo?.subscriptionEnd}
+          clubName={clubInfo?.name ?? ""}
+        />
+      )}
+      {showExemptBar && (
+        <SubscriptionStatusBar
+          status="EXEMPT"
           clubName={clubInfo?.name ?? ""}
         />
       )}

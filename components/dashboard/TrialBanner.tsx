@@ -6,15 +6,23 @@ import { SubscriptionModal } from "@/components/dashboard/SubscriptionModal";
 type TrialBannerProps = {
   daysRemaining: number;
   clubName: string;
+  mode?: "trial" | "active";
 };
 
-export function TrialBanner({ daysRemaining, clubName }: TrialBannerProps) {
+export function TrialBanner({ daysRemaining, clubName, mode = "trial" }: TrialBannerProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
 
   const isUrgent = daysRemaining <= 3;
+  const isActive = mode === "active";
+
+  const message = isActive
+    ? <>구독이 <span className="font-black">{daysRemaining}일</span> 후 만료됩니다.</>
+    : <>무료 체험 기간이 <span className="font-black">{daysRemaining}일</span> 남았습니다.</>;
+
+  const buttonLabel = isActive ? "갱신하기" : "구독하기";
 
   return (
     <>
@@ -28,7 +36,7 @@ export function TrialBanner({ daysRemaining, clubName }: TrialBannerProps) {
         <div className="flex items-center gap-2">
           <span className="text-lg">{isUrgent ? "⏰" : "💡"}</span>
           <p className={`text-sm font-medium ${isUrgent ? "text-red-700" : "text-amber-700"}`}>
-            무료 체험 기간이 <span className="font-black">{daysRemaining}일</span> 남았습니다.
+            {message}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -38,7 +46,7 @@ export function TrialBanner({ daysRemaining, clubName }: TrialBannerProps) {
               isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
             }`}
           >
-            구독하기
+            {buttonLabel}
           </button>
           <button
             onClick={() => setDismissed(true)}
