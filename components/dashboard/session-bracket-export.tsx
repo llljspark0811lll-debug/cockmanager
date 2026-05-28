@@ -286,7 +286,8 @@ function renderSummaryCards(bracket: SessionBracket, y: number) {
 function renderRoundSection(
   round: SessionBracket["rounds"][number],
   y: number,
-  bracket: SessionBracket
+  bracket: SessionBracket,
+  includeScores = false
 ) {
   const column = tableColumnX();
   const teamALabel =
@@ -358,28 +359,52 @@ function renderRoundSection(
       BODY_FONT
     );
 
+    const hasScore = includeScores && match.scoreA != null && match.scoreB != null;
+    const aWon = hasScore && (match.scoreA ?? 0) > (match.scoreB ?? 0);
+    const bWon = hasScore && (match.scoreB ?? 0) > (match.scoreA ?? 0);
+    const teamAFill = aWon ? "#fbbf24" : "#fde9d9";
+    const teamBFill = bWon ? "#fbbf24" : "#dbe5f1";
+    const teamATextFill = aWon ? "#78350f" : "#111827";
+    const teamBTextFill = bWon ? "#78350f" : "#111827";
+
     markup += `
       <rect x="${column.court}" y="${rowY}" width="132" height="${MATCH_ROW_HEIGHT}" fill="#f0f0f0" />
-      <rect x="${column.teamA}" y="${rowY}" width="${column.teamWidth}" height="${MATCH_ROW_HEIGHT}" fill="#fde9d9" />
-      <rect x="${column.teamB}" y="${rowY}" width="${column.teamWidth}" height="${MATCH_ROW_HEIGHT}" fill="#dbe5f1" />
-      ${textBlock(column.court + 66, rowY + 30, [courtLabel], {
-        fontSize: 18,
-        lineHeight: 20,
-        fill: "#111827",
-        fontWeight: 800,
-        anchor: "middle",
-      })}
+      <rect x="${column.teamA}" y="${rowY}" width="${column.teamWidth}" height="${MATCH_ROW_HEIGHT}" fill="${teamAFill}" />
+      <rect x="${column.teamB}" y="${rowY}" width="${column.teamWidth}" height="${MATCH_ROW_HEIGHT}" fill="${teamBFill}" />
+      ${hasScore
+        ? textBlock(column.court + 66, rowY + 18, [courtLabel], {
+            fontSize: 15,
+            lineHeight: 17,
+            fill: "#334155",
+            fontWeight: 800,
+            anchor: "middle",
+          }) +
+          textBlock(column.court + 66, rowY + 36, [`${match.scoreA} : ${match.scoreB}`], {
+            fontSize: 17,
+            lineHeight: 19,
+            fill: "#0f172a",
+            fontWeight: 900,
+            anchor: "middle",
+          })
+        : textBlock(column.court + 66, rowY + 30, [courtLabel], {
+            fontSize: 18,
+            lineHeight: 20,
+            fill: "#111827",
+            fontWeight: 800,
+            anchor: "middle",
+          })
+      }
       ${textBlock(column.teamA + column.teamWidth / 2, rowY + 30, teamALines, {
         fontSize: BODY_FONT,
         lineHeight: 22,
-        fill: "#111827",
+        fill: teamATextFill,
         fontWeight: 700,
         anchor: "middle",
       })}
       ${textBlock(column.teamB + column.teamWidth / 2, rowY + 30, teamBLines, {
         fontSize: BODY_FONT,
         lineHeight: 22,
-        fill: "#111827",
+        fill: teamBTextFill,
         fontWeight: 700,
         anchor: "middle",
       })}
@@ -412,7 +437,7 @@ function renderRoundSection(
   return markup;
 }
 
-function renderSvg(session: ClubSession, bracket: SessionBracket) {
+function renderSvg(session: ClubSession, bracket: SessionBracket, includeScores = false) {
   const height = totalImageHeight(bracket);
   let currentY = PADDING_Y;
 
@@ -441,7 +466,7 @@ function renderSvg(session: ClubSession, bracket: SessionBracket) {
   currentY += SUMMARY_HEIGHT + 28;
 
   bracket.rounds.forEach((round) => {
-    markup += renderRoundSection(round, currentY, bracket);
+    markup += renderRoundSection(round, currentY, bracket, includeScores);
     currentY += sectionHeight(round) + SECTION_GAP;
   });
 
@@ -517,12 +542,15 @@ async function svgToPngBlob(
 
 export async function buildBracketImageFiles(
   session: ClubSession,
-  bracket: SessionBracket
+  bracket: SessionBracket,
+  options: { includeScores?: boolean } = {}
 ) {
+  const { includeScores = false } = options;
   const height = totalImageHeight(bracket);
-  const svgMarkup = renderSvg(session, bracket);
+  const svgMarkup = renderSvg(session, bracket, includeScores);
   const blob = await svgToPngBlob(svgMarkup, IMAGE_WIDTH, height);
-  const fileName = `${sanitizeFileName(session.title)}-자동대진표.png`;
+  const suffix = includeScores ? "-결과" : "-자동대진표";
+  const fileName = `${sanitizeFileName(session.title)}${suffix}.png`;
 
   return [
     new File([blob], fileName, {

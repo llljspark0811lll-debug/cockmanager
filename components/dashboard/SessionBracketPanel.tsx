@@ -120,6 +120,91 @@ function getParticipantGenderGroup(participant: SessionParticipant) {
   return "OTHER";
 }
 
+function ScoreInputRow({
+  roundNumber,
+  courtNumber,
+  initialA,
+  initialB,
+  saving,
+  teamLabelA,
+  teamLabelB,
+  onSave,
+  onCancel,
+}: {
+  roundNumber: number;
+  courtNumber: number;
+  initialA: number | null;
+  initialB: number | null;
+  saving: boolean;
+  teamLabelA: string;
+  teamLabelB: string;
+  onSave: (roundNumber: number, courtNumber: number, a: number | null, b: number | null) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [a, setA] = useState(initialA !== null ? String(initialA) : "");
+  const [b, setB] = useState(initialB !== null ? String(initialB) : "");
+
+  const parsed = {
+    a: a.trim() === "" ? null : Number(a),
+    b: b.trim() === "" ? null : Number(b),
+  };
+  const bothEntered = parsed.a !== null && !isNaN(parsed.a) && parsed.b !== null && !isNaN(parsed.b);
+
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+      <span className="text-xs font-bold text-slate-500 shrink-0">점수</span>
+      <span className="text-xs font-bold text-sky-700 shrink-0">{teamLabelA}</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={a}
+        onChange={(e) => setA(e.target.value.replace(/[^0-9]/g, ""))}
+        onFocus={(e) => e.target.select()}
+        placeholder=""
+        className="w-14 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-sky-700 outline-none focus:border-sky-400"
+      />
+      <span className="text-xs font-bold text-slate-400">:</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={b}
+        onChange={(e) => setB(e.target.value.replace(/[^0-9]/g, ""))}
+        onFocus={(e) => e.target.select()}
+        placeholder=""
+        className="w-14 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-black text-emerald-700 outline-none focus:border-sky-400"
+      />
+      <span className="text-xs font-bold text-emerald-700 shrink-0">{teamLabelB}</span>
+      <button
+        type="button"
+        disabled={saving || !bothEntered}
+        onClick={() => void onSave(roundNumber, courtNumber, parsed.a, parsed.b)}
+        className="ml-1 rounded-xl bg-sky-600 px-3 py-1.5 text-xs font-black text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {saving ? "저장 중" : "저장"}
+      </button>
+      {(initialA !== null || initialB !== null) && (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void onSave(roundNumber, courtNumber, null, null)}
+          className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+        >
+          삭제
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onCancel}
+        className="ml-auto text-xs text-slate-400 hover:text-slate-600"
+      >
+        취소
+      </button>
+    </div>
+  );
+}
+
 export function SessionBracketPanel({
   session,
   tutorialDefaultsActive = false,
@@ -152,6 +237,9 @@ export function SessionBracketPanel({
   >(null);
   const [fixedPairs, setFixedPairs] = useState<Array<[string, string]>>([]);
   const [pendingPairPlayerId, setPendingPairPlayerId] = useState<string | null>(null);
+  // 점수 입력 모드: 어느 경기가 활성화됐는지 (roundNumber-courtNumber)
+  const [scoreEditKey, setScoreEditKey] = useState<string | null>(null);
+  const [scoreSaving, setScoreSaving] = useState(false);
 
   type SwapSelection = {
     roundIndex: number;
@@ -273,14 +361,24 @@ export function SessionBracketPanel({
           setFixedPairs(
             tutorialDefaultsActive ? [] : data.bracket.config.fixedPairs ?? []
           );
-          setTeamLabels(
-            tutorialDefaultsActive
-              ? { A: "팀A", B: "팀B" }
-              : {
-                  A: data.bracket.config.teamLabels?.A?.trim() || "팀A",
-                  B: data.bracket.config.teamLabels?.B?.trim() || "팀B",
-                }
-          );
+          if (tutorialDefaultsActive) {
+            setTeamLabels({ A: "팀A", B: "팀B" });
+          } else {
+            // localStorage에 저장된 팀명 우선 적용, 없으면 bracket config 사용
+            let resolved = {
+              A: data.bracket.config.teamLabels?.A?.trim() || "팀A",
+              B: data.bracket.config.teamLabels?.B?.trim() || "팀B",
+            };
+            try {
+              const saved = localStorage.getItem(`team_labels_${session.id}`);
+              if (saved) {
+                const parsed = JSON.parse(saved) as { A?: string; B?: string };
+                if (parsed.A?.trim()) resolved.A = parsed.A.trim();
+                if (parsed.B?.trim()) resolved.B = parsed.B.trim();
+              }
+            } catch {}
+            setTeamLabels(resolved);
+          }
           setTeamAssignments(
             tutorialDefaultsActive
               ? {}
@@ -297,7 +395,21 @@ export function SessionBracketPanel({
           setExportError("");
           setSwapNotice("");
           if (generationMode === "TEAM_BATTLE") {
-            setTeamLabels({ A: "팀A", B: "팀B" });
+            // bracket 없어도 localStorage에 저장된 팀명 복원
+            try {
+              const saved = localStorage.getItem(`team_labels_${session.id}`);
+              if (saved) {
+                const parsed = JSON.parse(saved) as { A?: string; B?: string };
+                setTeamLabels({
+                  A: parsed.A?.trim() || "팀A",
+                  B: parsed.B?.trim() || "팀B",
+                });
+              } else {
+                setTeamLabels({ A: "팀A", B: "팀B" });
+              }
+            } catch {
+              setTeamLabels({ A: "팀A", B: "팀B" });
+            }
             setTeamAssignments({});
           }
         }
@@ -701,8 +813,97 @@ export function SessionBracketPanel({
     });
   }
 
+  async function handleSaveScore(
+    roundNumber: number,
+    courtNumber: number,
+    scoreA: number | null,
+    scoreB: number | null
+  ) {
+    if (!bracket) return;
+    setScoreSaving(true);
+    try {
+      const res = await fetch("/api/sessions/bracket/score", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          generationMode: bracket.config.generationMode ?? "STANDARD",
+          roundNumber,
+          courtNumber,
+          scoreA,
+          scoreB,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "점수 저장에 실패했습니다.");
+      }
+      // 로컬 bracket 상태에도 바로 반영
+      setBracket((prev) => {
+        if (!prev) return prev;
+        const next = JSON.parse(JSON.stringify(prev)) as SessionBracket;
+        const round = next.rounds.find((r) => r.roundNumber === roundNumber);
+        if (round) {
+          const match = round.matches.find((m) => m.courtNumber === courtNumber);
+          if (match) {
+            match.scoreA = scoreA;
+            match.scoreB = scoreB;
+          }
+        }
+        return next;
+      });
+      setScoreEditKey(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "점수 저장에 실패했습니다.");
+    } finally {
+      setScoreSaving(false);
+    }
+  }
+
+  function bracketWithCurrentLabels() {
+    if (!bracket) return null;
+    return {
+      ...bracket,
+      config: { ...bracket.config, teamLabels },
+    };
+  }
+
+  async function handleExportWithScores() {
+    const b = bracketWithCurrentLabels();
+    if (!b) {
+      setExportError("내보낼 대진표가 아직 준비되지 않았습니다.");
+      return;
+    }
+    setExportMessage("");
+    setExportError("");
+    setExportingMode("download");
+    try {
+      const files = await buildBracketImageFiles(session, b, { includeScores: true });
+      await downloadFiles(files);
+      setExportMessage(
+        files.length > 1
+          ? `결과 이미지 ${files.length}장을 저장했습니다.`
+          : "결과 이미지를 저장했습니다."
+      );
+    } catch (exportErr) {
+      if (exportErr instanceof DOMException && exportErr.name === "AbortError") {
+        setExportingMode(null);
+        return;
+      }
+      setExportError(
+        exportErr instanceof Error
+          ? exportErr.message
+          : "결과 이미지를 처리하지 못했습니다."
+      );
+    } finally {
+      setExportingMode(null);
+    }
+  }
+
   async function handleExport() {
-    if (!bracket) {
+    const b = bracketWithCurrentLabels();
+    if (!b) {
       setExportError("내보낼 대진표가 아직 준비되지 않았습니다.");
       return;
     }
@@ -712,7 +913,7 @@ export function SessionBracketPanel({
     setExportingMode("download");
 
     try {
-      const files = await buildBracketImageFiles(session, bracket);
+      const files = await buildBracketImageFiles(session, b);
 
       await downloadFiles(files);
       void notifyAdminActivity({
@@ -924,12 +1125,11 @@ export function SessionBracketPanel({
                 </span>
                 <input
                   value={teamLabels.A}
-                  onChange={(event) =>
-                    setTeamLabels((prev) => ({
-                      ...prev,
-                      A: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => {
+                    const next = { ...teamLabels, A: event.target.value };
+                    setTeamLabels(next);
+                    try { localStorage.setItem(`team_labels_${session.id}`, JSON.stringify(next)); } catch {}
+                  }}
                   disabled={!canGenerate || loading}
                   className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50"
                 />
@@ -940,12 +1140,11 @@ export function SessionBracketPanel({
                 </span>
                 <input
                   value={teamLabels.B}
-                  onChange={(event) =>
-                    setTeamLabels((prev) => ({
-                      ...prev,
-                      B: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => {
+                    const next = { ...teamLabels, B: event.target.value };
+                    setTeamLabels(next);
+                    try { localStorage.setItem(`team_labels_${session.id}`, JSON.stringify(next)); } catch {}
+                  }}
                   disabled={!canGenerate || loading}
                   className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50"
                 />
@@ -1330,12 +1529,31 @@ export function SessionBracketPanel({
             }}
             disabled={!bracket || loading || exportingMode !== null}
             data-tutorial-id="bracket-export-button"
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {exportingMode === "download"
               ? "이미지 준비 중..."
-              : "이미지 저장"}
+              : "대진표 저장"}
           </button>
+          {bracket && (
+            <button
+              onClick={() => {
+                handleExportWithScores().catch(() => undefined);
+              }}
+              disabled={
+                loading ||
+                exportingMode !== null ||
+                !bracket.rounds.some((r) =>
+                  r.matches.some((m) => m.scoreA != null && m.scoreB != null)
+                )
+              }
+              className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-bold text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {exportingMode === "download"
+                ? "이미지 준비 중..."
+                : "결과 포함 저장"}
+            </button>
+          )}
         </div>
 
         {onOpenCourtBoard ? (
@@ -1402,9 +1620,7 @@ export function SessionBracketPanel({
                   {bracket.config.minGamesPerPlayer}경기
                   <br />
                   {bracket.config.generationMode === "TEAM_BATTLE"
-                    ? `${bracket.config.teamLabels?.A ?? "팀A"} vs ${
-                        bracket.config.teamLabels?.B ?? "팀B"
-                      }`
+                    ? `${teamLabels.A || "팀A"} vs ${teamLabels.B || "팀B"}`
                     : bracket.config.separateByGender
                       ? "남복/여복 분리"
                       : "랜덤 복식"}
@@ -1462,7 +1678,12 @@ export function SessionBracketPanel({
                     {round.matches.map((match, matchIndex) => (
                       <div
                         key={`${round.roundNumber}-${match.courtNumber}`}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                        className={[
+                          "rounded-2xl border bg-white px-4 py-3",
+                          match.scoreA != null && match.scoreB != null
+                            ? "border-slate-300"
+                            : "border-slate-200",
+                        ].join(" ")}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
@@ -1473,6 +1694,42 @@ export function SessionBracketPanel({
                               {groupLabel(match.division)}
                             </p>
                           </div>
+                          {/* 점수 표시 / 입력 버튼 */}
+                          {match.scoreA != null && match.scoreB != null ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setScoreEditKey(
+                                  scoreEditKey === `${round.roundNumber}-${match.courtNumber}`
+                                    ? null
+                                    : `${round.roundNumber}-${match.courtNumber}`
+                                )
+                              }
+                              className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-black text-slate-700 hover:bg-slate-200"
+                            >
+                              <span className={match.scoreA > match.scoreB ? "text-amber-600" : "text-slate-500"}>
+                                {match.scoreA}
+                              </span>
+                              <span className="text-slate-300 text-xs">:</span>
+                              <span className={match.scoreB > match.scoreA ? "text-amber-600" : "text-slate-500"}>
+                                {match.scoreB}
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setScoreEditKey(
+                                  scoreEditKey === `${round.roundNumber}-${match.courtNumber}`
+                                    ? null
+                                    : `${round.roundNumber}-${match.courtNumber}`
+                                )
+                              }
+                              className="rounded-full border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:border-sky-300 hover:text-sky-600"
+                            >
+                              점수 입력
+                            </button>
+                          )}
                         </div>
 
                         {(() => {
@@ -1491,8 +1748,8 @@ export function SessionBracketPanel({
                                   <p className={["text-xs font-bold", team === "A" ? "text-sky-700" : "text-emerald-700"].join(" ")}>
                                   {bracket.config.generationMode === "TEAM_BATTLE"
                                     ? team === "A"
-                                      ? bracket.config.teamLabels?.A ?? "팀A"
-                                      : bracket.config.teamLabels?.B ?? "팀B"
+                                      ? teamLabels.A || "팀A"
+                                      : teamLabels.B || "팀B"
                                     : `팀 ${team}`}
                                   </p>
                                 <div className="mt-2 space-y-1">
@@ -1558,11 +1815,26 @@ export function SessionBracketPanel({
                           };
 
                           return (
-                            <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] items-center gap-2 md:gap-3">
-                              {renderTeam("A")}
-                              <div className="text-center text-xs font-black text-slate-400 md:text-sm">VS</div>
-                              {renderTeam("B")}
-                            </div>
+                            <>
+                              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_2.5rem_minmax(0,1fr)] items-center gap-2 md:gap-3">
+                                {renderTeam("A")}
+                                <div className="text-center text-xs font-black text-slate-400 md:text-sm">VS</div>
+                                {renderTeam("B")}
+                              </div>
+                              {scoreEditKey === `${round.roundNumber}-${match.courtNumber}` && (
+                                <ScoreInputRow
+                                  roundNumber={round.roundNumber}
+                                  courtNumber={match.courtNumber}
+                                  initialA={match.scoreA ?? null}
+                                  initialB={match.scoreB ?? null}
+                                  saving={scoreSaving}
+                                  teamLabelA={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.A || "팀A" : "팀A"}
+                                  teamLabelB={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.B || "팀B" : "팀B"}
+                                  onSave={handleSaveScore}
+                                  onCancel={() => setScoreEditKey(null)}
+                                />
+                              )}
+                            </>
                           );
                         })()}
                       </div>

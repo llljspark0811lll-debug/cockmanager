@@ -127,6 +127,8 @@ function getRegisteredParticipants(session: ClubSession) {
   return (session.participants ?? []).filter((p) => p.status === "REGISTERED");
 }
 
+const RECENT_SESSION_COUNT = 5;
+
 const AttendanceSessionPicker = memo(
   function AttendanceSessionPicker({
     options,
@@ -137,11 +139,28 @@ const AttendanceSessionPicker = memo(
     selectedSessionId: number | null;
     onSelectSession: (id: number) => void;
   }) {
+    const [showAll, setShowAll] = useState(false);
+    const hasMore = options.length > RECENT_SESSION_COUNT;
+    const visibleOptions = showAll ? options : options.slice(0, RECENT_SESSION_COUNT);
+
     return (
-      <label className="block space-y-1.5">
-        <span className="text-xs font-bold tracking-[0.18em] text-slate-400">
-          TODAY SESSION
-        </span>
+      <div className="block space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold tracking-[0.18em] text-slate-400">
+            TODAY SESSION
+          </span>
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => setShowAll((prev) => !prev)}
+              className="text-[11px] font-bold text-sky-600 hover:text-sky-800"
+            >
+              {showAll
+                ? "최근 5개만 보기"
+                : `이전 일정 보기 (+${options.length - RECENT_SESSION_COUNT})`}
+            </button>
+          )}
+        </div>
         <select
           value={selectedSessionId ?? ""}
           onChange={(event) => onSelectSession(Number(event.target.value))}
@@ -150,13 +169,13 @@ const AttendanceSessionPicker = memo(
           <option value="" disabled>
             대진표를 생성할 운동 일정을 선택해 주세요
           </option>
-          {options.map((session) => (
+          {visibleOptions.map((session) => (
             <option key={session.id} value={session.id}>
               {session.title} / {formatDate(session.date)} / {session.startTime}
             </option>
           ))}
         </select>
-      </label>
+      </div>
     );
   },
   (prevProps, nextProps) => {

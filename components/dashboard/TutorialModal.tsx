@@ -179,7 +179,7 @@ export function TutorialModal({
         return {
           title: "완성된 대진표는 이미지로 저장합니다",
           description:
-            "이미지 저장 버튼을 누르면 라운드별 대진표가 이미지 파일로 저장돼요.\n저장한 이미지를 단톡방에 공유하면 끝!\n\n체험을 마치면 샘플 데이터는 자동으로 정리됩니다.",
+            "대진표 저장 버튼을 누르면 라운드별 대진표가 이미지 파일로 저장돼요.\n저장한 이미지를 단톡방에 공유하면 끝!\n\n체험을 마치면 샘플 데이터는 자동으로 정리됩니다.",
           targetId: "bracket-export-button",
         };
       case "cleaning":

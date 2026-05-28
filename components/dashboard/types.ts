@@ -196,6 +196,8 @@ export interface SessionBracketMatch {
   teamA: SessionBracketTeam;
   teamB: SessionBracketTeam;
   balanceGap: number;
+  scoreA?: number | null;
+  scoreB?: number | null;
 }
 
 export interface SessionBracketRound {
