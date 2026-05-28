@@ -129,7 +129,6 @@ function ScoreInputRow({
   teamLabelA,
   teamLabelB,
   onSave,
-  onCancel,
 }: {
   roundNumber: number;
   courtNumber: number;
@@ -139,7 +138,6 @@ function ScoreInputRow({
   teamLabelA: string;
   teamLabelB: string;
   onSave: (roundNumber: number, courtNumber: number, a: number | null, b: number | null) => Promise<void>;
-  onCancel: () => void;
 }) {
   const [a, setA] = useState(initialA !== null ? String(initialA) : "");
   const [b, setB] = useState(initialB !== null ? String(initialB) : "");
@@ -199,13 +197,6 @@ function ScoreInputRow({
             삭제
           </button>
         )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="ml-auto text-xs text-slate-400 hover:text-slate-600"
-        >
-          취소
-        </button>
       </div>
     </div>
   );
@@ -1514,20 +1505,20 @@ export function SessionBracketPanel({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <button
             onClick={() => {
               handleGenerateBracket().catch(() => undefined);
             }}
             disabled={!canGenerate || loading}
             data-tutorial-id="bracket-generate-button"
-            className="rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="flex-1 rounded-2xl bg-slate-900 px-2 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:px-4 sm:text-sm"
           >
             {loading
               ? "생성 중..."
               : bracket
-                ? "대진표 다시 생성"
-                : "자동 대진표 생성"}
+                ? "다시 생성"
+                : "대진표 생성"}
           </button>
           <button
             onClick={() => {
@@ -1535,11 +1526,9 @@ export function SessionBracketPanel({
             }}
             disabled={!bracket || loading || exportingMode !== null}
             data-tutorial-id="bracket-export-button"
-            className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-2xl border border-amber-300 bg-amber-50 px-2 py-2.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
-            {exportingMode === "download"
-              ? "이미지 준비 중..."
-              : "대진표 저장"}
+            {exportingMode === "download" ? "준비 중..." : "이미지 저장"}
           </button>
           {bracket && (
             <button
@@ -1553,11 +1542,9 @@ export function SessionBracketPanel({
                   r.matches.some((m) => m.scoreA != null && m.scoreB != null)
                 )
               }
-              className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-bold text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-2xl border border-sky-200 bg-sky-50 px-2 py-2.5 text-xs font-bold text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
             >
-              {exportingMode === "download"
-                ? "이미지 준비 중..."
-                : "결과 포함 저장"}
+              {exportingMode === "download" ? "준비 중..." : "결과 포함 저장"}
             </button>
           )}
         </div>
@@ -1837,7 +1824,6 @@ export function SessionBracketPanel({
                                   teamLabelA={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.A || "팀A" : "팀A"}
                                   teamLabelB={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.B || "팀B" : "팀B"}
                                   onSave={handleSaveScore}
-                                  onCancel={() => setScoreEditKey(null)}
                                 />
                               )}
                             </>
