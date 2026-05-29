@@ -245,6 +245,17 @@ model SessionComment {
   @@index([sessionId, createdAt])
 }
 
+model EmailVerification {
+  id        Int      @id @default(autoincrement())
+  email     String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 model SessionParticipant {
   id               Int      @id @default(autoincrement())
   status           String   @default("REGISTERED")

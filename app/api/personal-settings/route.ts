@@ -86,12 +86,24 @@ export async function PATCH(req: Request) {
 
     if (existingEmail) {
       return NextResponse.json(
-        {
-          error:
-            "이미 다른 관리자 계정에서 사용 중인 이메일입니다.",
-        },
+        { error: "이미 다른 관리자 계정에서 사용 중인 이메일입니다." },
         { status: 400 }
       );
+    }
+
+    // 이메일이 변경되는 경우 인증 완료 여부 확인
+    const isEmailChanging = nextAdminEmail !== (currentAdmin.email ?? "");
+    if (isEmailChanging) {
+      const emailVerified = await prisma.emailVerification.findFirst({
+        where: { email: nextAdminEmail, verified: true },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!emailVerified) {
+        return NextResponse.json(
+          { error: "이메일 인증이 필요합니다. 인증 코드를 확인해 주세요." },
+          { status: 400 }
+        );
+      }
     }
 
     await prisma.$transaction([
@@ -112,6 +124,11 @@ export async function PATCH(req: Request) {
         },
       }),
     ]);
+
+    // 사용된 인증 레코드 정리
+    if (isEmailChanging) {
+      await prisma.emailVerification.deleteMany({ where: { email: nextAdminEmail } }).catch(() => undefined);
+    }
 
     return NextResponse.json({
       success: true,

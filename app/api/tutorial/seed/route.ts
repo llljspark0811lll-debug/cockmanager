@@ -1,6 +1,5 @@
 import { requireAuthAdmin, unauthorizedResponse } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
-import { ensureTutorialColumns } from "@/lib/tutorial-schema";
 import { NextResponse } from "next/server";
 
 const SAMPLE_MEMBERS = [
@@ -40,7 +39,7 @@ async function cleanupSamples(clubId: number) {
       DELETE FROM "Member"
       WHERE "clubId" = ${clubId} AND "isSample" = true
     `;
-  });
+  }, { timeout: 30000, maxWait: 10000 });
 }
 
 export async function POST() {
@@ -48,7 +47,6 @@ export async function POST() {
     const admin = await requireAuthAdmin();
     if (!admin) return unauthorizedResponse();
 
-    await ensureTutorialColumns();
     await cleanupSamples(admin.clubId);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -120,7 +118,7 @@ export async function POST() {
       }
 
       return { sessionId: sessionRow.id };
-    });
+    }, { timeout: 30000, maxWait: 10000 });
 
     return NextResponse.json({ success: true, sessionId: result.sessionId });
   } catch (error) {

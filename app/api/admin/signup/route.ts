@@ -81,6 +81,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // 이메일 인증 완료 여부 확인
+    const emailVerified = await prisma.emailVerification.findFirst({
+      where: {
+        email: normalizedEmail,
+        verified: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!emailVerified) {
+      return NextResponse.json(
+        { error: "이메일 인증이 필요합니다. 인증 코드를 확인해 주세요." },
+        { status: 400 }
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(String(password), 10);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -113,6 +129,9 @@ export async function POST(req: Request) {
       clubId: result.club.id,
       clubName: result.club.name,
     });
+
+    // 사용된 인증 레코드 정리
+    await prisma.emailVerification.deleteMany({ where: { email: normalizedEmail } }).catch(() => undefined);
 
     try {
       await sendTelegramNewClubAlert({
