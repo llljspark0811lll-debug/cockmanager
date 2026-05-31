@@ -799,6 +799,33 @@ export function SessionBracketPanel({
     setBracket(newBracket);
     setSwapSelection(null);
     setSwapNotice("");
+
+    const saveRounds = async () => {
+      try {
+        const res = await fetch("/api/sessions/bracket/rounds", {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: session.id,
+            generationMode: newBracket.config.generationMode ?? "STANDARD",
+            rounds: newBracket.rounds,
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json()) as { error?: string };
+          const msg = data.error ?? "선수 위치 저장에 실패했습니다. 페이지를 새로고침 해주세요.";
+          if (swapNoticeTimeoutRef.current) clearTimeout(swapNoticeTimeoutRef.current);
+          setSwapNotice(msg);
+        }
+      } catch {
+        const msg = "선수 위치 저장에 실패했습니다. 페이지를 새로고침 해주세요.";
+        if (swapNoticeTimeoutRef.current) clearTimeout(swapNoticeTimeoutRef.current);
+        setSwapNotice(msg);
+      }
+    };
+    void saveRounds();
+
     void notifyAdminActivity({
       event: "SESSION_BRACKET_SWAP",
       sessionTitle: session.title,

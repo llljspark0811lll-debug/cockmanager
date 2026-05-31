@@ -38,7 +38,8 @@
       "PowerShell(cd \"c:\\\\Users\\\\user\\\\cockmanager\"; $env:DATABASE_URL=\"postgresql://postgres.xkmlzgrjcoyfgtnevbgv:sovmfhrmfoa1234@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\"; $sql = 'SELECT cs.id, cs.title FROM \"ClubSession\" cs WHERE cs.\"exerciseDate\" >= ''2026-05-17'' AND cs.\"exerciseDate\" < ''2026-05-18'' ORDER BY cs.id;'; $sql | npx prisma db execute --url $env:DATABASE_URL --stdin 2>&1; Write-Host \"EXIT:$LASTEXITCODE\")",
       "Bash(mkdir -p \"/mnt/c/Users/user/cockmanager/app/api/subscription/request\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\api\\\\subscription\\\\request\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\op\")"
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\op\")",
+      "Bash(grep -v \"^$\")"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",
