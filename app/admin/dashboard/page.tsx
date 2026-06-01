@@ -285,8 +285,8 @@ export default function DashboardPage() {
   }, [clubInfo?.id, isExpired]);
 
   // 만료 시 무료로 사용 가능한 탭
-  const FREE_TABS: DashboardTab[] = ["members", "sessions", "requests", "fees"];
-  const PAID_TABS: DashboardTab[] = ["attendance", "deleted", "stats"];
+  const FREE_TABS: DashboardTab[] = ["members", "sessions", "requests", "fees", "deleted"];
+  const PAID_TABS: DashboardTab[] = ["attendance", "stats"];
   const disabledTabs: DashboardTab[] = isExpired && overlayDismissed ? PAID_TABS : [];
   const hasCachedFeesForSelectedYear = Boolean(
     feesCache[selectedYear]
@@ -2315,6 +2315,8 @@ export default function DashboardPage() {
                   onChangeLedgerDateRange={setLedgerDateRange}
                   onCreateLedgerEntry={handleCreateLedgerEntry}
                   onDeleteLedgerEntry={handleDeleteLedgerEntry}
+                  subscriptionExpired={isExpired}
+                  onSubscriptionRequired={() => setOverlayDismissed(false)}
                   specialFeesPanel={
                     <SpecialFeesPanel
                       members={feeMembers}

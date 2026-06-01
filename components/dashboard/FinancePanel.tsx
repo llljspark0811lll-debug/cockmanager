@@ -62,6 +62,8 @@ type FinancePanelProps = {
   }) => Promise<void>;
   onDeleteLedgerEntry: (id: number) => Promise<void>;
   specialFeesPanel: ReactNode;
+  subscriptionExpired?: boolean;
+  onSubscriptionRequired?: () => void;
 };
 
 type FinanceViewMode = "MEMBER_FEES" | "LEDGER";
@@ -209,6 +211,8 @@ export function FinancePanel({
   onCreateLedgerEntry,
   onDeleteLedgerEntry,
   specialFeesPanel,
+  subscriptionExpired = false,
+  onSubscriptionRequired,
 }: FinancePanelProps) {
   const [viewMode, setViewMode] =
     useState<FinanceViewMode>("MEMBER_FEES");
@@ -251,7 +255,7 @@ export function FinancePanel({
     setLedgerPage(1);
   }, [ledgerEntries.length]);
 
-  const isLedgerEnabled = financeDraft.ledgerEnabled;
+  const isLedgerEnabled = financeDraft.ledgerEnabled && !subscriptionExpired;
 
   useEffect(() => {
     if (!financeSettings) {
@@ -475,10 +479,12 @@ export function FinancePanel({
 
           <button
             type="button"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => { if (subscriptionExpired) { onSubscriptionRequired?.(); } else { setSettingsOpen(true); } }}
             disabled={financeSettingsLoading}
-            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 px-4 text-sm font-bold text-slate-700 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+            title={subscriptionExpired ? "구독 후 이용 가능한 기능이에요" : undefined}
+            className={`inline-flex h-11 items-center justify-center gap-1.5 rounded-2xl border px-4 text-sm font-bold transition ${subscriptionExpired ? "cursor-not-allowed border-slate-200 text-slate-400" : "border-slate-200 text-slate-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"}`}
           >
+            {subscriptionExpired && <span>🔒</span>}
             {financeSettingsLoading ? "설정 불러오는 중..." : "장부 관리 설정"}
           </button>
         </div>

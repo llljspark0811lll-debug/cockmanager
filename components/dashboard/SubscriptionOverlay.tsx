@@ -71,7 +71,25 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
 
         {step === "plan" && (
           <>
-            <div className="mt-6 space-y-3">
+            <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-2xl bg-emerald-50 p-3">
+                <p className="mb-2 font-bold text-emerald-700">지금도 무료</p>
+                {["회원 관리", "가입 신청", "탈퇴 회원", "회비 관리", "운동 일정"].map(f => (
+                  <p key={f} className="flex items-center gap-1 text-slate-700 leading-6">
+                    <span className="text-emerald-500">✓</span> {f}
+                  </p>
+                ))}
+              </div>
+              <div className="rounded-2xl bg-sky-50 p-3">
+                <p className="mb-2 font-bold text-sky-700">구독 시 사용</p>
+                {["자동 대진", "장부 관리", "활동 통계"].map(f => (
+                  <p key={f} className="flex items-center gap-1 text-slate-700 leading-6">
+                    <span className="text-sky-400">🔒</span> {f}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 space-y-3">
               {(Object.entries(SUBSCRIPTION_PLANS) as [SubscriptionPlan, typeof SUBSCRIPTION_PLANS[SubscriptionPlan]][]).map(
                 ([key, plan]) => (
                   <button
