@@ -49,7 +49,7 @@ const initialFilters: ParticipantFilterState = {
   levelFilter: "ALL",
   sortOption: "name",
 };
-const ATTENDANCE_PAGE_SIZE = 15;
+const ATTENDANCE_PAGE_SIZE = 10;
 
 function getGenderBadgeClass(gender: string) {
   if (gender === "남") return "bg-sky-50 text-sky-700";

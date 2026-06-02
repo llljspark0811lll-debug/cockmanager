@@ -1909,6 +1909,22 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleEntryFeeToggle(participantId: number, paid: boolean) {
+    await requestJson("/api/sessions/participants", {
+      method: "PATCH",
+      body: JSON.stringify({ participantId, entryFeePaid: paid }),
+    });
+
+    setSessions((current) =>
+      current.map((session) => ({
+        ...session,
+        participants: session.participants?.map((p) =>
+          p.id === participantId ? { ...p, entryFeePaid: paid } : p
+        ),
+      }))
+    );
+  }
+
   function markTutorialAsCompleted() {
     if (clubInfo) {
       window.localStorage.setItem(
@@ -2353,6 +2369,7 @@ export default function DashboardPage() {
                 onUpdateSessionStatus={handleUpdateSessionStatus}
                 onCancelParticipant={handleCancelParticipant}
                 onReinstateParticipant={handleReinstateParticipant}
+                onEntryFeeToggle={handleEntryFeeToggle}
                 onRefreshSession={(id) => refreshSessionDetail(id, { silent: true })}
               />
             </div>

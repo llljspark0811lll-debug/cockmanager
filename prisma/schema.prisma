@@ -262,6 +262,7 @@ model SessionParticipant {
   attendanceStatus String   @default("PENDING")
   checkedInAt      DateTime?
   createdAt        DateTime @default(now())
+  entryFeePaid     Boolean  @default(false)
   guestName        String?
   guestAge         Int?
   guestGender      String?

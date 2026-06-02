@@ -51,6 +51,7 @@ type SessionsPanelProps = {
   onReinstateParticipant: (
     participantId: number
   ) => Promise<void>;
+  onEntryFeeToggle: (participantId: number, paid: boolean) => Promise<void>;
   onRefreshSession: (sessionId: number) => Promise<void>;
 };
 
@@ -89,6 +90,7 @@ type ParticipantSectionProps = {
   actionLabel?: string;
   actionTone?: "rose" | "emerald";
   onActionClick?: (participant: SessionParticipant) => void;
+  onEntryFeeToggle?: (participantId: number, paid: boolean) => void;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -350,6 +352,7 @@ function ParticipantSection({
   actionLabel,
   actionTone = "rose",
   onActionClick,
+  onEntryFeeToggle,
   page,
   totalPages,
   onPageChange,
@@ -488,6 +491,11 @@ function ParticipantSection({
               <th className={`whitespace-nowrap px-2 py-3 text-[9px] font-semibold md:px-4 md:py-4 md:text-sm ${onActionClick ? "w-[25%] md:w-[28%]" : "w-[41%]"}`}>
                 비고
               </th>
+              {onEntryFeeToggle ? (
+                <th className="w-[14%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:w-[10%] md:px-4 md:py-4 md:text-sm">
+                  대관비
+                </th>
+              ) : null}
               {onActionClick ? (
                 <th className="w-[22%] px-1 py-3 text-center text-[9px] font-semibold md:w-[17%] md:px-4 md:py-4 md:text-sm">
                   관리
@@ -560,6 +568,20 @@ function ParticipantSection({
                       );
                     })()}
                   </td>
+                  {onEntryFeeToggle ? (
+                    <td className="px-1 py-3 text-center md:px-4 md:py-4">
+                      <button
+                        onClick={() => onEntryFeeToggle(participant.id, !participant.entryFeePaid)}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm font-black transition ${
+                          participant.entryFeePaid
+                            ? "bg-rose-500 text-white hover:bg-rose-600"
+                            : "bg-slate-100 text-slate-300 hover:bg-slate-200"
+                        }`}
+                      >
+                        ✓
+                      </button>
+                    </td>
+                  ) : null}
                   {onActionClick ? (
                     <td className="px-1 py-3 text-center md:px-4 md:py-4">
                       <button
@@ -617,6 +639,7 @@ export function SessionsPanel({
   onUpdateSessionStatus,
   onCancelParticipant,
   onReinstateParticipant,
+  onEntryFeeToggle,
   onRefreshSession,
 }: SessionsPanelProps) {
   const [adminRegisterOpen, setAdminRegisterOpen] = useState(false);
@@ -1572,6 +1595,7 @@ export function SessionsPanel({
                   actionLabel="참석 취소"
                   actionTone="rose"
                   onActionClick={setCancelTarget}
+                  onEntryFeeToggle={onEntryFeeToggle}
                   page={registeredPage}
                   totalPages={registeredTotalPages}
                   onPageChange={setRegisteredPage}

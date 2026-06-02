@@ -81,6 +81,7 @@ async function findSessionDetail(sessionId: number, clubId: number) {
             status: true,
             attendanceStatus: true,
             checkedInAt: true,
+            entryFeePaid: true,
             createdAt: true,
             member: {
               select: {

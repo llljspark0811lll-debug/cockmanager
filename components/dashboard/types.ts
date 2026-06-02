@@ -131,6 +131,7 @@ export interface SessionParticipant {
   guestGender: string | null;
   guestLevel: string | null;
   hostMemberId: number | null;
+  entryFeePaid: boolean;
   member: Member | null;
   hostMember: Member | null;
 }

@@ -70,6 +70,42 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PATCH(req: Request) {
+  try {
+    const admin = await requireAuthAdmin();
+
+    if (!admin) {
+      return unauthorizedResponse();
+    }
+
+    const { participantId, entryFeePaid } = await req.json();
+
+    const participant = await prisma.sessionParticipant.findFirst({
+      where: {
+        id: Number(participantId),
+        session: { clubId: admin.clubId },
+      },
+    });
+
+    if (!participant) {
+      return notFoundResponse("참가자를 찾을 수 없습니다.");
+    }
+
+    await prisma.sessionParticipant.update({
+      where: { id: participant.id },
+      data: { entryFeePaid: Boolean(entryFeePaid) },
+    });
+
+    return NextResponse.json({ success: true, entryFeePaid: Boolean(entryFeePaid) });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "대관비 납부 처리에 실패했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const admin = await requireAuthAdmin();

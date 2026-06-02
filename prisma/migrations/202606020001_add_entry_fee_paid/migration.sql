@@ -1,0 +1,1 @@
+ALTER TABLE "SessionParticipant" ADD COLUMN IF NOT EXISTS "entryFeePaid" BOOLEAN NOT NULL DEFAULT false;
