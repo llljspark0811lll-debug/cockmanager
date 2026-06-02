@@ -572,7 +572,7 @@ function ParticipantSection({
                     <td className="px-1 py-3 text-center md:px-4 md:py-4">
                       <button
                         onClick={() => onEntryFeeToggle(participant.id, !participant.entryFeePaid)}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg text-sm font-black transition ${
+                        className={`inline-flex h-5 w-5 items-center justify-center rounded-md text-xs font-black transition md:h-7 md:w-7 md:rounded-lg md:text-sm ${
                           participant.entryFeePaid
                             ? "bg-rose-500 text-white hover:bg-rose-600"
                             : "bg-slate-100 text-slate-300 hover:bg-slate-200"
