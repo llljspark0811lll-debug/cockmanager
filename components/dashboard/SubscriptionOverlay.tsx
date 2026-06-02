@@ -51,7 +51,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
           <div className="flex-1" />
           <div className="text-center text-5xl flex-1">🏸</div>
           <div className="flex-1 flex justify-end">
-            {step === "plan" && (
+            {(step === "plan" || step === "account") && (
               <button
                 onClick={onDismiss}
                 className="text-slate-400 hover:text-slate-600 text-xl leading-none"
