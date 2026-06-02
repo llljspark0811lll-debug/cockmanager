@@ -74,7 +74,7 @@ export function SubscriptionOverlay({ visible, clubName, onDismiss }: Subscripti
             <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
               <div className="rounded-2xl bg-emerald-50 p-3">
                 <p className="mb-2 font-bold text-emerald-700">무료 사용</p>
-                {["회원 관리", "가입 신청", "회비 관리", "운동 일정"].map(f => (
+                {["회원 관리", "회비 관리", "운동 일정"].map(f => (
                   <p key={f} className="flex items-center gap-1 text-slate-700 leading-6">
                     <span className="text-emerald-500">✓</span> {f}
                   </p>
