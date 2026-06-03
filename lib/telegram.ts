@@ -169,6 +169,12 @@ export type TelegramAlertInput =
       plan: string;
       amount: number;
       depositorName: string;
+    }
+  | {
+      event: "TRIAL_SUBSCRIBE_CLICK";
+      clubId: number;
+      clubName: string;
+      daysRemaining: number;
     };
 
 function getTelegramConfig() {
@@ -471,6 +477,13 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `플랜: ${input.plan} | 금액: ${formatWon(input.amount)}`,
         `입금자명: ${input.depositorName}`,
         `👉 /op 에서 확인 후 승인하세요`,
+      ].join("\n");
+
+    case "TRIAL_SUBSCRIBE_CLICK":
+      return [
+        "🖱️ 무료체험 구독하기 클릭",
+        `클럽ID: ${input.clubId} | 클럽명: ${input.clubName}`,
+        `잔여 체험 기간: ${input.daysRemaining}일`,
       ].join("\n");
   }
 }

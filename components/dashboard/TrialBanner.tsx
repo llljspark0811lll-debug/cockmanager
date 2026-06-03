@@ -24,6 +24,17 @@ export function TrialBanner({ daysRemaining, clubName, mode = "trial" }: TrialBa
 
   const buttonLabel = isActive ? "갱신하기" : "구독하기";
 
+  function handleSubscribeClick() {
+    setModalOpen(true);
+    if (!isActive) {
+      fetch("/api/subscription/trial-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ daysRemaining }),
+      }).catch(() => {});
+    }
+  }
+
   return (
     <>
       <div
@@ -41,7 +52,7 @@ export function TrialBanner({ daysRemaining, clubName, mode = "trial" }: TrialBa
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={handleSubscribeClick}
             className={`rounded-xl px-3 py-1.5 text-xs font-bold text-white transition ${
               isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
             }`}
