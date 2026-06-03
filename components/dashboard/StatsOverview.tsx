@@ -210,7 +210,7 @@ export function StatsOverview({
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             마감된 운동 일정 기준으로 회원 참여 흐름과 신규 회원,
-            회비 상태까지 한 번에 확인할 수 있게 정리했습니다.
+            회비 상태까지 한 번에 확인할 수 있습니다.
           </p>
         </div>
 
