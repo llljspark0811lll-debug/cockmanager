@@ -37,7 +37,7 @@ export function DashboardHeader({
         </div>
 
         <p className="mt-2 text-sm text-slate-500">
-          회원, 회비, 통계, 운동 일정, 자동 대진표를 한 곳에서 관리합니다.
+          회원, 회비, 운동 일정, 대진표를 한 곳에서 관리합니다.
         </p>
         <div className="mt-3">
           <PwaInstallButton />

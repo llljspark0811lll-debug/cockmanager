@@ -40,7 +40,9 @@
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\api\\\\subscription\\\\request\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\user\\\\cockmanager\\\\app\\\\op\")",
       "Bash(grep -v \"^$\")",
-      "Bash(npx ts-node *)"
+      "Bash(npx ts-node *)",
+      "Bash(cat \"/c/Users/user/AppData/Roaming/Code/User/settings.json\")",
+      "Read(//c/Users/user/AppData/Roaming/Code/User/**)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",
