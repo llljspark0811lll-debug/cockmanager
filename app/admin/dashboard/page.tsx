@@ -30,6 +30,7 @@ import { TrialBanner } from "@/components/dashboard/TrialBanner";
 import { TutorialModal } from "@/components/dashboard/TutorialModal";
 import { SupportModal } from "@/components/dashboard/SupportModal";
 import { DeleteAccountModal } from "@/components/dashboard/DeleteAccountModal";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import type {
   ClubInfo,
   ClubPosition,
@@ -2510,6 +2511,7 @@ export default function DashboardPage() {
           router.push("/admin/login");
         }}
       />
+      <ScrollToTopButton />
     </main>
   );
 }

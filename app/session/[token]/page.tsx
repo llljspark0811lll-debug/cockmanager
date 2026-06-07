@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Participant = {
@@ -1733,6 +1734,7 @@ export default function PublicSessionPage() {
         </div>
         <ParticipantGroups title="대기 중인 게스트 현황" participants={waitlistedGuests} emptyMessage="현재 대기 중인 게스트가 없습니다." />
       </div>
+      <ScrollToTopButton />
     </main>
   );
 }
