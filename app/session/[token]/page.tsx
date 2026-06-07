@@ -1134,7 +1134,11 @@ export default function PublicSessionPage() {
                     {session.capacity === null ? "∞" : `${session.capacity}명`}
                   </div>
                 </div>
-                <div className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-2 py-2 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("section-registered")?.scrollIntoView({ behavior: "smooth" })}
+                  className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-2 py-2 text-left transition hover:bg-emerald-100 active:bg-emerald-200 sm:rounded-[1.4rem] sm:px-4 sm:py-4"
+                >
                   <div className="text-[8px] font-black tracking-[0.1em] text-emerald-600 sm:text-[11px] sm:tracking-[0.18em]">
                     REGISTERED
                   </div>
@@ -1146,8 +1150,12 @@ export default function PublicSessionPage() {
                     <div>회원 {session.registeredMemberCount}명</div>
                     <div>게스트 {session.registeredGuestCount}명</div>
                   </div>
-                </div>
-                <div className="rounded-[1rem] border border-rose-100 bg-rose-50/60 px-2 py-2 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("section-absent")?.scrollIntoView({ behavior: "smooth" })}
+                  className="rounded-[1rem] border border-rose-100 bg-rose-50/60 px-2 py-2 text-left transition hover:bg-rose-100 active:bg-rose-200 sm:rounded-[1.4rem] sm:px-4 sm:py-4"
+                >
                   <div className="text-[8px] font-black tracking-[0.1em] text-rose-400 sm:text-[11px] sm:tracking-[0.18em]">
                     ABSENT
                   </div>
@@ -1159,8 +1167,12 @@ export default function PublicSessionPage() {
                     <div>회원 {absentMembers.length}명</div>
                     <div>게스트 {absentGuests.length}명</div>
                   </div>
-                </div>
-                <div className="rounded-[1rem] border border-amber-200 bg-amber-50 px-2 py-2 sm:rounded-[1.4rem] sm:px-4 sm:py-4">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("section-waitlist")?.scrollIntoView({ behavior: "smooth" })}
+                  className="rounded-[1rem] border border-amber-200 bg-amber-50 px-2 py-2 text-left transition hover:bg-amber-100 active:bg-amber-200 sm:rounded-[1.4rem] sm:px-4 sm:py-4"
+                >
                   <div className="text-[8px] font-black tracking-[0.1em] text-amber-600 sm:text-[11px] sm:tracking-[0.18em]">
                     WAITLIST
                   </div>
@@ -1172,7 +1184,7 @@ export default function PublicSessionPage() {
                     <div>회원 {session.waitlistMemberCount}명</div>
                     <div>게스트 {session.waitlistGuestCount}명</div>
                   </div>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -1688,12 +1700,18 @@ export default function PublicSessionPage() {
           ) : null}
         </section>
 
-        <ParticipantGroups title="회원 참석 현황" participants={registeredMembers} emptyMessage="아직 참석 신청한 회원이 없습니다." />
+        <div id="section-registered">
+          <ParticipantGroups title="회원 참석 현황" participants={registeredMembers} emptyMessage="아직 참석 신청한 회원이 없습니다." />
+        </div>
         <ParticipantGroups title="게스트 참석 현황" participants={registeredGuests} emptyMessage="아직 등록된 게스트가 없습니다." />
-        <ParticipantGroups title="불참 회원 현황" participants={absentMembers} emptyMessage="불참 회원이 없습니다." />
+        <div id="section-absent">
+          <ParticipantGroups title="불참 회원 현황" participants={absentMembers} emptyMessage="불참 회원이 없습니다." />
+        </div>
         <ParticipantGroups title="불참 게스트 현황" participants={absentGuests} emptyMessage="불참 게스트가 없습니다." />
         <PendingMembersSection members={session?.pendingMembers ?? []} />
-        <ParticipantGroups title="대기 중인 회원 현황" participants={waitlistedMembers} emptyMessage="현재 대기 중인 회원이 없습니다." />
+        <div id="section-waitlist">
+          <ParticipantGroups title="대기 중인 회원 현황" participants={waitlistedMembers} emptyMessage="현재 대기 중인 회원이 없습니다." />
+        </div>
         <ParticipantGroups title="대기 중인 게스트 현황" participants={waitlistedGuests} emptyMessage="현재 대기 중인 게스트가 없습니다." />
       </div>
     </main>
