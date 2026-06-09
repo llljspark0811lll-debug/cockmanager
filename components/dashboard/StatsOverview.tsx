@@ -469,7 +469,7 @@ export function StatsOverview({
               <div>
                 <h3 className="text-lg font-black text-slate-900">전체 회원 출석 현황</h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  선택한 기간 기준 전체 활성 회원의 출석 횟수입니다.
+                  선택한 기간 기준 전체 회원의 출석 횟수입니다.
                 </p>
               </div>
               <select
