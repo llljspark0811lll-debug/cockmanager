@@ -255,8 +255,16 @@ export interface DashboardStatsPeriod {
 export interface DashboardTopMemberStat {
   memberId: number;
   name: string;
+  gender?: string | null;
+  level?: string | null;
   attendanceCount: number;
   totalSessionCount: number;
+  attendedSessionIds?: number[];
+}
+
+export interface DashboardAllMemberStatsGroup {
+  members: DashboardTopMemberStat[];
+  sessions: { id: number; date: string | Date }[];
 }
 
 export interface DashboardStats {
@@ -272,6 +280,11 @@ export interface DashboardStats {
     week: DashboardTopMemberStat[];
     month: DashboardTopMemberStat[];
     custom?: DashboardTopMemberStat[];
+  };
+  allMemberStats?: {
+    week: DashboardAllMemberStatsGroup;
+    month: DashboardAllMemberStatsGroup;
+    custom?: DashboardAllMemberStatsGroup;
   };
 }
 

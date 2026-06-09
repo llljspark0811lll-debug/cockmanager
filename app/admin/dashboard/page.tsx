@@ -2212,11 +2212,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {activeTab === "stats" ? (
-          <div data-tutorial-id="stats-panel">
-            <StatsOverview stats={stats} loading={loadingStats} />
-          </div>
-        ) : null}
+        <div
+          data-tutorial-id="stats-panel"
+          className={activeTab === "stats" ? "" : "hidden"}
+        >
+          <StatsOverview stats={stats} loading={loadingStats} />
+        </div>
 
         {activeTab === "members" ? (
           <div

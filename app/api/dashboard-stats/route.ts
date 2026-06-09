@@ -164,43 +164,55 @@ async function getMemberAttendanceStats(
   start: Date,
   end: Date
 ) {
-  const totalSessionCount = await prisma.clubSession.count({
+  const sessions = await prisma.clubSession.findMany({
     where: { clubId, status: "CLOSED", date: { gte: start, lt: end } },
+    select: { id: true, date: true },
+    orderBy: { date: "asc" },
   });
 
-  if (totalSessionCount === 0) {
-    return { topMembers: [], absentMembers: [] };
+  if (sessions.length === 0) {
+    return { topMembers: [], absentMembers: [], allMembers: [], sessions: [] };
   }
 
-  const [allMembers, attendanceGroups] = await Promise.all([
+  const sessionIds = sessions.map((s) => s.id);
+
+  const [allMemberRows, participantRows] = await Promise.all([
     prisma.member.findMany({
       where: { clubId, deleted: false },
-      select: { id: true, name: true },
+      select: { id: true, name: true, gender: true, level: true },
     }),
-    prisma.sessionParticipant.groupBy({
-      by: ["memberId"],
+    prisma.sessionParticipant.findMany({
       where: {
+        sessionId: { in: sessionIds },
         memberId: { not: null },
         status: "REGISTERED",
         guestName: null,
-        session: { clubId, status: "CLOSED", date: { gte: start, lt: end } },
       },
-      _count: { _all: true },
+      select: { memberId: true, sessionId: true },
     }),
   ]);
 
-  const attendanceMap = new Map(
-    attendanceGroups
-      .filter((g) => g.memberId !== null)
-      .map((g) => [g.memberId as number, g._count._all])
-  );
+  const memberSessionMap = new Map<number, Set<number>>();
+  for (const row of participantRows) {
+    if (row.memberId === null) continue;
+    if (!memberSessionMap.has(row.memberId)) {
+      memberSessionMap.set(row.memberId, new Set());
+    }
+    memberSessionMap.get(row.memberId)!.add(row.sessionId);
+  }
 
-  const memberStats = allMembers.map((m) => ({
-    memberId: m.id,
-    name: m.name,
-    attendanceCount: attendanceMap.get(m.id) ?? 0,
-    totalSessionCount,
-  }));
+  const memberStats = allMemberRows.map((m) => {
+    const attended = memberSessionMap.get(m.id) ?? new Set<number>();
+    return {
+      memberId: m.id,
+      name: m.name,
+      gender: m.gender,
+      level: m.level,
+      attendanceCount: attended.size,
+      totalSessionCount: sessions.length,
+      attendedSessionIds: Array.from(attended),
+    };
+  });
 
   const topMembers = [...memberStats]
     .filter((m) => m.attendanceCount > 0)
@@ -219,7 +231,11 @@ async function getMemberAttendanceStats(
     )
     .slice(0, 5);
 
-  return { topMembers, absentMembers };
+  const allMembers = [...memberStats].sort((a, b) =>
+    a.name.localeCompare(b.name, "ko")
+  );
+
+  return { topMembers, absentMembers, allMembers, sessions };
 }
 
 export async function GET(request: Request) {
@@ -267,6 +283,8 @@ export async function GET(request: Request) {
     let custom = null;
     let customTopMembers: Awaited<ReturnType<typeof getMemberAttendanceStats>>["topMembers"] | undefined;
     let customAbsentMembers: Awaited<ReturnType<typeof getMemberAttendanceStats>>["absentMembers"] | undefined;
+    let customAllMembers: Awaited<ReturnType<typeof getMemberAttendanceStats>>["allMembers"] | undefined;
+    let customSessions: Awaited<ReturnType<typeof getMemberAttendanceStats>>["sessions"] | undefined;
 
     if (customStartInput && customEndInput) {
       const customStart = startOfDay(customStartInput);
@@ -287,6 +305,8 @@ export async function GET(request: Request) {
       };
       customTopMembers = customMemberStats.topMembers;
       customAbsentMembers = customMemberStats.absentMembers;
+      customAllMembers = customMemberStats.allMembers;
+      customSessions = customMemberStats.sessions;
     }
 
     return NextResponse.json({
@@ -308,6 +328,13 @@ export async function GET(request: Request) {
         week: weekMemberStats.absentMembers,
         month: monthMemberStats.absentMembers,
         custom: customAbsentMembers,
+      },
+      allMemberStats: {
+        week: { members: weekMemberStats.allMembers, sessions: weekMemberStats.sessions },
+        month: { members: monthMemberStats.allMembers, sessions: monthMemberStats.sessions },
+        custom: customAllMembers !== undefined
+          ? { members: customAllMembers, sessions: customSessions ?? [] }
+          : undefined,
       },
     });
   } catch (error) {

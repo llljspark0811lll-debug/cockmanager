@@ -1,12 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
+  DashboardAllMemberStatsGroup,
   DashboardStats,
   DashboardStatsPeriod,
   DashboardStatsPeriodKey,
   DashboardTopMemberStat,
 } from "@/components/dashboard/types";
+
+function formatSessionDate(date: string | Date) {
+  const d = new Date(date);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+type AllMemberSortKey = "HIGH" | "LOW" | "NAME";
+const ALL_MEMBER_PAGE_SIZE = 10;
+const STATS_SESSION_KEY = "cockmanager-stats-ui";
+
+type StatsSessionState = {
+  period: DashboardStatsPeriodKey;
+  customStartDate: string;
+  customEndDate: string;
+  allMemberSort: AllMemberSortKey;
+};
+
+function readSessionState(): Partial<StatsSessionState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STATS_SESSION_KEY);
+    return raw ? (JSON.parse(raw) as Partial<StatsSessionState>) : {};
+  } catch {
+    return {};
+  }
+}
 
 type StatsOverviewProps = {
   stats: DashboardStats | null;
@@ -50,13 +77,10 @@ export function StatsOverview({
   stats,
   loading,
 }: StatsOverviewProps) {
-  const [period, setPeriod] =
-    useState<DashboardStatsPeriodKey>("WEEK");
+  const [period, setPeriod] = useState<DashboardStatsPeriodKey>("CUSTOM");
   const [customStartDate, setCustomStartDate] = useState(() => {
     const now = new Date();
-    return formatDateInputValue(
-      new Date(now.getFullYear(), now.getMonth(), 1)
-    );
+    return formatDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1));
   });
   const [customEndDate, setCustomEndDate] = useState(() =>
     formatDateInputValue(new Date())
@@ -71,42 +95,68 @@ export function StatsOverview({
   const [customAbsentMembers, setCustomAbsentMembers] = useState<
     DashboardTopMemberStat[]
   >([]);
+  const [customAllMembersGroup, setCustomAllMembersGroup] =
+    useState<DashboardAllMemberStatsGroup | null>(null);
+  const [allMemberSort, setAllMemberSort] = useState<AllMemberSortKey>("HIGH");
+  const [allMemberPage, setAllMemberPage] = useState(1);
+  const saveInitialized = useRef(false);
 
   useEffect(() => {
-    setCustomStats(stats?.custom ?? null);
-    setCustomTopMembers(stats?.topMembers.custom ?? []);
-    setCustomAbsentMembers(stats?.absentMembers?.custom ?? []);
+    if (stats?.custom) setCustomStats(stats.custom);
+    if (stats?.topMembers?.custom) setCustomTopMembers(stats.topMembers.custom);
+    if (stats?.absentMembers?.custom) setCustomAbsentMembers(stats.absentMembers.custom);
+    if (stats?.allMemberStats?.custom) setCustomAllMembersGroup(stats.allMemberStats.custom);
   }, [stats]);
 
-  const periodStats = useMemo(() => {
-    if (!stats) {
-      return null;
+  // sessionStorage에 UI 상태 저장 (마운트 첫 실행은 기본값 덮어쓰기 방지를 위해 건너뜀)
+  useEffect(() => {
+    if (!saveInitialized.current) {
+      saveInitialized.current = true;
+      return;
     }
+    try {
+      const state: StatsSessionState = { period, customStartDate, customEndDate, allMemberSort };
+      localStorage.setItem(STATS_SESSION_KEY, JSON.stringify(state));
+    } catch {}
+  }, [period, customStartDate, customEndDate, allMemberSort]);
 
-    if (period === "WEEK") {
-      return stats.week;
+  const periodStats = useMemo(() => customStats, [customStats]);
+
+  const periodTopMembers = useMemo(() => customTopMembers, [customTopMembers]);
+
+  const periodAbsentMembers = useMemo(() => customAbsentMembers, [customAbsentMembers]);
+
+  const periodAllMembersGroup = useMemo((): DashboardAllMemberStatsGroup => {
+    return customAllMembersGroup ?? { members: [], sessions: [] };
+  }, [customAllMembersGroup]);
+
+  const periodSessions = periodAllMembersGroup.sessions;
+
+  const sortedAllMembers = useMemo(() => {
+    const list = [...periodAllMembersGroup.members];
+    if (allMemberSort === "HIGH") {
+      list.sort((a, b) => {
+        const pctA = a.attendanceCount / Math.max(a.totalSessionCount ?? 0, 1);
+        const pctB = b.attendanceCount / Math.max(b.totalSessionCount ?? 0, 1);
+        return pctB - pctA || b.attendanceCount - a.attendanceCount || a.name.localeCompare(b.name, "ko");
+      });
+    } else if (allMemberSort === "LOW") {
+      list.sort((a, b) => {
+        const pctA = a.attendanceCount / Math.max(a.totalSessionCount ?? 0, 1);
+        const pctB = b.attendanceCount / Math.max(b.totalSessionCount ?? 0, 1);
+        return pctA - pctB || a.attendanceCount - b.attendanceCount || a.name.localeCompare(b.name, "ko");
+      });
+    } else {
+      list.sort((a, b) => a.name.localeCompare(b.name, "ko"));
     }
+    return list;
+  }, [periodAllMembersGroup, allMemberSort]);
 
-    if (period === "MONTH") {
-      return stats.month;
-    }
-
-    return customStats;
-  }, [customStats, period, stats]);
-
-  const periodTopMembers = useMemo(() => {
-    if (!stats) return [];
-    if (period === "WEEK") return stats.topMembers.week;
-    if (period === "MONTH") return stats.topMembers.month;
-    return customTopMembers;
-  }, [customTopMembers, period, stats]);
-
-  const periodAbsentMembers = useMemo(() => {
-    if (!stats) return [];
-    if (period === "WEEK") return stats.absentMembers?.week ?? [];
-    if (period === "MONTH") return stats.absentMembers?.month ?? [];
-    return customAbsentMembers;
-  }, [customAbsentMembers, period, stats]);
+  const allMemberTotalPages = Math.max(1, Math.ceil(sortedAllMembers.length / ALL_MEMBER_PAGE_SIZE));
+  const pagedAllMembers = sortedAllMembers.slice(
+    (allMemberPage - 1) * ALL_MEMBER_PAGE_SIZE,
+    allMemberPage * ALL_MEMBER_PAGE_SIZE
+  );
 
   const statCards = useMemo<StatCard[]>(() => {
     if (!periodStats) {
@@ -157,6 +207,10 @@ export function StatsOverview({
     ];
   }, [periodStats]);
 
+  useEffect(() => {
+    setAllMemberPage(1);
+  }, [allMemberSort]);
+
   async function handleLoadCustomStats() {
     if (!customStartDate || !customEndDate) {
       setCustomError("시작일과 종료일을 모두 선택해주세요.");
@@ -168,45 +222,56 @@ export function StatsOverview({
       return;
     }
 
+    await fetchCustomStats(customStartDate, customEndDate);
+  }
+
+  async function fetchCustomStats(startDate: string, endDate: string) {
     setCustomLoading(true);
     setCustomError("");
 
     try {
       const response = await fetch(
-        `/api/dashboard-stats?startDate=${customStartDate}&endDate=${customEndDate}`,
-        {
-          credentials: "include",
-        }
+        `/api/dashboard-stats?startDate=${startDate}&endDate=${endDate}`,
+        { credentials: "include" }
       );
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error ?? "기간 통계를 불러오지 못했습니다."
-        );
+        throw new Error(data?.error ?? "기간 통계를 불러오지 못했습니다.");
       }
 
       setCustomStats(data.custom ?? null);
       setCustomTopMembers(data.topMembers?.custom ?? []);
       setCustomAbsentMembers(data.absentMembers?.custom ?? []);
+      setCustomAllMembersGroup(data.allMemberStats?.custom ?? null);
       setPeriod("CUSTOM");
     } catch (error) {
       setCustomError(
-        error instanceof Error
-          ? error.message
-          : "기간 통계를 불러오지 못했습니다."
+        error instanceof Error ? error.message : "기간 통계를 불러오지 못했습니다."
       );
     } finally {
       setCustomLoading(false);
     }
   }
 
+  // 마운트 시 localStorage 복원 (useLayoutEffect: 페인트 전 동기 실행, SSR 미실행)
+  useLayoutEffect(() => {
+    const saved = readSessionState();
+    if (saved.allMemberSort) setAllMemberSort(saved.allMemberSort as AllMemberSortKey);
+    const startDate = saved.customStartDate ?? customStartDate;
+    const endDate = saved.customEndDate ?? customEndDate;
+    if (saved.customStartDate) setCustomStartDate(saved.customStartDate);
+    if (saved.customEndDate) setCustomEndDate(saved.customEndDate);
+    fetchCustomStats(startDate, endDate).catch(() => undefined);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="mt-2 text-2xl font-black text-slate-900">
-            주간/월간 운영 통계
+            운영 통계
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             마감된 운동 일정 기준으로 회원 참여 흐름과 신규 회원,
@@ -215,29 +280,6 @@ export function StatsOverview({
         </div>
 
         <div className="flex flex-col gap-3 xl:items-end">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setPeriod("WEEK")}
-              className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition ${
-                period === "WEEK"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              이번 주
-            </button>
-            <button
-              onClick={() => setPeriod("MONTH")}
-              className={`rounded-2xl px-4 py-2.5 text-sm font-bold transition ${
-                period === "MONTH"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              이번 달
-            </button>
-          </div>
-
           <div className="grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_76px] items-center gap-2 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_88px]">
             <input
               type="date"
@@ -279,15 +321,7 @@ export function StatsOverview({
       ) : stats && periodStats ? (
         <div className="mt-5 space-y-5">
           <div className="text-xs font-medium text-slate-400">
-            {formatPeriodLabel(
-              period === "WEEK"
-                ? "주간 통계"
-                : period === "MONTH"
-                  ? "월간 통계"
-                  : "직접 설정 기간 통계",
-              periodStats.startDate,
-              periodStats.endDate
-            )}
+            {formatPeriodLabel("기간별 통계", periodStats.startDate, periodStats.endDate)}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-5">
@@ -425,6 +459,147 @@ export function StatsOverview({
       ) : (
         <div className="mt-5 rounded-[1.5rem] bg-slate-50 px-4 py-12 text-center text-sm text-slate-400">
           운영 통계를 아직 불러오지 못했습니다.
+        </div>
+      )}
+
+      {!loading && stats && (
+        <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">전체 회원 출석 현황</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  선택한 기간 기준 전체 활성 회원의 출석 횟수입니다.
+                </p>
+              </div>
+              <select
+                value={allMemberSort}
+                onChange={(e) => setAllMemberSort(e.target.value as AllMemberSortKey)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+              >
+                <option value="HIGH">출석 높은순</option>
+                <option value="LOW">출석 낮은순</option>
+                <option value="NAME">이름순</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {periodAllMembersGroup.members.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+                선택한 기간에 집계된 회원 데이터가 없습니다.
+              </div>
+            ) : (
+              <>
+                {/* PC: 날짜 컬럼 테이블 */}
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full border-separate border-spacing-0">
+                    <thead>
+                      <tr>
+                        <th className="sticky left-0 z-10 bg-white pb-2.5 pr-4 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">순위</th>
+                        <th className="sticky z-10 bg-white pb-2.5 pr-6 text-left text-xs font-semibold text-slate-400 w-24 border-b border-slate-100" style={{ left: "2.5rem" }}>이름</th>
+                        <th className="pb-2.5 pr-4 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">성별</th>
+                        <th className="pb-2.5 pr-6 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">급수</th>
+                        {periodSessions.map((s) => (
+                          <th key={s.id} className="pb-2.5 px-2 text-center text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">
+                            {formatSessionDate(s.date)}
+                          </th>
+                        ))}
+                        <th className="pb-2.5 pr-4 text-right text-xs font-semibold text-slate-400 w-16 border-b border-slate-100">참석</th>
+                        <th className="pb-2.5 text-right text-xs font-semibold text-slate-400 w-14 border-b border-slate-100">출석률</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedAllMembers.map((member, index) => {
+                        const rank = (allMemberPage - 1) * ALL_MEMBER_PAGE_SIZE + index + 1;
+                        const total = Math.max(member.totalSessionCount ?? 0, 1);
+                        const pct = Math.round((member.attendanceCount / total) * 100);
+                        const pctColor = pct >= 70 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-rose-600";
+                        const attendedSet = new Set(member.attendedSessionIds ?? []);
+                        return (
+                          <tr key={member.memberId}>
+                            <td className="sticky left-0 z-10 bg-white py-2.5 pr-4 text-xs font-bold text-slate-400 border-b border-slate-50">#{rank}</td>
+                            <td className="sticky z-10 bg-white py-2.5 pr-6 text-sm font-black text-slate-900 border-b border-slate-50" style={{ left: "2.5rem" }}>{member.name}</td>
+                            <td className="py-2.5 pr-4 text-xs text-slate-500 border-b border-slate-50">{member.gender ?? "—"}</td>
+                            <td className="py-2.5 pr-6 text-xs text-slate-500 border-b border-slate-50">{member.level ?? "—"}</td>
+                            {periodSessions.map((s) => (
+                              <td key={s.id} className="py-2.5 px-2 text-center border-b border-slate-50">
+                                {attendedSet.has(s.id) ? (
+                                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                ) : (
+                                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-slate-200" />
+                                )}
+                              </td>
+                            ))}
+                            <td className="py-2.5 pr-4 text-right text-xs text-slate-500 border-b border-slate-50">{member.attendanceCount}/{member.totalSessionCount ?? 0}회</td>
+                            <td className={`py-2.5 text-right text-xs font-bold border-b border-slate-50 ${pctColor}`}>{pct}%</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 모바일: 인라인 바 */}
+                <div className="space-y-2.5 md:hidden">
+                  {pagedAllMembers.map((member, index) => {
+                    const rank = (allMemberPage - 1) * ALL_MEMBER_PAGE_SIZE + index + 1;
+                    const total = Math.max(member.totalSessionCount ?? 0, 1);
+                    const pct = Math.round((member.attendanceCount / total) * 100);
+                    const barColor = pct >= 70 ? "bg-emerald-400" : pct >= 40 ? "bg-amber-400" : "bg-rose-400";
+                    const pctColor = pct >= 70 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-rose-600";
+                    return (
+                      <div key={member.memberId} className="flex items-center gap-3">
+                        <span className="w-7 shrink-0 text-xs font-bold text-slate-400">#{rank}</span>
+                        <div className="flex min-w-0 flex-1 items-baseline gap-1">
+                          <span className="truncate text-sm font-black text-slate-900">{member.name}</span>
+                          {(member.gender || member.level) && (
+                            <span className="shrink-0 text-xs text-slate-400">{[member.gender, member.level].filter(Boolean).join("/")}</span>
+                          )}
+                        </div>
+                        <div className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-slate-100">
+                          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`w-8 shrink-0 text-right text-xs font-bold ${pctColor}`}>{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {allMemberTotalPages > 1 && (
+                  <div className="mt-5 flex items-center justify-center gap-1">
+                    <button
+                      onClick={() => setAllMemberPage((p) => Math.max(1, p - 1))}
+                      disabled={allMemberPage === 1}
+                      className="rounded-xl px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-100 disabled:opacity-30"
+                    >
+                      &lt;
+                    </button>
+                    {Array.from({ length: allMemberTotalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setAllMemberPage(page)}
+                        className={`rounded-xl px-3 py-2 text-sm font-bold transition ${
+                          page === allMemberPage
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setAllMemberPage((p) => Math.min(allMemberTotalPages, p + 1))}
+                      disabled={allMemberPage === allMemberTotalPages}
+                      className="rounded-xl px-3 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-100 disabled:opacity-30"
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </section>
