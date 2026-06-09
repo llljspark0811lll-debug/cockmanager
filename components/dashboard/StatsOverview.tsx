@@ -491,22 +491,22 @@ export function StatsOverview({
               </div>
             ) : (
               <>
-                {/* PC: 날짜 컬럼 테이블 */}
-                <div className="hidden overflow-x-auto md:block">
+                {/* 통합 테이블: 모바일/PC 모두 날짜 컬럼 + 가로 스크롤 */}
+                <div className="overflow-x-auto">
                   <table className="w-full border-separate border-spacing-0">
                     <thead>
                       <tr>
-                        <th className="sticky left-0 z-10 bg-white pb-2.5 pr-4 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">순위</th>
-                        <th className="sticky z-10 bg-white pb-2.5 pr-6 text-left text-xs font-semibold text-slate-400 w-24 border-b border-slate-100" style={{ left: "2.5rem" }}>이름</th>
-                        <th className="pb-2.5 pr-4 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">성별</th>
-                        <th className="pb-2.5 pr-6 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">급수</th>
+                        <th className="sticky left-0 z-10 bg-white pb-2 md:pb-2.5 pr-2 md:pr-4 text-left text-[10px] md:text-xs font-semibold text-slate-400 w-7 md:w-10 border-b border-slate-100">순위</th>
+                        <th className="sticky left-7 md:left-10 z-10 bg-white pb-2 md:pb-2.5 pr-2 md:pr-6 text-left text-[10px] md:text-xs font-semibold text-slate-400 w-16 md:w-24 border-b border-slate-100">이름</th>
+                        <th className="hidden md:table-cell pb-2.5 pr-4 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">성별</th>
+                        <th className="hidden md:table-cell pb-2.5 pr-6 text-left text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">급수</th>
                         {periodSessions.map((s) => (
-                          <th key={s.id} className="pb-2.5 px-2 text-center text-xs font-semibold text-slate-400 w-10 border-b border-slate-100">
+                          <th key={s.id} className="pb-2 md:pb-2.5 px-1 md:px-2 text-center text-[10px] md:text-xs font-semibold text-slate-400 w-7 md:w-10 border-b border-slate-100">
                             {formatSessionDate(s.date)}
                           </th>
                         ))}
-                        <th className="pb-2.5 pr-4 text-right text-xs font-semibold text-slate-400 w-16 border-b border-slate-100">참석</th>
-                        <th className="pb-2.5 text-right text-xs font-semibold text-slate-400 w-14 border-b border-slate-100">출석률</th>
+                        <th className="pb-2 md:pb-2.5 pl-1 pr-1 md:pr-4 text-right text-[10px] md:text-xs font-semibold text-slate-400 w-10 md:w-16 border-b border-slate-100 whitespace-nowrap">참석</th>
+                        <th className="pb-2 md:pb-2.5 text-right text-[10px] md:text-xs font-semibold text-slate-400 w-9 md:w-14 border-b border-slate-100">출석률</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -518,52 +518,26 @@ export function StatsOverview({
                         const attendedSet = new Set(member.attendedSessionIds ?? []);
                         return (
                           <tr key={member.memberId}>
-                            <td className="sticky left-0 z-10 bg-white py-2.5 pr-4 text-xs font-bold text-slate-400 border-b border-slate-50">#{rank}</td>
-                            <td className="sticky z-10 bg-white py-2.5 pr-6 text-sm font-black text-slate-900 border-b border-slate-50" style={{ left: "2.5rem" }}>{member.name}</td>
-                            <td className="py-2.5 pr-4 text-xs text-slate-500 border-b border-slate-50">{member.gender ?? "—"}</td>
-                            <td className="py-2.5 pr-6 text-xs text-slate-500 border-b border-slate-50">{member.level ?? "—"}</td>
+                            <td className="sticky left-0 z-10 bg-white py-2 md:py-2.5 pr-2 md:pr-4 text-[10px] md:text-xs font-bold text-slate-400 border-b border-slate-50">#{rank}</td>
+                            <td className="sticky left-7 md:left-10 z-10 bg-white py-2 md:py-2.5 pr-2 md:pr-6 text-xs md:text-sm font-black text-slate-900 border-b border-slate-50 max-w-[4rem] md:max-w-[6rem] truncate">{member.name}</td>
+                            <td className="hidden md:table-cell py-2.5 pr-4 text-xs text-slate-500 border-b border-slate-50">{member.gender ?? "—"}</td>
+                            <td className="hidden md:table-cell py-2.5 pr-6 text-xs text-slate-500 border-b border-slate-50">{member.level ?? "—"}</td>
                             {periodSessions.map((s) => (
-                              <td key={s.id} className="py-2.5 px-2 text-center border-b border-slate-50">
+                              <td key={s.id} className="py-2 md:py-2.5 px-1 md:px-2 text-center border-b border-slate-50">
                                 {attendedSet.has(s.id) ? (
-                                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                  <span className="inline-block h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-emerald-400" />
                                 ) : (
-                                  <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-slate-200" />
+                                  <span className="inline-block h-2 w-2 md:h-2.5 md:w-2.5 rounded-full border-2 border-slate-200" />
                                 )}
                               </td>
                             ))}
-                            <td className="py-2.5 pr-4 text-right text-xs text-slate-500 border-b border-slate-50">{member.attendanceCount}/{member.totalSessionCount ?? 0}회</td>
-                            <td className={`py-2.5 text-right text-xs font-bold border-b border-slate-50 ${pctColor}`}>{pct}%</td>
+                            <td className="py-2 md:py-2.5 pl-1 pr-1 md:pr-4 text-right text-[10px] md:text-xs text-slate-500 border-b border-slate-50 whitespace-nowrap">{member.attendanceCount}/{member.totalSessionCount ?? 0}</td>
+                            <td className={`py-2 md:py-2.5 text-right text-[10px] md:text-xs font-bold border-b border-slate-50 whitespace-nowrap ${pctColor}`}>{pct}%</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </div>
-
-                {/* 모바일: 인라인 바 */}
-                <div className="space-y-2.5 md:hidden">
-                  {pagedAllMembers.map((member, index) => {
-                    const rank = (allMemberPage - 1) * ALL_MEMBER_PAGE_SIZE + index + 1;
-                    const total = Math.max(member.totalSessionCount ?? 0, 1);
-                    const pct = Math.round((member.attendanceCount / total) * 100);
-                    const barColor = pct >= 70 ? "bg-emerald-400" : pct >= 40 ? "bg-amber-400" : "bg-rose-400";
-                    const pctColor = pct >= 70 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-rose-600";
-                    return (
-                      <div key={member.memberId} className="flex items-center gap-3">
-                        <span className="w-7 shrink-0 text-xs font-bold text-slate-400">#{rank}</span>
-                        <div className="flex min-w-0 flex-1 items-baseline gap-4">
-                          <span className="truncate text-sm font-black text-slate-900">{member.name}</span>
-                          {(member.gender || member.level) && (
-                            <span className="shrink-0 text-xs text-slate-400">{[member.gender, member.level].filter(Boolean).join("/")}</span>
-                          )}
-                        </div>
-                        <div className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-slate-100">
-                          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className={`w-8 shrink-0 text-right text-xs font-bold ${pctColor}`}>{pct}%</span>
-                      </div>
-                    );
-                  })}
                 </div>
 
                 {allMemberTotalPages > 1 && (
