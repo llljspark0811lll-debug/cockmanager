@@ -551,7 +551,7 @@ export function StatsOverview({
                     return (
                       <div key={member.memberId} className="flex items-center gap-3">
                         <span className="w-7 shrink-0 text-xs font-bold text-slate-400">#{rank}</span>
-                        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <div className="flex min-w-0 flex-1 items-baseline gap-4">
                           <span className="truncate text-sm font-black text-slate-900">{member.name}</span>
                           {(member.gender || member.level) && (
                             <span className="shrink-0 text-xs text-slate-400">{[member.gender, member.level].filter(Boolean).join("/")}</span>
