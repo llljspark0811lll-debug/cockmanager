@@ -15,6 +15,8 @@ type Participant = {
   hostMemberName?: string | null;
 };
 
+type ClubLevel = { rank: number; name: string };
+
 type SessionData = {
   id: number;
   publicToken: string;
@@ -39,6 +41,7 @@ type SessionData = {
   waitlistedParticipants: Participant[];
   absentParticipants: Participant[];
   pendingMembers: { id: number; name: string }[];
+  levels: ClubLevel[];
 };
 
 type SessionComment = {
@@ -75,9 +78,13 @@ type BoardGroup = {
   }>;
 };
 
-const LEVELS = ["S", "A", "B", "C", "D", "E", "초심"];
 const GENDERS = ["남", "여"];
 const MAX_GUESTS = 5;
+const DEFAULT_LEVELS: ClubLevel[] = [
+  { rank: 1, name: "S" }, { rank: 2, name: "A" }, { rank: 3, name: "B" },
+  { rank: 4, name: "C" }, { rank: 5, name: "D" }, { rank: 6, name: "E" },
+  { rank: 7, name: "초심" },
+];
 
 function emptyGuest(): GuestDraft {
   return { name: "", age: "", gender: "", level: "" };
@@ -118,18 +125,16 @@ function normalizeGender(value: string | null | undefined) {
 }
 
 function normalizeLevel(value: string | null | undefined) {
-  const normalized = String(value ?? "").trim().toUpperCase();
-  return normalized || "미정";
+  return String(value ?? "").trim() || "미정";
 }
 
 function levelRank(level: string) {
-  const index = LEVELS.indexOf(level);
-  return index === -1 ? LEVELS.length : index;
+  const rank = parseInt(level, 10);
+  return isNaN(rank) ? 8 : rank;
 }
 
 function compareParticipants(left: Participant, right: Participant) {
-  const diff =
-    levelRank(normalizeLevel(left.level)) - levelRank(normalizeLevel(right.level));
+  const diff = levelRank(left.level ?? "") - levelRank(right.level ?? "");
   if (diff !== 0) return diff;
   return left.name.localeCompare(right.name, "ko");
 }
@@ -145,13 +150,11 @@ function buildBoard(participants: Participant[]): BoardGroup[] {
       );
       if (sameGender.length === 0) return null;
 
-      const levels = [...new Set(sameGender.map((item) => normalizeLevel(item.level)))]
+      const levels = [...new Set(sameGender.map((item) => item.level ?? ""))]
         .sort((a, b) => levelRank(a) - levelRank(b))
         .map((level) => ({
           level,
-          participants: sameGender.filter(
-            (participant) => normalizeLevel(participant.level) === level
-          ),
+          participants: sameGender.filter((p) => (p.level ?? "") === level),
         }));
 
       return {
@@ -171,16 +174,19 @@ function genderBadgeClass(gender: string | null | undefined) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+const RANK_LEVEL_CHIP_CLASSES: Record<number, string> = {
+  1: "bg-amber-50 text-amber-700",
+  2: "bg-emerald-50 text-emerald-700",
+  3: "bg-violet-50 text-violet-700",
+  4: "bg-orange-50 text-orange-700",
+  5: "bg-lime-50 text-lime-700",
+  6: "bg-slate-100 text-slate-700",
+  7: "bg-cyan-50 text-cyan-700",
+};
+
 function levelChipClass(level: string | null | undefined) {
-  const normalized = normalizeLevel(level);
-  if (normalized === "S") return "bg-amber-50 text-amber-700";
-  if (normalized === "A") return "bg-emerald-50 text-emerald-700";
-  if (normalized === "B") return "bg-violet-50 text-violet-700";
-  if (normalized === "C") return "bg-orange-50 text-orange-700";
-  if (normalized === "D") return "bg-lime-50 text-lime-700";
-  if (normalized === "E") return "bg-slate-100 text-slate-700";
-  if (normalized === "초심") return "bg-cyan-50 text-cyan-700";
-  return "bg-slate-100 text-slate-600";
+  const rank = parseInt(String(level ?? ""), 10);
+  return RANK_LEVEL_CHIP_CLASSES[rank] ?? "bg-slate-100 text-slate-600";
 }
 
 function StatChip({
@@ -215,8 +221,10 @@ function ageGroupLabel(age: number | null): string {
   return "60대";
 }
 
-function ParticipantCard({ participant }: { participant: Participant }) {
+function ParticipantCard({ participant, levels }: { participant: Participant; levels: ClubLevel[] }) {
   const isGuest = participant.type === "GUEST";
+  const levelRankNum = parseInt(participant.level ?? "", 10);
+  const levelName = levels.find((l) => l.rank === levelRankNum)?.name ?? normalizeLevel(participant.level);
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -247,7 +255,7 @@ function ParticipantCard({ participant }: { participant: Participant }) {
               participant.level
             )}`}
           >
-            {normalizeLevel(participant.level)}
+            {levelName}
           </span>
         </div>
       </div>
@@ -320,8 +328,10 @@ function PendingMembersSection({
 
 function ParticipantSummary({
   participants,
+  levels: clubLevels,
 }: {
   participants: Participant[];
+  levels: ClubLevel[];
 }) {
   const male = participants.filter(
     (participant) => normalizeGender(participant.gender) === "남"
@@ -329,10 +339,10 @@ function ParticipantSummary({
   const female = participants.filter(
     (participant) => normalizeGender(participant.gender) === "여"
   ).length;
-  const levels = LEVELS.map((level) => ({
-    level,
+  const levels = clubLevels.map((cl) => ({
+    name: cl.name,
     count: participants.filter(
-      (participant) => normalizeLevel(participant.level) === level
+      (participant) => parseInt(participant.level ?? "", 10) === cl.rank
     ).length,
   })).filter((item) => item.count > 0);
 
@@ -347,8 +357,8 @@ function ParticipantSummary({
         <div className="flex flex-wrap gap-2">
           {levels.map((item) => (
             <StatChip
-              key={item.level}
-              label={`${item.level} ${item.count}명`}
+              key={item.name}
+              label={`${item.name} ${item.count}명`}
               accent="level"
             />
           ))}
@@ -362,10 +372,12 @@ function ParticipantGroups({
   title,
   participants,
   emptyMessage,
+  levels,
 }: {
   title: string;
   participants: Participant[];
   emptyMessage: string;
+  levels: ClubLevel[];
 }) {
   const [open, setOpen] = useState(false);
   const groups = useMemo(() => buildBoard(participants), [participants]);
@@ -384,7 +396,7 @@ function ParticipantGroups({
             </span>
           </div>
           <div className="mt-3">
-            <ParticipantSummary participants={participants} />
+            <ParticipantSummary participants={participants} levels={levels} />
           </div>
         </div>
         <ChevronIcon open={open} />
@@ -420,21 +432,26 @@ function ParticipantGroups({
                   </div>
 
                   <div className="mt-4 space-y-4">
-                    {group.levels.map((levelGroup) => (
+                    {group.levels.map((levelGroup) => {
+                      const rank = parseInt(levelGroup.level, 10);
+                      const levelDisplayName = levels.find((l) => l.rank === rank)?.name ?? levelGroup.level;
+                      return (
                       <div key={`${group.genderKey}-${levelGroup.level}`}>
                         <div className="mb-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm">
-                          {levelGroup.level}
+                          {levelDisplayName}
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           {levelGroup.participants.map((participant) => (
                             <ParticipantCard
                               key={`${title}-${participant.id}`}
                               participant={participant}
+                              levels={levels}
                             />
                           ))}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -1342,8 +1359,8 @@ export default function PublicSessionPage() {
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
                     >
                       <option value="">급수 선택</option>
-                      {LEVELS.map((l) => (
-                        <option key={l} value={l}>{l}</option>
+                      {(session?.levels ?? DEFAULT_LEVELS).map((l) => (
+                        <option key={l.rank} value={String(l.rank)}>{l.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1408,7 +1425,7 @@ export default function PublicSessionPage() {
                                 {normalizeGender(result.gender)}
                               </span>
                               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${levelChipClass(result.level)}`}>
-                                {normalizeLevel(result.level)}
+                                {(session?.levels ?? DEFAULT_LEVELS).find((l) => l.rank === parseInt(result.level ?? "", 10))?.name ?? normalizeLevel(result.level)}
                               </span>
                             </div>
                           </div>
@@ -1523,8 +1540,8 @@ export default function PublicSessionPage() {
                                 </select>
                                 <select value={guest.level} onChange={(event) => setIdentifiedMember((previous) => previous ? { ...previous, guests: previous.guests.map((item, guestIndex) => guestIndex === index ? { ...item, level: event.target.value } : item) } : previous)} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400">
                                   <option value="">급수 선택</option>
-                                  {LEVELS.map((level) => (
-                                    <option key={level} value={level}>{level}</option>
+                                  {(session?.levels ?? DEFAULT_LEVELS).map((level) => (
+                                    <option key={level.rank} value={String(level.rank)}>{level.name}</option>
                                   ))}
                                 </select>
                               </div>
@@ -1721,18 +1738,18 @@ export default function PublicSessionPage() {
         </section>
 
         <div id="section-registered">
-          <ParticipantGroups title="회원 참석 현황" participants={registeredMembers} emptyMessage="아직 참석 신청한 회원이 없습니다." />
+          <ParticipantGroups title="회원 참석 현황" participants={registeredMembers} emptyMessage="아직 참석 신청한 회원이 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
         </div>
-        <ParticipantGroups title="게스트 참석 현황" participants={registeredGuests} emptyMessage="아직 등록된 게스트가 없습니다." />
+        <ParticipantGroups title="게스트 참석 현황" participants={registeredGuests} emptyMessage="아직 등록된 게스트가 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
         <div id="section-absent">
-          <ParticipantGroups title="불참 회원 현황" participants={absentMembers} emptyMessage="불참 회원이 없습니다." />
+          <ParticipantGroups title="불참 회원 현황" participants={absentMembers} emptyMessage="불참 회원이 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
         </div>
-        <ParticipantGroups title="불참 게스트 현황" participants={absentGuests} emptyMessage="불참 게스트가 없습니다." />
+        <ParticipantGroups title="불참 게스트 현황" participants={absentGuests} emptyMessage="불참 게스트가 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
         <PendingMembersSection members={session?.pendingMembers ?? []} />
         <div id="section-waitlist">
-          <ParticipantGroups title="대기 중인 회원 현황" participants={waitlistedMembers} emptyMessage="현재 대기 중인 회원이 없습니다." />
+          <ParticipantGroups title="대기 중인 회원 현황" participants={waitlistedMembers} emptyMessage="현재 대기 중인 회원이 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
         </div>
-        <ParticipantGroups title="대기 중인 게스트 현황" participants={waitlistedGuests} emptyMessage="현재 대기 중인 게스트가 없습니다." />
+        <ParticipantGroups title="대기 중인 게스트 현황" participants={waitlistedGuests} emptyMessage="현재 대기 중인 게스트가 없습니다." levels={session?.levels ?? DEFAULT_LEVELS} />
       </div>
       <ScrollToTopButton />
     </main>

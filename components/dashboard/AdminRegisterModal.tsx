@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Member, SessionParticipant } from "@/components/dashboard/types";
+import type { ClubLevel, Member, SessionParticipant } from "@/components/dashboard/types";
 
 type Tab = "member" | "guest";
-
-const LEVELS = ["S", "A", "B", "C", "D", "E", "초심"];
 const AGE_GROUPS = [
   { label: "10/20대", value: 20 },
   { label: "30대", value: 30 },
@@ -18,6 +16,7 @@ type AdminRegisterModalProps = {
   open: boolean;
   sessionId: number;
   participants: SessionParticipant[];
+  levels: ClubLevel[];
   onClose: () => void;
   onSuccess: () => void;
 };
@@ -31,18 +30,19 @@ function genderChipClass(gender: string, selected: boolean) {
   return "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50";
 }
 
-function levelChipClass(level: string, selected: boolean) {
+const RANK_CHIP_CLASSES: Record<number, string> = {
+  1: "bg-amber-500 text-white border-amber-500",
+  2: "bg-emerald-600 text-white border-emerald-600",
+  3: "bg-violet-600 text-white border-violet-600",
+  4: "bg-orange-500 text-white border-orange-500",
+  5: "bg-lime-600 text-white border-lime-600",
+  6: "bg-slate-500 text-white border-slate-500",
+  7: "bg-cyan-600 text-white border-cyan-600",
+};
+
+function levelChipClass(rank: number, selected: boolean) {
   if (!selected) return "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50";
-  const map: Record<string, string> = {
-    S: "bg-amber-500 text-white border-amber-500",
-    A: "bg-emerald-600 text-white border-emerald-600",
-    B: "bg-violet-600 text-white border-violet-600",
-    C: "bg-orange-500 text-white border-orange-500",
-    D: "bg-lime-600 text-white border-lime-600",
-    E: "bg-slate-500 text-white border-slate-500",
-    "초심": "bg-cyan-600 text-white border-cyan-600",
-  };
-  return map[level] ?? "bg-sky-600 text-white border-sky-600";
+  return RANK_CHIP_CLASSES[rank] ?? "bg-sky-600 text-white border-sky-600";
 }
 
 function genderBadge(gender: string) {
@@ -51,23 +51,25 @@ function genderBadge(gender: string) {
   return "border-slate-200 bg-slate-50 text-slate-500";
 }
 
-function levelBadge(level: string) {
-  const map: Record<string, string> = {
-    S: "bg-amber-50 text-amber-700",
-    A: "bg-emerald-50 text-emerald-700",
-    B: "bg-violet-50 text-violet-700",
-    C: "bg-orange-50 text-orange-700",
-    D: "bg-lime-50 text-lime-700",
-    E: "bg-slate-100 text-slate-600",
-    "초심": "bg-cyan-50 text-cyan-700",
-  };
-  return map[level] ?? "bg-slate-100 text-slate-600";
+const RANK_BADGE_CLASSES: Record<number, string> = {
+  1: "bg-amber-50 text-amber-700",
+  2: "bg-emerald-50 text-emerald-700",
+  3: "bg-violet-50 text-violet-700",
+  4: "bg-orange-50 text-orange-700",
+  5: "bg-lime-50 text-lime-700",
+  6: "bg-slate-100 text-slate-600",
+  7: "bg-cyan-50 text-cyan-700",
+};
+
+function levelBadge(rank: number) {
+  return RANK_BADGE_CLASSES[rank] ?? "bg-slate-100 text-slate-600";
 }
 
 export function AdminRegisterModal({
   open,
   sessionId,
   participants,
+  levels,
   onClose,
   onSuccess,
 }: AdminRegisterModalProps) {
@@ -311,8 +313,8 @@ export function AdminRegisterModal({
                           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${genderBadge(member.gender)}`}>
                             {member.gender}
                           </span>
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${levelBadge(member.level)}`}>
-                            {member.level}
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${levelBadge(parseInt(member.level, 10))}`}>
+                            {levels.find((l) => l.rank === parseInt(member.level, 10))?.name ?? member.level}
                           </span>
                         </div>
                         {alreadyActive ? (
@@ -392,13 +394,13 @@ export function AdminRegisterModal({
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-700">급수</label>
                 <div className="flex flex-wrap gap-2">
-                  {LEVELS.map((lv) => (
+                  {levels.map((lv) => (
                     <button
-                      key={lv}
-                      onClick={() => setGuestLevel(guestLevel === lv ? "" : lv)}
-                      className={`rounded-2xl border px-4 py-2 text-sm font-bold transition ${levelChipClass(lv, guestLevel === lv)}`}
+                      key={lv.rank}
+                      onClick={() => setGuestLevel(guestLevel === String(lv.rank) ? "" : String(lv.rank))}
+                      className={`rounded-2xl border px-4 py-2 text-sm font-bold transition ${levelChipClass(lv.rank, guestLevel === String(lv.rank))}`}
                     >
-                      {lv}
+                      {lv.name}
                     </button>
                   ))}
                 </div>

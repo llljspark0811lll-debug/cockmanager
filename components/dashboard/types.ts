@@ -21,6 +21,11 @@ export interface ClubPosition {
   order: number;
 }
 
+export interface ClubLevel {
+  rank: number;
+  name: string;
+}
+
 export interface Member {
   id: number;
   name: string;

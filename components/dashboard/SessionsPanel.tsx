@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import type {
+  ClubLevel,
   ClubSession,
   SessionParticipant,
 } from "@/components/dashboard/types";
@@ -36,6 +37,7 @@ type SessionsPanelProps = {
   selectedSessionId: number | null;
   publicSessionBaseUrl: string;
   loadingSelectedSession: boolean;
+  levels: ClubLevel[];
   onSelectSession: (id: number) => void;
   onCreateSession: (payload: SessionFormPayload) => Promise<void>;
   onUpdateSession: (
@@ -82,6 +84,7 @@ type ParticipantSectionProps = {
   filteredParticipants: SessionParticipant[];
   summary: ParticipantSummary;
   levels: string[];
+  clubLevels: ClubLevel[];
   filters: ParticipantFilterState;
   setFilters: React.Dispatch<
     React.SetStateAction<ParticipantFilterState>
@@ -346,6 +349,7 @@ function ParticipantSection({
   filteredParticipants,
   summary,
   levels,
+  clubLevels,
   filters,
   setFilters,
   emptyMessage,
@@ -448,7 +452,7 @@ function ParticipantSection({
             <option value="ALL">전체 급수</option>
             {levels.map((level) => (
               <option key={level} value={level}>
-                {level}
+                {clubLevels.find((l) => String(l.rank) === level)?.name ?? level}
               </option>
             ))}
           </select>
@@ -632,6 +636,7 @@ export function SessionsPanel({
   selectedSessionId,
   publicSessionBaseUrl,
   loadingSelectedSession,
+  levels: clubLevels,
   onSelectSession,
   onCreateSession,
   onUpdateSession,
@@ -1061,6 +1066,7 @@ export function SessionsPanel({
           open={adminRegisterOpen}
           sessionId={selectedSession.id}
           participants={selectedSession.participants ?? []}
+          levels={clubLevels}
           onClose={() => setAdminRegisterOpen(false)}
           onSuccess={() => {
             onRefreshSession(selectedSession.id).catch(() => undefined);
@@ -1589,6 +1595,7 @@ export function SessionsPanel({
                   filteredParticipants={filteredRegisteredParticipants}
                   summary={registeredSummary}
                   levels={registeredLevels}
+                  clubLevels={clubLevels}
                   filters={registeredFilters}
                   setFilters={setRegisteredFilters}
                   emptyMessage="아직 참석 신청한 사람이 없습니다."
@@ -1608,6 +1615,7 @@ export function SessionsPanel({
                   filteredParticipants={filteredWaitlistedParticipants}
                   summary={waitlistedSummary}
                   levels={waitlistedLevels}
+                  clubLevels={clubLevels}
                   filters={waitlistedFilters}
                   setFilters={setWaitlistedFilters}
                   emptyMessage="현재 대기 인원이 없습니다."
@@ -1626,6 +1634,7 @@ export function SessionsPanel({
                   filteredParticipants={filteredCanceledParticipants}
                   summary={canceledSummary}
                   levels={canceledLevels}
+                  clubLevels={clubLevels}
                   filters={canceledFilters}
                   setFilters={setCanceledFilters}
                   emptyMessage="불참 인원이 없습니다."

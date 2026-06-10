@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { GENDERS, LEVELS } from "@/lib/dashboard-constants";
+import { GENDERS, DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
 import { formatPhoneNumber } from "@/lib/phone";
+
+type ClubLevel = { rank: number; name: string };
 
 type JoinConfig = {
   name: string;
   customFieldLabel: string;
   publicJoinToken: string;
+  levels: ClubLevel[];
 };
 
 const currentYear = new Date().getFullYear();
@@ -32,10 +35,16 @@ export default function JoinPage() {
       ? params.clubcode
       : params.clubcode?.[0];
 
+  const defaultLevels = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+    rank: i + 1,
+    name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+  }));
+
   const [clubConfig, setClubConfig] = useState<JoinConfig>({
     name: "클럽",
     customFieldLabel: "소속클럽",
     publicJoinToken: "",
+    levels: defaultLevels,
   });
   const [submitting, setSubmitting] = useState(false);
   const [birthYear, setBirthYear] = useState("");
@@ -61,9 +70,9 @@ export default function JoinPage() {
         if (data.name) {
           setClubConfig({
             name: data.name,
-            customFieldLabel:
-              data.customFieldLabel ?? "소속클럽",
+            customFieldLabel: data.customFieldLabel ?? "소속클럽",
             publicJoinToken: data.publicJoinToken ?? accessKey,
+            levels: Array.isArray(data.levels) ? data.levels : defaultLevels,
           });
         }
       })
@@ -72,6 +81,7 @@ export default function JoinPage() {
           name: "클럽",
           customFieldLabel: "소속클럽",
           publicJoinToken: accessKey ?? "",
+          levels: defaultLevels,
         });
       });
   }, [accessKey]);
@@ -250,9 +260,9 @@ export default function JoinPage() {
             }
           >
             <option value="">급수 선택</option>
-            {LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}
+            {clubConfig.levels.map((level) => (
+              <option key={level.rank} value={String(level.rank)}>
+                {level.name}
               </option>
             ))}
           </select>

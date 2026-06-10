@@ -12,7 +12,6 @@ export {
   normalizePhoneNumber,
 } from "@/lib/phone";
 
-const LEVEL_ORDER = ["S", "A", "B", "C", "D", "E", "초심"];
 
 function ageGroupLabel(age: number): string {
   if (age <= 29) return "10/20대";
@@ -155,34 +154,24 @@ export function getGenderBadgeClasses(gender: string) {
 }
 
 export function getLevelRank(level: string) {
-  const normalized = level.trim().toUpperCase();
-  const index = LEVEL_ORDER.indexOf(normalized);
-  return index === -1 ? LEVEL_ORDER.length : index;
+  const rank = parseInt(level.trim(), 10);
+  if (!isNaN(rank) && rank >= 1 && rank <= 7) return rank - 1;
+  return 7;
 }
 
 export function getSortedLevels(levels: string[]) {
-  return [...levels].sort((left, right) => {
-    const rankDiff =
-      getLevelRank(left) - getLevelRank(right);
-
-    if (rankDiff !== 0) {
-      return rankDiff;
-    }
-
-    return left.localeCompare(right, "ko");
-  });
+  return [...levels].sort((left, right) => getLevelRank(left) - getLevelRank(right));
 }
 
 export function getLevelTextClasses(level: string) {
-  const normalized = level.trim().toUpperCase();
-
-  if (normalized === "S") return "text-amber-600";
-  if (normalized === "A") return "text-emerald-700";
-  if (normalized === "B") return "text-violet-700";
-  if (normalized === "C") return "text-orange-600";
-  if (normalized === "D") return "text-lime-700";
-  if (normalized === "E") return "text-slate-600";
-  if (normalized === "초심") return "text-cyan-700";
+  const rank = parseInt(level.trim(), 10);
+  if (rank === 1) return "text-amber-600";
+  if (rank === 2) return "text-emerald-700";
+  if (rank === 3) return "text-violet-700";
+  if (rank === 4) return "text-orange-600";
+  if (rank === 5) return "text-lime-700";
+  if (rank === 6) return "text-slate-600";
+  if (rank === 7) return "text-cyan-700";
   return "text-slate-500";
 }
 

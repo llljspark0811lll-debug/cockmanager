@@ -20,6 +20,7 @@ import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersTable } from "@/components/dashboard/MembersTable";
 import { CourtBoardModal } from "@/components/dashboard/CourtBoardModal";
 import { PositionSettingsModal } from "@/components/dashboard/PositionSettingsModal";
+import { LevelSettingsModal } from "@/components/dashboard/LevelSettingsModal";
 import { PersonalSettingsModal } from "@/components/dashboard/PersonalSettingsModal";
 import { RequestsTable } from "@/components/dashboard/RequestsTable";
 import { SessionsPanel } from "@/components/dashboard/SessionsPanel";
@@ -33,6 +34,7 @@ import { DeleteAccountModal } from "@/components/dashboard/DeleteAccountModal";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import type {
   ClubInfo,
+  ClubLevel,
   ClubPosition,
   ClubSession,
   DashboardStats,
@@ -118,6 +120,7 @@ export default function DashboardPage() {
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [positions, setPositions] = useState<ClubPosition[]>([]);
+  const [levels, setLevels] = useState<ClubLevel[]>([]);
   const [requests, setRequests] = useState<MemberRequest[]>([]);
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [specialFees, setSpecialFees] = useState<SpecialFee[]>([]);
@@ -164,6 +167,7 @@ export default function DashboardPage() {
     useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [positionSettingsOpen, setPositionSettingsOpen] = useState(false);
+  const [levelSettingsOpen, setLevelSettingsOpen] = useState(false);
   const [courtBoardSessionId, setCourtBoardSessionId] = useState<number | null>(null);
   const [approvingRequestIds, setApprovingRequestIds] =
     useState<number[]>([]);
@@ -402,6 +406,11 @@ export default function DashboardPage() {
   async function refreshPositions() {
     const data = await requestJson<ClubPosition[]>("/api/positions");
     setPositions(data);
+  }
+
+  async function refreshLevels() {
+    const data = await requestJson<ClubLevel[]>("/api/levels");
+    setLevels(data);
   }
 
   async function refreshFeeMembers() {
@@ -780,6 +789,7 @@ export default function DashboardPage() {
         alert(error.message);
       });
       refreshPositions().catch(() => undefined);
+      refreshLevels().catch(() => undefined);
     }
 
     if (activeTab === "requests" && !requestsLoaded) {
@@ -2230,9 +2240,11 @@ export default function DashboardPage() {
               customFieldLabel={
                 clubInfo?.customFieldLabel ?? "소속클럽"
               }
+              clubLevels={levels}
               onAddMember={openCreateMemberModal}
               onEdit={openEditMemberModal}
               onOpenPositionSettings={() => setPositionSettingsOpen(true)}
+              onOpenLevelSettings={() => setLevelSettingsOpen(true)}
               onDelete={(id) => {
                 handleMemberDelete(id).catch((error: Error) => {
                   alert(error.message);
@@ -2364,6 +2376,7 @@ export default function DashboardPage() {
                 selectedSessionId={selectedSessionId}
                 publicSessionBaseUrl={publicSessionBaseUrl}
                 loadingSelectedSession={loadingSessionDetail}
+                levels={levels}
                 onSelectSession={handleSelectSession}
                 onCreateSession={handleCreateSession}
                 onUpdateSession={handleUpdateSession}
@@ -2457,6 +2470,22 @@ export default function DashboardPage() {
         }
       />
 
+      <LevelSettingsModal
+        open={levelSettingsOpen}
+        levels={levels}
+        onClose={() => setLevelSettingsOpen(false)}
+        onSave={(updated) =>
+          fetch("/api/levels", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ levels: updated }),
+          })
+            .then((r) => r.json())
+            .then((data) => setLevels(data))
+            .catch((error: Error) => { alert(error.message); })
+        }
+      />
+
       <MemberFormModal
         open={showMemberModal}
         editingMember={editingMember}
@@ -2465,6 +2494,7 @@ export default function DashboardPage() {
           clubInfo?.customFieldLabel ?? "소속클럽"
         }
         positions={positions}
+        levels={levels}
         tutorialTargetId="member-form-modal"
         onChange={setForm}
         onClose={() => {

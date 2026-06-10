@@ -1,5 +1,6 @@
-import { GENDERS, LEVELS } from "@/lib/dashboard-constants";
+import { GENDERS } from "@/lib/dashboard-constants";
 import type {
+  ClubLevel,
   ClubPosition,
   Member,
   MemberFormState,
@@ -12,6 +13,7 @@ type MemberFormModalProps = {
   form: MemberFormState;
   customFieldLabel: string;
   positions: ClubPosition[];
+  levels: ClubLevel[];
   tutorialTargetId?: string;
   onChange: (form: MemberFormState) => void;
   onClose: () => void;
@@ -24,6 +26,7 @@ export function MemberFormModal({
   form,
   customFieldLabel,
   positions,
+  levels,
   tutorialTargetId,
   onChange,
   onClose,
@@ -101,9 +104,9 @@ export function MemberFormModal({
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-sky-400"
                 >
                   <option value="">급수 선택</option>
-                  {LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
+                  {levels.map((level) => (
+                    <option key={level.rank} value={String(level.rank)}>
+                      {level.name}
                     </option>
                   ))}
                 </select>

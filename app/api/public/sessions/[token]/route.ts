@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getClubLevels } from "@/lib/club-levels";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { ensureSessionNoticeColumn } from "@/lib/club-session-notice-schema";
 
@@ -165,6 +166,8 @@ export async function GET(
       (m) => !respondedMemberIds.has(m.id)
     );
 
+    const levels = await getClubLevels(session.clubId);
+
     const toPublicParticipant = (
       participant: (typeof session.participants)[number]
     ) => {
@@ -227,6 +230,7 @@ export async function GET(
       waitlistedParticipants: waitlistedParticipants.map(toPublicParticipant),
       absentParticipants: absentParticipants.map(toPublicParticipant),
       pendingMembers,
+      levels,
     });
   } catch (error) {
     console.error(error);

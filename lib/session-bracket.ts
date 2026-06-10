@@ -69,13 +69,13 @@ type MatchCandidate = {
 };
 
 const LEVEL_SCORE_MAP: Record<string, number> = {
-  S: 7,
-  A: 6,
-  B: 5,
-  C: 4,
-  D: 3,
-  E: 2,
-  초심: 1,
+  "1": 7,
+  "2": 6,
+  "3": 5,
+  "4": 4,
+  "5": 3,
+  "6": 2,
+  "7": 1,
 };
 
 const BALANCE_GAP_WEIGHT = 14;
@@ -174,25 +174,13 @@ function normalizeGender(value: string | null | undefined) {
 
 function normalizeLevel(value: string | null | undefined) {
   const normalized = String(value ?? "").trim();
-
-  if (!normalized) {
-    return "초심";
-  }
-
-  const upper = normalized.toUpperCase();
-  if (LEVEL_SCORE_MAP[upper] !== undefined) {
-    return upper;
-  }
-
-  if (normalized === "초심") {
-    return normalized;
-  }
-
-  return normalized;
+  if (!normalized) return "7";
+  if (LEVEL_SCORE_MAP[normalized] !== undefined) return normalized;
+  return "7";
 }
 
 function getLevelScore(level: string) {
-  return LEVEL_SCORE_MAP[level] ?? LEVEL_SCORE_MAP["초심"];
+  return LEVEL_SCORE_MAP[level] ?? LEVEL_SCORE_MAP["7"]!;
 }
 
 function normalizeAge(value: number | null | undefined) {

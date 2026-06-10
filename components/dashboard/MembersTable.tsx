@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ClubPosition, Member } from "@/components/dashboard/types";
+import type { ClubLevel, ClubPosition, Member } from "@/components/dashboard/types";
 import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import {
   formatDate,
@@ -17,11 +17,13 @@ import {
 type MembersTableProps = {
   members: Member[];
   positions: ClubPosition[];
+  clubLevels: ClubLevel[];
   customFieldLabel: string;
   onEdit: (member: Member) => void;
   onDelete: (id: number) => void;
   onAddMember: () => void;
   onOpenPositionSettings: () => void;
+  onOpenLevelSettings: () => void;
 };
 
 type SortOption = "position" | "name" | "gender" | "level" | "recent";
@@ -47,14 +49,17 @@ function PositionBadge({ position }: { position?: ClubPosition | null }) {
 function MemberCard({
   member,
   customFieldLabel,
+  clubLevels,
   onEdit,
   onDelete,
 }: {
   member: Member;
   customFieldLabel: string;
+  clubLevels: ClubLevel[];
   onEdit: (member: Member) => void;
   onDelete: (id: number) => void;
 }) {
+  const levelName = clubLevels.find((l) => String(l.rank) === member.level)?.name ?? member.level;
   return (
     <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -78,7 +83,7 @@ function MemberCard({
                 member.level
               )}`}
             >
-              {member.level}
+              {levelName}
             </span>
           </div>
         </div>
@@ -125,11 +130,13 @@ function MemberCard({
 export function MembersTable({
   members,
   positions,
+  clubLevels,
   customFieldLabel,
   onEdit,
   onDelete,
   onAddMember,
   onOpenPositionSettings,
+  onOpenLevelSettings,
 }: MembersTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("ALL");
@@ -295,14 +302,21 @@ export function MembersTable({
             </span>
             {levels.map((level) => {
               const count = members.filter((m) => m.level === level).length;
+              const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? level;
               return (
                 <span key={level} className={`rounded-full bg-slate-50 px-3 py-1.5 text-xs font-bold ${getLevelTextClasses(level)}`}>
-                  {level} {count}명
+                  {levelName} {count}명
                 </span>
               );
             })}
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={onOpenLevelSettings}
+              className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100"
+            >
+              급수 설정
+            </button>
             <button
               onClick={onOpenPositionSettings}
               className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
@@ -335,14 +349,21 @@ export function MembersTable({
           <div className="flex flex-wrap gap-2">
             {levels.map((level) => {
               const count = members.filter((m) => m.level === level).length;
+              const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? level;
               return (
                 <span key={level} className={`rounded-full bg-slate-50 px-3 py-1.5 text-xs font-bold ${getLevelTextClasses(level)}`}>
-                  {level} {count}명
+                  {levelName} {count}명
                 </span>
               );
             })}
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={onOpenLevelSettings}
+              className="flex-1 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100"
+            >
+              급수 설정
+            </button>
             <button
               onClick={onOpenPositionSettings}
               className="flex-1 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
@@ -399,7 +420,7 @@ export function MembersTable({
             <option value="ALL">전체 급수</option>
             {levels.map((level) => (
               <option key={level} value={level}>
-                {level}
+                {clubLevels.find((l) => String(l.rank) === level)?.name ?? level}
               </option>
             ))}
           </select>
@@ -458,7 +479,7 @@ export function MembersTable({
                 </td>
                 <td className="px-4 py-4">
                   <span className={`text-xs font-extrabold ${getLevelTextClasses(member.level)}`}>
-                    {member.level}
+                    {clubLevels.find((l) => String(l.rank) === member.level)?.name ?? member.level}
                   </span>
                 </td>
                 <td className="px-4 py-4 text-slate-500">
@@ -517,6 +538,7 @@ export function MembersTable({
             key={member.id}
             member={member}
             customFieldLabel={customFieldLabel}
+            clubLevels={clubLevels}
             onEdit={onEdit}
             onDelete={onDelete}
           />

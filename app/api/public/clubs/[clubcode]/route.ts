@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getClubLevels } from "@/lib/club-levels";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -33,11 +34,14 @@ export async function GET(
       );
     }
 
+    const levels = await getClubLevels(club.id);
+
     return NextResponse.json({
       name: club.name,
       publicJoinToken: club.publicJoinToken,
       customFieldLabel:
         club.admins[0]?.customFieldLabel ?? "추가 정보",
+      levels,
     });
   } catch (error) {
     console.error(error);
