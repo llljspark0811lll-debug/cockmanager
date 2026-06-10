@@ -360,20 +360,20 @@ export function MembersTable({
           <div className="flex gap-2">
             <button
               onClick={onOpenLevelSettings}
-              className="flex-1 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-bold text-violet-700 shadow-sm transition hover:bg-violet-100"
+              className="flex-1 whitespace-nowrap rounded-2xl border border-violet-200 bg-violet-50 px-2 py-2.5 text-xs font-bold text-violet-700 shadow-sm transition hover:bg-violet-100"
             >
               급수 설정
             </button>
             <button
               onClick={onOpenPositionSettings}
-              className="flex-1 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
+              className="flex-1 whitespace-nowrap rounded-2xl border border-indigo-200 bg-indigo-50 px-2 py-2.5 text-xs font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100"
             >
               직위 설정
             </button>
             <button
               onClick={onAddMember}
               data-tutorial-id="add-member-button"
-              className="flex-1 rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-sky-700"
+              className="flex-1 whitespace-nowrap rounded-2xl bg-sky-600 px-2 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-sky-700"
             >
               회원 직접 등록
             </button>
