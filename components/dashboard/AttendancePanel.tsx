@@ -511,13 +511,13 @@ export function AttendancePanel({
           </div>
 
           <div className="overflow-hidden">
-            <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
+            <table className="w-full table-auto text-[10px] sm:text-[11px] md:text-sm">
               <thead className="bg-white text-left text-slate-500">
                 <tr>
                   <th className="w-[22%] px-2 py-3 font-semibold md:px-4 md:py-4">이름</th>
-                  <th className="w-[15%] px-1 py-3 text-center font-semibold md:px-4 md:py-4">구분</th>
-                  <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">성별</th>
-                  <th className="w-[11%] px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">급수</th>
+                  <th className="px-1 py-3 text-center font-semibold md:px-4 md:py-4">구분</th>
+                  <th className="px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">성별</th>
+                  <th className="px-1.5 py-3 text-center font-semibold md:px-4 md:py-4">급수</th>
                   <th className="px-2 py-3 font-semibold md:px-4 md:py-4">비고</th>
                 </tr>
               </thead>
@@ -553,7 +553,7 @@ export function AttendancePanel({
                       </td>
                       <td className="px-1.5 py-3 text-center md:px-4 md:py-4">
                         <span
-                          className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold md:px-2.5 md:py-1 md:text-xs ${getLevelBadgeClass(level)}`}
+                          className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold md:px-2.5 md:py-1 md:text-xs ${getLevelBadgeClass(level)}`}
                         >
                           {levelName}
                         </span>

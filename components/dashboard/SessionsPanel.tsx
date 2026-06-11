@@ -461,19 +461,19 @@ function ParticipantSection({
       </div>
 
       <div className="overflow-hidden">
-        <table className="w-full table-fixed text-[10px] sm:text-[11px] md:text-sm">
+        <table className="w-full table-auto text-[10px] sm:text-[11px] md:text-sm">
           <thead className="bg-white text-left text-slate-500">
             <tr>
               <th className={`whitespace-nowrap px-2 py-3 text-[9px] font-semibold md:px-4 md:py-4 md:text-sm ${onActionClick ? "w-[15%] md:w-[18%]" : "w-[22%]"}`}>
                 이름
               </th>
-              <th className="w-[15%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
+              <th className="whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 구분
               </th>
-              <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
+              <th className="whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 성별
               </th>
-              <th className="w-[9%] whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
+              <th className="whitespace-nowrap px-1 py-3 text-center text-[9px] font-semibold md:px-4 md:py-4 md:text-sm">
                 급수
               </th>
               <th className={`whitespace-nowrap px-2 py-3 text-[9px] font-semibold md:px-4 md:py-4 md:text-sm ${onActionClick ? "w-[25%] md:w-[28%]" : "w-[41%]"}`}>
@@ -531,7 +531,7 @@ function ParticipantSection({
                   </td>
                   <td className="px-1.5 py-3 text-center md:px-4 md:py-4">
                     <span
-                      className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold md:px-2.5 md:py-1 md:text-xs ${getLevelBadgeClass(
+                      className={`inline-flex whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold md:px-2.5 md:py-1 md:text-xs ${getLevelBadgeClass(
                         level
                       )}`}
                     >
