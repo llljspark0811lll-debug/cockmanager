@@ -141,6 +141,11 @@ export type TelegramAlertInput =
       amount: number;
       memberName?: string | null;
     }
+  | {
+      event: "PERSONAL_SETTINGS_UPDATE";
+      clubName: string;
+      changes: { field: string; before: string; after: string }[];
+    }
   | { event: "LEDGER_RESET"; clubName: string }
   | {
       event: "COURT_BOARD_START";
@@ -446,6 +451,19 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `금액: ${formatWon(input.amount)}`,
         ...(input.memberName ? [`회원: ${input.memberName}`] : []),
       ].join("\n");
+
+    case "PERSONAL_SETTINGS_UPDATE": {
+      const changeLines = input.changes.map(
+        (c) => `  • ${c.field}: ${c.before} → ${c.after}`
+      );
+      return [
+        "⚙️ 클럽 정보 변경",
+        `클럽: ${input.clubName}`,
+        ...(changeLines.length > 0
+          ? ["", "변경 내역:", ...changeLines]
+          : ["", "(변경 내역 없음)"]),
+      ].join("\n");
+    }
 
     case "LEDGER_RESET":
       return ["♻️ 장부 초기화", `클럽: ${input.clubName}`].join("\n");

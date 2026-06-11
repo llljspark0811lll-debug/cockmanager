@@ -4,6 +4,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
 
 export async function PATCH(req: Request) {
@@ -53,6 +54,7 @@ export async function PATCH(req: Request) {
         id: true,
         password: true,
         email: true,
+        club: { select: { name: true } },
       },
     });
 
@@ -129,6 +131,18 @@ export async function PATCH(req: Request) {
     if (isEmailChanging) {
       await prisma.emailVerification.deleteMany({ where: { email: nextAdminEmail } }).catch(() => undefined);
     }
+
+    const changes: { field: string; before: string; after: string }[] = [];
+    if ((currentAdmin.club?.name ?? "") !== nextClubName)
+      changes.push({ field: "클럽명", before: currentAdmin.club?.name ?? "-", after: nextClubName });
+    if ((currentAdmin.email ?? "") !== nextAdminEmail)
+      changes.push({ field: "복구 이메일", before: currentAdmin.email || "-", after: nextAdminEmail });
+
+    void sendTelegramAlert({
+      event: "PERSONAL_SETTINGS_UPDATE",
+      clubName: nextClubName,
+      changes,
+    });
 
     return NextResponse.json({
       success: true,

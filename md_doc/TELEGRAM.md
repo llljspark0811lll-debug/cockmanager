@@ -11,6 +11,7 @@
 |---|---|---|
 | 🎉 새 클럽 생성 | 관리자 회원가입 완료 | `api/admin/signup` |
 | 🗑️ 클럽 계정 삭제 | 관리자 계정 삭제 | `api/admin/delete-account` |
+| ⚙️ 클럽 정보 변경 | 클럽명 또는 복구 이메일 수정 (변경 필드 포함) | `api/personal-settings` |
 
 ## 회원 관리
 
