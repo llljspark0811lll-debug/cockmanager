@@ -42,7 +42,8 @@
       "Bash(grep -v \"^$\")",
       "Bash(npx ts-node *)",
       "Bash(cat \"/c/Users/user/AppData/Roaming/Code/User/settings.json\")",
-      "Read(//c/Users/user/AppData/Roaming/Code/User/**)"
+      "Read(//c/Users/user/AppData/Roaming/Code/User/**)",
+      "Bash(grep -v \"^\\\\s*//\")"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",

@@ -4,6 +4,12 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
 import type { ClubLevel, ClubSession } from "@/components/dashboard/types";
+import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
+
+const DEFAULT_CLUB_LEVELS = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+  rank: i + 1,
+  name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+}));
 import {
   formatDate,
   getLevelTextClasses,
@@ -207,8 +213,9 @@ export function AttendancePanel({
   tutorialDefaultsActive = false,
   onBracketGenerated,
   onOpenCourtBoard,
-  clubLevels,
+  clubLevels: clubLevelsProp,
 }: AttendancePanelProps) {
+  const clubLevels = clubLevelsProp.length > 0 ? clubLevelsProp : DEFAULT_CLUB_LEVELS;
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
   );

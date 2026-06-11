@@ -172,10 +172,15 @@ function normalizeGender(value: string | null | undefined) {
   return String(value ?? "").trim() || "미정";
 }
 
+const LEGACY_LEVEL_TO_RANK: Record<string, string> = {
+  S: "1", A: "2", B: "3", C: "4", D: "5", E: "6", 초심: "7",
+};
+
 function normalizeLevel(value: string | null | undefined) {
   const normalized = String(value ?? "").trim();
   if (!normalized) return "7";
   if (LEVEL_SCORE_MAP[normalized] !== undefined) return normalized;
+  if (LEGACY_LEVEL_TO_RANK[normalized]) return LEGACY_LEVEL_TO_RANK[normalized];
   return "7";
 }
 

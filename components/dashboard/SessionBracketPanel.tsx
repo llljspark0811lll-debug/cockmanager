@@ -8,6 +8,12 @@ import type {
   SessionParticipant,
 } from "@/components/dashboard/types";
 import { normalizeGenderLabel } from "@/components/dashboard/utils";
+import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
+
+const DEFAULT_CLUB_LEVELS = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+  rank: i + 1,
+  name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+}));
 import {
   buildBracketImageFiles,
   downloadFiles,
@@ -202,8 +208,9 @@ export function SessionBracketPanel({
   tutorialDefaultsActive = false,
   onBracketGenerated,
   onOpenCourtBoard,
-  clubLevels,
+  clubLevels: clubLevelsProp,
 }: SessionBracketPanelProps) {
+  const clubLevels = clubLevelsProp.length > 0 ? clubLevelsProp : DEFAULT_CLUB_LEVELS;
   const [generationMode, setGenerationMode] = useState<
     "STANDARD" | "TEAM_BATTLE"
   >("STANDARD");
@@ -494,7 +501,7 @@ export function SessionBracketPanel({
   }, [fixedPairs, registeredParticipants, teamAssignments]);
 
   const teamBattleSummaries = useMemo(() => {
-    const emptyLevels = { S: 0, A: 0, B: 0, C: 0, D: 0, E: 0, 초심: 0 };
+    const emptyLevels = { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0 };
     const initial = {
       A: {
         members: [] as Array<{ id: string; name: string; gender: string; level: string }>,
@@ -520,16 +527,9 @@ export function SessionBracketPanel({
       const gender = normalizeGenderLabel(
         participant.member?.gender ?? participant.guestGender ?? ""
       );
-      const level = participant.member?.level ?? participant.guestLevel ?? "초심";
-      const normalizedLevel =
-        level === "S" ||
-        level === "A" ||
-        level === "B" ||
-        level === "C" ||
-        level === "D" ||
-        level === "E"
-          ? level
-          : "초심";
+      const level = participant.member?.level ?? participant.guestLevel ?? "7";
+      const rank = parseInt(level, 10);
+      const normalizedLevel = (rank >= 1 && rank <= 7) ? String(rank) : "7";
       const summary = initial[team];
 
       summary.members.push({
@@ -542,7 +542,7 @@ export function SessionBracketPanel({
       const genderGroup = getParticipantGenderGroup(participant);
       if (genderGroup === "MEN") summary.men += 1;
       if (genderGroup === "WOMEN") summary.women += 1;
-      summary.levels[normalizedLevel] += 1;
+      (summary.levels as Record<string, number>)[normalizedLevel] += 1;
     }
 
     for (const team of [initial.A, initial.B]) {
@@ -1276,16 +1276,19 @@ export function SessionBracketPanel({
                       <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700">
                         여자 {summary.women}명
                       </span>
-                      {(["S", "A", "B", "C", "D", "E", "초심"] as const).map(
-                        (level) => (
+                      {(["1","2","3","4","5","6","7"] as const).map((rank) => {
+                        const count = (summary.levels as Record<string, number>)[rank] ?? 0;
+                        if (!count) return null;
+                        const name = clubLevels.find((l) => String(l.rank) === rank)?.name ?? rank;
+                        return (
                           <span
-                            key={level}
+                            key={rank}
                             className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600"
                           >
-                            {level} {summary.levels[level]}명
+                            {name} {count}명
                           </span>
-                        )
-                      )}
+                        );
+                      })}
                     </div>
 
                     <div className="mt-3 rounded-2xl bg-white/80 px-3 py-3">
