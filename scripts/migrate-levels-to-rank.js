@@ -94,8 +94,8 @@ async function main() {
 
     // --- SessionParticipant.guestLevel ---
     const participants = await prisma.sessionParticipant.findMany({
-      where: { isGuest: true },
-      select: { id: true, name: true, guestLevel: true },
+      where: { guestName: { not: null } },
+      select: { id: true, guestName: true, guestLevel: true },
     });
 
     const participantsToUpdate = participants.filter(
@@ -110,7 +110,7 @@ async function main() {
 
     for (const p of participantsToUpdate) {
       const newLevel = NAME_TO_RANK[p.guestLevel];
-      console.log(`  [${p.id}] ${p.name}: "${p.guestLevel}" → "${newLevel}"`);
+      console.log(`  [${p.id}] ${p.guestName}: "${p.guestLevel}" → "${newLevel}"`);
       if (!isDryRun) {
         await prisma.sessionParticipant.update({ where: { id: p.id }, data: { guestLevel: newLevel } });
       }
@@ -119,7 +119,7 @@ async function main() {
     if (participantsUnknown.length > 0) {
       console.log(`  [경고] 알 수 없는 guestLevel 값 (변환 안 됨):`);
       for (const p of participantsUnknown) {
-        console.log(`    [${p.id}] ${p.name}: "${p.guestLevel}"`);
+        console.log(`    [${p.id}] ${p.guestName}: "${p.guestLevel}"`);
       }
     }
 
