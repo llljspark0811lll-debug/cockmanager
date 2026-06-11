@@ -51,6 +51,12 @@ import type {
   SpecialFee,
 } from "@/components/dashboard/types";
 import { toDateInputValue } from "@/components/dashboard/utils";
+import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
+
+const DEFAULT_CLUB_LEVELS = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+  rank: i + 1,
+  name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+}));
 
 function buildLedgerDateRange(year: number, month: number): LedgerDateRange {
   const start = new Date(year, month - 1, 1);
@@ -120,7 +126,7 @@ export default function DashboardPage() {
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [positions, setPositions] = useState<ClubPosition[]>([]);
-  const [levels, setLevels] = useState<ClubLevel[]>([]);
+  const [levels, setLevels] = useState<ClubLevel[]>(DEFAULT_CLUB_LEVELS);
   const [requests, setRequests] = useState<MemberRequest[]>([]);
   const [sessions, setSessions] = useState<ClubSession[]>([]);
   const [specialFees, setSpecialFees] = useState<SpecialFee[]>([]);
@@ -409,8 +415,16 @@ export default function DashboardPage() {
   }
 
   async function refreshLevels() {
-    const data = await requestJson<ClubLevel[]>("/api/levels");
-    setLevels(data);
+    try {
+      const data = await requestJson<ClubLevel[]>("/api/levels");
+      if (Array.isArray(data) && data.length > 0) {
+        setLevels(data);
+      } else {
+        setLevels(DEFAULT_CLUB_LEVELS);
+      }
+    } catch {
+      setLevels(DEFAULT_CLUB_LEVELS);
+    }
   }
 
   async function refreshFeeMembers() {
@@ -2407,6 +2421,7 @@ export default function DashboardPage() {
                 setTutorialBracketGenerated(true);
               }}
               onOpenCourtBoard={(sessionId) => setCourtBoardSessionId(sessionId)}
+              clubLevels={levels}
             />
           )
         ) : null}

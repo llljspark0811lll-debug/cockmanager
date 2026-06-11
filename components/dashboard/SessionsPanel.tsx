@@ -276,28 +276,11 @@ function filterParticipants(
       }
 
       if (filters.sortOption === "level") {
-        const sortedLevels = [
-          "S",
-          "A",
-          "B",
-          "C",
-          "D",
-          "E",
-          "초심",
-        ];
-        const leftRank = sortedLevels.indexOf(
-          getParticipantLevelLabel(left)
-        );
-        const rightRank = sortedLevels.indexOf(
-          getParticipantLevelLabel(right)
-        );
-
-        if (leftRank !== rightRank) {
-          return (
-            (leftRank === -1 ? 99 : leftRank) -
-            (rightRank === -1 ? 99 : rightRank)
-          );
-        }
+        const leftRank = parseInt(getParticipantLevelLabel(left), 10);
+        const rightRank = parseInt(getParticipantLevelLabel(right), 10);
+        const l = isNaN(leftRank) ? 99 : leftRank;
+        const r = isNaN(rightRank) ? 99 : rightRank;
+        if (l !== r) return l - r;
       }
 
       if (filters.sortOption === "recent") {
@@ -315,7 +298,8 @@ function filterParticipants(
 }
 
 function renderParticipantSummaryChips(
-  summary: ParticipantSummary
+  summary: ParticipantSummary,
+  clubLevels: ClubLevel[]
 ) {
   return (
     <div className="mt-3 flex flex-wrap gap-2 md:mt-4">
@@ -335,7 +319,7 @@ function renderParticipantSummaryChips(
             item.level
           )}`}
         >
-          {item.level} {item.count}명
+          {clubLevels.find((l) => String(l.rank) === item.level)?.name ?? item.level} {item.count}명
         </span>
       ))}
     </div>
@@ -394,7 +378,7 @@ function ParticipantSection({
           </div>
         </div>
 
-        {renderParticipantSummaryChips(summary)}
+        {renderParticipantSummaryChips(summary, clubLevels)}
 
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
           <input
@@ -511,6 +495,7 @@ function ParticipantSection({
             {paginatedParticipants.map((participant) => {
               const gender = getParticipantGenderLabel(participant);
               const level = getParticipantLevelLabel(participant);
+              const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? level;
 
               return (
                 <tr
@@ -550,7 +535,7 @@ function ParticipantSection({
                         level
                       )}`}
                     >
-                      {level}
+                      {levelName}
                     </span>
                   </td>
                   <td className="px-2 py-3 text-[10px] leading-4 text-slate-500 md:px-4 md:py-4 md:text-sm md:leading-5">

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
+  ClubLevel,
   ClubSession,
   SessionBracket,
   SessionParticipant,
@@ -18,6 +19,7 @@ type SessionBracketPanelProps = {
   tutorialDefaultsActive?: boolean;
   onBracketGenerated?: () => void;
   onOpenCourtBoard?: (sessionId: number) => void;
+  clubLevels: ClubLevel[];
 };
 
 type BracketApiResponse = {
@@ -84,13 +86,6 @@ function groupLabel(division: string) {
   return "랜덤 복식";
 }
 
-function playerBadgeLabel(
-  player: SessionBracket["summary"]["playerStats"][number]
-) {
-  const gender = normalizeGenderLabel(player.gender);
-  const guestText = player.isGuest ? "게스트" : "회원";
-  return `${guestText} · ${gender} · ${player.level}`;
-}
 
 function getParticipantGenderGroup(participant: SessionParticipant) {
   const raw = String(
@@ -207,6 +202,7 @@ export function SessionBracketPanel({
   tutorialDefaultsActive = false,
   onBracketGenerated,
   onOpenCourtBoard,
+  clubLevels,
 }: SessionBracketPanelProps) {
   const [generationMode, setGenerationMode] = useState<
     "STANDARD" | "TEAM_BATTLE"
@@ -1823,7 +1819,7 @@ export function SessionBracketPanel({
                                               isSelected ? "text-sky-100" : "text-slate-500",
                                             ].join(" ")}
                                           >
-                                            {normalizeGenderLabel(player.gender)} · {player.level}
+                                            {normalizeGenderLabel(player.gender)} · {clubLevels.find((l) => String(l.rank) === player.level)?.name ?? player.level}
                                           </span>
                                         </span>
                                       </button>
@@ -1903,7 +1899,7 @@ export function SessionBracketPanel({
                           {stripTrialPrefix(player.name)}
                         </p>
                         <p className="mt-1 truncate text-xs text-slate-500">
-                          {playerBadgeLabel(player)}
+                          {player.isGuest ? "게스트" : "회원"} · {normalizeGenderLabel(player.gender)} · {clubLevels.find((l) => String(l.rank) === player.level)?.name ?? player.level}
                         </p>
                       </div>
                       <div className="flex shrink-0 flex-col gap-2 text-xs font-bold">

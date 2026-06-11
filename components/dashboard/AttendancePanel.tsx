@@ -3,7 +3,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import { SessionBracketPanel } from "@/components/dashboard/SessionBracketPanel";
-import type { ClubSession } from "@/components/dashboard/types";
+import type { ClubLevel, ClubSession } from "@/components/dashboard/types";
 import {
   formatDate,
   getLevelTextClasses,
@@ -23,6 +23,7 @@ type AttendancePanelProps = {
   tutorialDefaultsActive?: boolean;
   onBracketGenerated?: () => void;
   onOpenCourtBoard?: (sessionId: number) => void;
+  clubLevels: ClubLevel[];
 };
 
 type ParticipantSortOption = "name" | "gender" | "level" | "recent";
@@ -102,12 +103,11 @@ function filterAndSortParticipants(
       }
 
       if (filters.sortOption === "level") {
-        const levelOrder = ["S", "A", "B", "C", "D", "E", "초심"];
-        const leftRank = levelOrder.indexOf(getParticipantLevelLabel(left));
-        const rightRank = levelOrder.indexOf(getParticipantLevelLabel(right));
-        if (leftRank !== rightRank) {
-          return (leftRank === -1 ? 99 : leftRank) - (rightRank === -1 ? 99 : rightRank);
-        }
+        const leftRank = parseInt(getParticipantLevelLabel(left), 10);
+        const rightRank = parseInt(getParticipantLevelLabel(right), 10);
+        const l = isNaN(leftRank) ? 99 : leftRank;
+        const r = isNaN(rightRank) ? 99 : rightRank;
+        if (l !== r) return l - r;
       }
 
       if (filters.sortOption === "recent") {
@@ -207,6 +207,7 @@ export function AttendancePanel({
   tutorialDefaultsActive = false,
   onBracketGenerated,
   onOpenCourtBoard,
+  clubLevels,
 }: AttendancePanelProps) {
   const hasSelectedSession = sessions.some(
     (session) => session.id === selectedSessionId
@@ -427,7 +428,7 @@ export function AttendancePanel({
                   key={item.level}
                   className={`rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:text-sm ${getLevelBadgeClass(item.level)}`}
                 >
-                  {item.level} {item.count}명
+                  {clubLevels.find((l) => String(l.rank) === item.level)?.name ?? item.level} {item.count}명
                 </span>
               ))}
             </div>
@@ -479,7 +480,7 @@ export function AttendancePanel({
                 <option value="ALL">전체 급수</option>
                 {sortedLevels.map((level) => (
                   <option key={level} value={level}>
-                    {level}
+                    {clubLevels.find((l) => String(l.rank) === level)?.name ?? level}
                   </option>
                 ))}
               </select>
@@ -517,6 +518,7 @@ export function AttendancePanel({
                 {paginatedParticipants.map((participant) => {
                   const gender = getParticipantGenderLabel(participant);
                   const level = getParticipantLevelLabel(participant);
+                  const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? level;
                   return (
                     <tr key={participant.id} className="hover:bg-slate-50">
                       <td className="px-2 py-3 font-bold leading-4 text-slate-900 md:px-4 md:py-4 md:leading-5">
@@ -546,7 +548,7 @@ export function AttendancePanel({
                         <span
                           className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-bold md:px-2.5 md:py-1 md:text-xs ${getLevelBadgeClass(level)}`}
                         >
-                          {level}
+                          {levelName}
                         </span>
                       </td>
                       <td className="px-2 py-3 text-[10px] leading-4 text-slate-500 md:px-4 md:py-4 md:text-sm md:leading-5">
@@ -590,6 +592,7 @@ export function AttendancePanel({
           tutorialDefaultsActive={tutorialDefaultsActive}
           onBracketGenerated={onBracketGenerated}
           onOpenCourtBoard={onOpenCourtBoard}
+          clubLevels={clubLevels}
         />
       ) : null}
     </div>
