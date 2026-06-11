@@ -1,11 +1,18 @@
 "use client";
 
 import type {
+  ClubLevel,
   ClubSession,
   SessionBracket,
   SessionBracketMatch,
   SessionBracketPlayerEntry,
 } from "@/components/dashboard/types";
+import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
+
+const DEFAULT_CLUB_LEVELS: ClubLevel[] = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+  rank: i + 1,
+  name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+}));
 import {
   formatDate,
   normalizeGenderLabel,
@@ -122,12 +129,13 @@ export function stripTrialPrefix(name: string) {
   return name.replace(/^\[체험( 게스트)?\]\s*/, "");
 }
 
-function playerText(player: SessionBracketPlayerEntry) {
-  return `${stripTrialPrefix(player.name)} ${normalizeGenderLabel(player.gender)} · ${player.level}`;
+function playerText(player: SessionBracketPlayerEntry, clubLevels: ClubLevel[]) {
+  const levelName = clubLevels.find((l) => String(l.rank) === player.level)?.name ?? player.level;
+  return `${stripTrialPrefix(player.name)} ${normalizeGenderLabel(player.gender)} · ${levelName}`;
 }
 
-function teamText(players: SessionBracketPlayerEntry[]) {
-  return players.map((player) => playerText(player)).join(" / ");
+function teamText(players: SessionBracketPlayerEntry[], clubLevels: ClubLevel[]) {
+  return players.map((player) => playerText(player, clubLevels)).join(" / ");
 }
 
 function sectionHeight(round: SessionBracket["rounds"][number]) {
@@ -287,6 +295,7 @@ function renderRoundSection(
   round: SessionBracket["rounds"][number],
   y: number,
   bracket: SessionBracket,
+  clubLevels: ClubLevel[],
   includeScores = false
 ) {
   const column = tableColumnX();
@@ -349,12 +358,12 @@ function renderRoundSection(
     const rowY = headerY + TABLE_HEADER_HEIGHT + index * MATCH_ROW_HEIGHT;
     const courtLabel = `${match.courtNumber}코트`;
     const teamALines = wrapText(
-      teamText(match.teamA.players),
+      teamText(match.teamA.players, clubLevels),
       column.teamWidth - 28,
       BODY_FONT
     );
     const teamBLines = wrapText(
-      teamText(match.teamB.players),
+      teamText(match.teamB.players, clubLevels),
       column.teamWidth - 28,
       BODY_FONT
     );
@@ -437,7 +446,7 @@ function renderRoundSection(
   return markup;
 }
 
-function renderSvg(session: ClubSession, bracket: SessionBracket, includeScores = false) {
+function renderSvg(session: ClubSession, bracket: SessionBracket, clubLevels: ClubLevel[], includeScores = false) {
   const height = totalImageHeight(bracket);
   let currentY = PADDING_Y;
 
@@ -466,7 +475,7 @@ function renderSvg(session: ClubSession, bracket: SessionBracket, includeScores 
   currentY += SUMMARY_HEIGHT + 28;
 
   bracket.rounds.forEach((round) => {
-    markup += renderRoundSection(round, currentY, bracket, includeScores);
+    markup += renderRoundSection(round, currentY, bracket, clubLevels, includeScores);
     currentY += sectionHeight(round) + SECTION_GAP;
   });
 
@@ -543,11 +552,13 @@ async function svgToPngBlob(
 export async function buildBracketImageFiles(
   session: ClubSession,
   bracket: SessionBracket,
+  clubLevels: ClubLevel[] = DEFAULT_CLUB_LEVELS,
   options: { includeScores?: boolean } = {}
 ) {
   const { includeScores = false } = options;
+  const effectiveLevels = clubLevels.length > 0 ? clubLevels : DEFAULT_CLUB_LEVELS;
   const height = totalImageHeight(bracket);
-  const svgMarkup = renderSvg(session, bracket, includeScores);
+  const svgMarkup = renderSvg(session, bracket, effectiveLevels, includeScores);
   const blob = await svgToPngBlob(svgMarkup, IMAGE_WIDTH, height);
   const suffix = includeScores ? "-결과" : "-자동대진표";
   const fileName = `${sanitizeFileName(session.title)}${suffix}.png`;

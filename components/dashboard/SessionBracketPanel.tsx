@@ -899,7 +899,7 @@ export function SessionBracketPanel({
     setExportError("");
     setExportingMode("download");
     try {
-      const files = await buildBracketImageFiles(session, b, { includeScores: true });
+      const files = await buildBracketImageFiles(session, b, clubLevels, { includeScores: true });
       await downloadFiles(files);
       setExportMessage(
         files.length > 1
@@ -933,7 +933,7 @@ export function SessionBracketPanel({
     setExportingMode("download");
 
     try {
-      const files = await buildBracketImageFiles(session, b);
+      const files = await buildBracketImageFiles(session, b, clubLevels);
 
       await downloadFiles(files);
       void notifyAdminActivity({
