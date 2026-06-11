@@ -237,18 +237,44 @@ export async function PUT(req: Request) {
       );
     }
 
+    const formatBirth = (value: Date | null) => {
+      if (!value) return "-";
+      const y = value.getFullYear();
+      const m = String(value.getMonth() + 1).padStart(2, "0");
+      const d = String(value.getDate()).padStart(2, "0");
+      return `${y}.${m}.${d}`;
+    };
+
+    const newBirth = birth ? new Date(birth) : null;
+    const normalizedCustomFieldValue = customFieldValue ? String(customFieldValue).trim() : "";
+    const normalizedNote = note ? String(note).trim() : "";
+
+    const changes: { field: string; before: string; after: string }[] = [];
+    if (existingMember.name !== normalizedName)
+      changes.push({ field: "이름", before: existingMember.name, after: normalizedName });
+    if ((existingMember.gender ?? "-") !== (gender ?? "-"))
+      changes.push({ field: "성별", before: existingMember.gender || "-", after: gender || "-" });
+    if (formatBirth(existingMember.birth) !== formatBirth(newBirth))
+      changes.push({ field: "생년월일", before: formatBirth(existingMember.birth), after: formatBirth(newBirth) });
+    if (existingMember.phone !== normalizedPhone)
+      changes.push({ field: "연락처", before: existingMember.phone || "-", after: normalizedPhone || "-" });
+    if ((existingMember.level ?? "-") !== (level ?? "-"))
+      changes.push({ field: "급수", before: existingMember.level || "-", after: level || "-" });
+    if ((existingMember.customFieldValue ?? "") !== normalizedCustomFieldValue)
+      changes.push({ field: "추가정보", before: existingMember.customFieldValue || "-", after: normalizedCustomFieldValue || "-" });
+    if ((existingMember.note ?? "") !== normalizedNote)
+      changes.push({ field: "메모", before: existingMember.note || "-", after: normalizedNote || "-" });
+
     const updatedMember = await prisma.member.update({
       where: { id: existingMember.id },
       data: {
         name: normalizedName,
         gender,
-        birth: birth ? new Date(birth) : null,
+        birth: newBirth,
         phone: normalizedPhone,
         level,
-        customFieldValue: customFieldValue
-          ? String(customFieldValue).trim()
-          : "",
-        note: note ? String(note).trim() : "",
+        customFieldValue: normalizedCustomFieldValue,
+        note: normalizedNote,
         positionId:
           positionId === undefined
             ? undefined
@@ -267,6 +293,7 @@ export async function PUT(req: Request) {
       event: "MEMBER_UPDATE",
       clubName: club?.name ?? String(admin.clubId),
       name: updatedMember.name,
+      changes,
     });
 
     return NextResponse.json(updatedMember);

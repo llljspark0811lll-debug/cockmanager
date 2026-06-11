@@ -511,7 +511,10 @@ export async function POST(req: Request) {
       clubName: club?.name ?? String(admin.clubId),
       sessionTitle: session.title,
       generationMode,
+      courtCount,
+      minGamesPerPlayer,
       separateByGender,
+      fixedPairsCount: fixedPairs.length,
     });
 
     return NextResponse.json({

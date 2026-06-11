@@ -20,7 +20,7 @@
 | ✅ 가입 신청 승인 | 관리자 승인 | `api/member-request/approve` |
 | 🚫 가입 신청 거절 | 관리자 거절 | `api/member-request/reject` |
 | 👤 회원 직접 등록 | 관리자 직접 등록 | `api/members` |
-| ✏️ 회원 정보 수정 | 관리자 수정 | `api/members` |
+| ✏️ 회원 정보 수정 | 관리자 수정 (변경 필드 포함) | `api/members` |
 | 🗑️ 회원 삭제 | 관리자 삭제 | `api/members` |
 
 ## 운동 일정
@@ -38,7 +38,7 @@
 
 | 이벤트 | 트리거 | 소스 |
 |---|---|---|
-| 🏸 자동 대진 생성 | 대진표 생성 버튼 클릭 | `api/sessions/bracket` |
+| 🏸 자동 대진 생성 | 대진표 생성 버튼 클릭 (코트 수·최소 경기 수·성별 분리·고정 파트너 포함) | `api/sessions/bracket` |
 | 🔁 자동대진 선수 수정 | 대진표 선수 위치 스왑 | `api/admin/activity` |
 | 🖼️ 자동대진 이미지 저장 | 대진표 이미지 다운로드 | `api/admin/activity` |
 

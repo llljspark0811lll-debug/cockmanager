@@ -23,7 +23,7 @@ export type TelegramAlertInput =
   | { event: "MEMBER_REQUEST_APPROVE"; clubName: string; name: string }
   | { event: "MEMBER_REQUEST_REJECT"; clubName: string; name: string }
   | { event: "MEMBER_DIRECT_CREATE"; clubName: string; name: string }
-  | { event: "MEMBER_UPDATE"; clubName: string; name: string }
+  | { event: "MEMBER_UPDATE"; clubName: string; name: string; changes: { field: string; before: string; after: string }[] }
   | { event: "MEMBER_DELETE"; clubName: string; name: string }
   | { event: "SESSION_CREATE"; clubName: string; title: string; date: string }
   | {
@@ -53,7 +53,10 @@ export type TelegramAlertInput =
       clubName: string;
       sessionTitle: string;
       generationMode: BracketGenerationMode;
+      courtCount: number;
+      minGamesPerPlayer: number;
       separateByGender: boolean;
+      fixedPairsCount: number;
     }
   | {
       event: "SUPPORT_INQUIRY";
@@ -239,12 +242,19 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `회원: ${input.name}`,
       ].join("\n");
 
-    case "MEMBER_UPDATE":
+    case "MEMBER_UPDATE": {
+      const changeLines = input.changes.map(
+        (c) => `  • ${c.field}: ${c.before} → ${c.after}`
+      );
       return [
         "✏️ 회원 정보 수정",
         `클럽: ${input.clubName}`,
         `회원: ${input.name}`,
+        ...(changeLines.length > 0
+          ? ["", "변경 내역:", ...changeLines]
+          : ["", "(변경 내역 없음)"]),
       ].join("\n");
+    }
 
     case "MEMBER_DELETE":
       return [
@@ -312,7 +322,10 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
         `유형: ${getBracketModeLabel(input.generationMode)}`,
+        `코트 수: ${input.courtCount}코트`,
+        `최소 경기 수: ${input.minGamesPerPlayer}경기`,
         `성별 분리: ${input.separateByGender ? "남복/여복 분리" : "통합 복식"}`,
+        `고정 파트너: ${input.fixedPairsCount > 0 ? `${input.fixedPairsCount}쌍` : "없음"}`,
       ].join("\n");
 
     case "SUPPORT_INQUIRY":
