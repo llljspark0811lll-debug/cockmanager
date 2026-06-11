@@ -62,31 +62,19 @@ function MemberCard({
   const levelName = clubLevels.find((l) => String(l.rank) === member.level)?.name ?? member.level;
   return (
     <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-black text-slate-900">
-              {member.name}
-            </span>
-            <PositionBadge position={member.position} />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenderBadgeClasses(
-                member.gender
-              )}`}
-            >
-              {normalizeGenderLabel(member.gender)}
-            </span>
-            <span
-              className={`text-xs font-extrabold ${getLevelTextClasses(
-                member.level
-              )}`}
-            >
-              {levelName}
-            </span>
-          </div>
-        </div>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0 shrink truncate text-base font-black text-slate-900">
+          {member.name}
+        </span>
+        <PositionBadge position={member.position} />
+        <span
+          className={`shrink-0 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${getGenderBadgeClasses(member.gender)}`}
+        >
+          {normalizeGenderLabel(member.gender)}
+        </span>
+        <span className={`shrink-0 text-xs font-extrabold ${getLevelTextClasses(member.level)}`}>
+          {levelName}
+        </span>
       </div>
 
       <dl className="mt-4 grid grid-cols-[92px_1fr] gap-y-2 text-sm">
