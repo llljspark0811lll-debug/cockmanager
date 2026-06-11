@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
+  ClubLevel,
   DashboardAllMemberStatsGroup,
   DashboardStats,
   DashboardStatsPeriod,
@@ -38,6 +39,7 @@ function readSessionState(): Partial<StatsSessionState> {
 type StatsOverviewProps = {
   stats: DashboardStats | null;
   loading: boolean;
+  clubLevels: ClubLevel[];
 };
 
 type StatCard = {
@@ -76,6 +78,7 @@ function formatDateInputValue(date: Date) {
 export function StatsOverview({
   stats,
   loading,
+  clubLevels,
 }: StatsOverviewProps) {
   const [period, setPeriod] = useState<DashboardStatsPeriodKey>("CUSTOM");
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -521,7 +524,7 @@ export function StatsOverview({
                             <td className="sticky left-0 z-10 bg-white py-2 md:py-2.5 pr-2 md:pr-4 text-[10px] md:text-xs font-bold text-slate-400 border-b border-slate-50">#{rank}</td>
                             <td className="sticky left-7 md:left-10 z-10 bg-white py-2 md:py-2.5 pr-2 md:pr-6 text-xs md:text-sm font-black text-slate-900 border-b border-slate-50 max-w-[4rem] md:max-w-[6rem] truncate">{member.name}</td>
                             <td className="hidden md:table-cell py-2.5 pr-4 text-xs text-slate-500 border-b border-slate-50">{member.gender ?? "—"}</td>
-                            <td className="hidden md:table-cell py-2.5 pr-6 text-xs text-slate-500 border-b border-slate-50">{member.level ?? "—"}</td>
+                            <td className="hidden md:table-cell py-2.5 pr-6 text-xs text-slate-500 border-b border-slate-50">{clubLevels.find((l) => String(l.rank) === member.level)?.name ?? member.level ?? "—"}</td>
                             {periodSessions.map((s) => (
                               <td key={s.id} className="py-2 md:py-2.5 px-1 md:px-2 text-center border-b border-slate-50">
                                 {attendedSet.has(s.id) ? (

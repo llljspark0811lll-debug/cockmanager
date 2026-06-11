@@ -2240,7 +2240,7 @@ export default function DashboardPage() {
           data-tutorial-id="stats-panel"
           className={activeTab === "stats" ? "" : "hidden"}
         >
-          <StatsOverview stats={stats} loading={loadingStats} />
+          <StatsOverview stats={stats} loading={loadingStats} clubLevels={levels} />
         </div>
 
         {activeTab === "members" ? (
