@@ -535,7 +535,12 @@ export default function PublicSessionPage() {
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsTotalPages, setCommentsTotalPages] = useState(1);
   const [commentsTotalCount, setCommentsTotalCount] = useState(0);
+  const registrationStorageKey = `registrationOpen_${token}`;
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  useEffect(() => {
+    const saved = localStorage.getItem(registrationStorageKey);
+    if (saved !== null) setRegistrationOpen(saved === "true");
+  }, [registrationStorageKey]);
   const [commentsOpen, setCommentsOpen] = useState(false);
   type PublicCourtPlayer = { participantId: number; name: string };
   type PublicCourt = { id: number; teamA: PublicCourtPlayer[]; teamB: PublicCourtPlayer[] };
@@ -863,7 +868,8 @@ export default function PublicSessionPage() {
             : "참석 신청이 완료되었습니다.";
 
       setSubmitSuccessMessage(successMessage);
-      if (action === "REGISTER") setRegistrationOpen(false);
+      setRegistrationOpen(false);
+      localStorage.setItem(registrationStorageKey, "false");
       alert(successMessage);
     } catch (error) {
       setSubmitSuccessMessage("");
@@ -907,6 +913,8 @@ export default function PublicSessionPage() {
       setGuestAge("");
       setGuestGender("");
       setGuestLevel("");
+      setRegistrationOpen(false);
+      localStorage.setItem(registrationStorageKey, "false");
       alert(message);
       await fetchSessionData();
     } catch (error) {
@@ -1283,7 +1291,11 @@ export default function PublicSessionPage() {
         <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
           <button
             type="button"
-            onClick={() => setRegistrationOpen((prev) => !prev)}
+            onClick={() => setRegistrationOpen((prev) => {
+              const next = !prev;
+              localStorage.setItem(registrationStorageKey, String(next));
+              return next;
+            })}
             className="flex w-full items-center justify-between gap-4 p-6 text-left sm:p-8"
           >
             <h2 className="text-2xl font-black text-slate-900">참석 신청 / 취소</h2>
