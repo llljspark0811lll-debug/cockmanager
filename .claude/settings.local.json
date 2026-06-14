@@ -48,7 +48,8 @@
       "Bash(node scripts/list-tables.mjs)",
       "Bash(node scripts/test-allocation.mjs)",
       "Bash(node scripts/test-allocation-multi.mjs)",
-      "Bash(node scripts/test-debug.mjs)"
+      "Bash(node scripts/test-debug.mjs)",
+      "Bash(node scripts/check-partner.mjs)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",

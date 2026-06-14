@@ -79,7 +79,7 @@ const LEVEL_SCORE_MAP: Record<string, number> = {
 };
 
 const BALANCE_GAP_WEIGHT = 14;
-const OPPONENT_REPEAT_WEIGHT = 15;
+const OPPONENT_REPEAT_WEIGHT = 40;
 const FIXED_PAIR_REPEAT_WEIGHT = 80;
 const FIXED_PAIR_STRONG_TEAM_THRESHOLD = 10;
 const TOP_CANDIDATE_POOL_SIZE = 5;
@@ -1650,7 +1650,8 @@ function adjustSelectedForGenderBalance(
   selected: InternalPlayer[],
   poolPlayers: InternalPlayer[],
   previousRested: Set<string>,
-  states: Map<string, PlayerState>
+  states: Map<string, PlayerState>,
+  fixedPairMap: Map<string, string>
 ): InternalPlayer[] {
   const females = selected.filter((p) => p.gender === "여");
   const males = selected.filter((p) => p.gender === "남");
@@ -1672,9 +1673,12 @@ function adjustSelectedForGenderBalance(
 
   if (largerResting.length === 0) return selected;
 
-  const swappableSmaller = smallerSelected.filter(
-    (s) => !previousRested.has(s.playerId)
-  );
+  // fixed pair 멤버는 교체 대상에서 제외 (한 명만 빠지면 pair가 깨짐)
+  const swappableSmaller = smallerSelected.filter((s) => {
+    if (previousRested.has(s.playerId)) return false;
+    const partnerId = fixedPairMap.get(s.playerId);
+    return !partnerId || !selectedIds.has(partnerId);
+  });
   if (swappableSmaller.length === 0) return selected;
 
   const playerOut = swappableSmaller.sort(
@@ -1715,9 +1719,22 @@ function buildRoundMatchesForPool(
       const shuffledM = shuffleArray(males, random);
       const shuffledF = shuffleArray(females, random);
 
-      let remainingMixedM = shuffledM.slice(0, 2 * mixedCount);
+      // 남남 fixed pair는 혼복 풀에 섞이면 한 명만 혼복/다른 한 명은 남남이 되어 분리됨
+      // → slice 전에 남남 pair를 먼저 leftoverM에 고정하고 혼복 풀은 나머지로 채움
+      const mmPairIds = new Set<string>();
+      for (const m of shuffledM) {
+        const partnerId = fixedPairMap.get(m.playerId);
+        if (partnerId && shuffledM.some((p) => p.playerId === partnerId)) {
+          mmPairIds.add(m.playerId);
+          mmPairIds.add(partnerId);
+        }
+      }
+      const mixedCandidatesM = shuffledM.filter((p) => !mmPairIds.has(p.playerId));
+      const forcedLeftoverM = shuffledM.filter((p) => mmPairIds.has(p.playerId));
+
+      let remainingMixedM = mixedCandidatesM.slice(0, 2 * mixedCount);
       let remainingMixedF = shuffledF.slice(0, 2 * mixedCount);
-      let leftoverM = shuffleArray(shuffledM.slice(2 * mixedCount), random);
+      let leftoverM = shuffleArray([...forcedLeftoverM, ...mixedCandidatesM.slice(2 * mixedCount)], random);
       let leftoverF = shuffleArray(shuffledF.slice(2 * mixedCount), random);
 
       // Phase 1: 혼복 대진 구성 (남여 vs 남여)
@@ -2538,7 +2555,8 @@ export function generateSessionBracketLevelGroups(
                 selectedPlayers,
                 pool.players,
                 gs.previousRested,
-                gs.states
+                gs.states,
+                gs.fixedPairMap
               )
             : selectedPlayers;
         const selectedIdSet = new Set(finalSelected.map((p) => p.playerId));
@@ -2758,7 +2776,8 @@ export function generateSessionBracket(
               selectedPlayers,
               pool.players,
               previousRested,
-              states
+              states,
+              fixedPairMap
             )
           : selectedPlayers;
       const selectedIdSet = new Set(
