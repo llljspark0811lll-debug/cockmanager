@@ -565,8 +565,20 @@ export function SessionBracketPanel({
 
   // 급수 모드 유효성 오류
   const levelModeErrors = useMemo(() => {
-    if (levelMode === "none") return [];
     const errors: string[] = [];
+
+    // 급수통합 / 동일급수별 전용: 전체 인원 기준 최소 코트 수 검증
+    // 급수필터별은 아래 별도 로직으로 처리 — 이 블록 건드리지 말 것
+    if (levelMode === "none" || levelMode === "separate") {
+      const minRequiredCourts = Math.ceil(registeredCount / 8);
+      if (courtCount < minRequiredCourts) {
+        errors.push(
+          `코트 수 부족 — ${registeredCount}명에 최소 ${minRequiredCourts}코트 필요`
+        );
+      }
+    }
+
+    if (levelMode === "none") return errors;
     const checkGroup = (name: string, count: number, maleCount: number, femaleCount: number) => {
       if (separateByGender) {
         if (maleCount < 4) errors.push(`${name} 남복 (${maleCount}명): 4명 미만 — 대진 생성 불가`);
@@ -586,9 +598,22 @@ export function SessionBracketPanel({
       for (const g of filterGroupsWithCounts) {
         if (g.levels.length > 0) checkGroup(g.name, g.count, g.maleCount, g.femaleCount);
       }
+      // 급수필터별 전용: 그룹별 최소 코트 수 합산 검증
+      const activeGroups = filterGroupsWithCounts.filter((g) => g.levels.length > 0 && g.count >= 4);
+      if (activeGroups.length > 0) {
+        const requiredCourts = activeGroups.reduce((sum, g) => sum + Math.floor(g.count / 4), 0);
+        if (requiredCourts > courtCount) {
+          const breakdown = activeGroups
+            .map((g) => `${g.name} ${g.count}명 → ${Math.floor(g.count / 4)}코트`)
+            .join(" / ");
+          errors.push(
+            `코트 수 부족 — 최소 ${requiredCourts}코트 필요 (${breakdown})`
+          );
+        }
+      }
     }
     return errors;
-  }, [levelMode, separateGroups, filterGroupsWithCounts, unassignedLevels, separateByGender]);
+  }, [levelMode, separateGroups, filterGroupsWithCounts, unassignedLevels, separateByGender, courtCount, registeredCount]);
 
   // 급수 구분 모드: 모든 그룹 라운드를 합산해서 표시
   // MergedMatch = SessionBracketMatch + 그룹 메타 (cast로 접근)
@@ -1424,10 +1449,10 @@ export function SessionBracketPanel({
                         {separateByGender ? (
                           <>
                             <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.maleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
-                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠" : ""}
+                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠ 4명 미만" : ""}
                             </span>
                             <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.femaleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
-                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠" : ""}
+                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠ 4명 미만" : ""}
                             </span>
                           </>
                         ) : (
@@ -1456,10 +1481,10 @@ export function SessionBracketPanel({
                         {g.levels.length > 0 && (separateByGender ? (
                           <>
                             <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.maleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
-                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠" : ""}
+                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠ 4명 미만" : ""}
                             </span>
                             <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.femaleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
-                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠" : ""}
+                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠ 4명 미만" : ""}
                             </span>
                           </>
                         ) : (
@@ -1995,6 +2020,14 @@ export function SessionBracketPanel({
           </div>
         ) : null}
 
+        {levelModeErrors.length > 0 && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium leading-6 text-rose-700 space-y-0.5">
+            {levelModeErrors.map((e, i) => (
+              <div key={i}>{e}</div>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={() => {
@@ -2089,9 +2122,7 @@ export function SessionBracketPanel({
                   생성 조건
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-slate-900">
-                  {bracket.levelGroupData && activeGroupId
-                    ? `${bracket.config.levelGroups?.find((g) => g.id === activeGroupId)?.courtCount ?? bracket.config.courtCount}코트`
-                    : `${bracket.config.courtCount}코트`}{" "}
+                  {`${bracket.config.courtCount}코트`}{" "}
                   · 최소 {bracket.config.minGamesPerPlayer}경기
                   <br />
                   {bracket.config.generationMode === "TEAM_BATTLE"

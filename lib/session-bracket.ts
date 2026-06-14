@@ -2310,12 +2310,17 @@ function allocateCourtsForLevelGroups(
   }
 
   // 소수점 나머지를 effectiveCredit fraction이 큰 순서로 1씩 추가 배분
+  // 한 그룹이 maxCourts 한도로 못 받은 크레딧이 있을 경우 다른 그룹이 흡수하도록 다회 패스
   let remaining = totalCourts - allocated;
   const sortedByFrac = [...shares].sort((a, b) => (b.effectiveCredit % 1) - (a.effectiveCredit % 1));
-  for (const s of sortedByFrac) {
-    if (remaining <= 0) break;
-    const cur = courts.get(s.id) ?? 0;
-    if (cur < s.maxCourts) { courts.set(s.id, cur + 1); remaining--; }
+  let passAdded = true;
+  while (remaining > 0 && passAdded) {
+    passAdded = false;
+    for (const s of sortedByFrac) {
+      if (remaining <= 0) break;
+      const cur = courts.get(s.id) ?? 0;
+      if (cur < s.maxCourts) { courts.set(s.id, cur + 1); remaining--; passAdded = true; }
+    }
   }
 
   // 사후 보정: 최솟값(연속휴식 방지) 미달 그룹이 있으면 잉여 그룹에서 차감
