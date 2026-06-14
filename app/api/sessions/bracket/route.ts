@@ -11,6 +11,7 @@ import {
   normalizeLevel,
   type SessionBracketPlayerInput,
 } from "@/lib/session-bracket";
+import { getClubLevels } from "@/lib/club-levels";
 import { ensureSessionBracketTable } from "@/lib/session-bracket-schema";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { sendTelegramAlert } from "@/lib/telegram";
@@ -346,14 +347,31 @@ async function findSessionForBracket(sessionId: number, clubId: number) {
   });
 }
 
-function calcPlayerStats(players: SessionBracketPlayerInput[]) {
-  const maleCount = players.filter((p) => p.gender === "MALE").length;
-  const femaleCount = players.filter((p) => p.gender === "FEMALE").length;
+function normalizeGenderForStats(gender: string | null | undefined): "남" | "여" | null {
+  const v = String(gender ?? "").trim().toLowerCase();
+  if (["남", "남자", "m", "male"].includes(v)) return "남";
+  if (["여", "여자", "f", "female"].includes(v)) return "여";
+  return null;
+}
+
+function calcPlayerStats(
+  players: SessionBracketPlayerInput[],
+  levelNameMap: Map<string, string>
+) {
+  let maleCount = 0;
+  let femaleCount = 0;
   const levelCounts: Record<string, number> = {};
+
   for (const p of players) {
-    const level = normalizeLevel(p.level) || p.level || "미설정";
-    levelCounts[level] = (levelCounts[level] ?? 0) + 1;
+    const g = normalizeGenderForStats(p.gender);
+    if (g === "남") maleCount++;
+    else if (g === "여") femaleCount++;
+
+    const rank = normalizeLevel(p.level);
+    const levelName = levelNameMap.get(rank) ?? rank;
+    levelCounts[levelName] = (levelCounts[levelName] ?? 0) + 1;
   }
+
   return { totalPlayers: players.length, maleCount, femaleCount, levelCounts };
 }
 
@@ -659,8 +677,12 @@ export async function POST(req: Request) {
         },
       });
 
-      const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
-      const stats = calcPlayerStats(players);
+      const [club, clubLevels] = await Promise.all([
+        prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } }),
+        getClubLevels(admin.clubId),
+      ]);
+      const levelNameMap = new Map(clubLevels.map((l) => [String(l.rank), l.name]));
+      const stats = calcPlayerStats(players, levelNameMap);
       void sendTelegramAlert({
         event: "SESSION_BRACKET_CREATE",
         clubName: club?.name ?? String(admin.clubId),
@@ -718,8 +740,12 @@ export async function POST(req: Request) {
       },
     });
 
-    const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
-    const stats = calcPlayerStats(players);
+    const [club, clubLevels] = await Promise.all([
+      prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } }),
+      getClubLevels(admin.clubId),
+    ]);
+    const levelNameMap = new Map(clubLevels.map((l) => [String(l.rank), l.name]));
+    const stats = calcPlayerStats(players, levelNameMap);
     void sendTelegramAlert({
       event: "SESSION_BRACKET_CREATE",
       clubName: club?.name ?? String(admin.clubId),
