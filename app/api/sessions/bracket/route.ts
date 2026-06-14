@@ -346,6 +346,17 @@ async function findSessionForBracket(sessionId: number, clubId: number) {
   });
 }
 
+function calcPlayerStats(players: SessionBracketPlayerInput[]) {
+  const maleCount = players.filter((p) => p.gender === "MALE").length;
+  const femaleCount = players.filter((p) => p.gender === "FEMALE").length;
+  const levelCounts: Record<string, number> = {};
+  for (const p of players) {
+    const level = normalizeLevel(p.level) || p.level || "미설정";
+    levelCounts[level] = (levelCounts[level] ?? 0) + 1;
+  }
+  return { totalPlayers: players.length, maleCount, femaleCount, levelCounts };
+}
+
 function buildBracketPlayers(
   participants: Array<{
     id: number;
@@ -649,6 +660,7 @@ export async function POST(req: Request) {
       });
 
       const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+      const stats = calcPlayerStats(players);
       void sendTelegramAlert({
         event: "SESSION_BRACKET_CREATE",
         clubName: club?.name ?? String(admin.clubId),
@@ -658,6 +670,7 @@ export async function POST(req: Request) {
         minGamesPerPlayer,
         separateByGender,
         fixedPairsCount: fixedPairs.length,
+        ...stats,
       });
 
       return NextResponse.json({
@@ -706,6 +719,7 @@ export async function POST(req: Request) {
     });
 
     const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+    const stats = calcPlayerStats(players);
     void sendTelegramAlert({
       event: "SESSION_BRACKET_CREATE",
       clubName: club?.name ?? String(admin.clubId),
@@ -715,6 +729,7 @@ export async function POST(req: Request) {
       minGamesPerPlayer,
       separateByGender,
       fixedPairsCount: fixedPairs.length,
+      ...stats,
     });
 
     return NextResponse.json({

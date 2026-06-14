@@ -57,6 +57,10 @@ export type TelegramAlertInput =
       minGamesPerPlayer: number;
       separateByGender: boolean;
       fixedPairsCount: number;
+      totalPlayers: number;
+      maleCount: number;
+      femaleCount: number;
+      levelCounts: Record<string, number>;
     }
   | {
       event: "SUPPORT_INQUIRY";
@@ -321,7 +325,11 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `회원: ${input.memberName}`,
       ].join("\n");
 
-    case "SESSION_BRACKET_CREATE":
+    case "SESSION_BRACKET_CREATE": {
+      const levelSummary = Object.entries(input.levelCounts)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([level, count]) => `${level} ${count}명`)
+        .join(" / ");
       return [
         "🏸 자동 대진 생성",
         `클럽: ${input.clubName}`,
@@ -331,7 +339,10 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `최소 경기 수: ${input.minGamesPerPlayer}경기`,
         `성별 분리: ${input.separateByGender ? "남복/여복 분리" : "통합 복식"}`,
         `고정 파트너: ${input.fixedPairsCount > 0 ? `${input.fixedPairsCount}쌍` : "없음"}`,
+        `참가 선수: 총 ${input.totalPlayers}명 (남 ${input.maleCount}명 / 여 ${input.femaleCount}명)`,
+        ...(levelSummary ? [`급수별: ${levelSummary}`] : []),
       ].join("\n");
+    }
 
     case "SUPPORT_INQUIRY":
       return [
