@@ -430,24 +430,30 @@ export function AttendancePanel({
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2 md:mt-4">
-              <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 md:px-4 md:text-sm">
-                전체 {summary.totalCount}명
-              </span>
-              <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 md:px-4 md:text-sm">
-                남자 {summary.maleCount}명
-              </span>
-              <span className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 md:px-4 md:text-sm">
-                여자 {summary.femaleCount}명
-              </span>
-              {summary.levels.map((item) => (
-                <span
-                  key={item.level}
-                  className={`rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:text-sm ${getLevelBadgeClass(item.level)}`}
-                >
-                  {clubLevels.find((l) => String(l.rank) === item.level)?.name ?? item.level} {item.count}명
+            <div className="mt-3 flex flex-col gap-1.5 md:mt-4 md:flex-row md:flex-wrap md:gap-2">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 md:px-4 md:text-sm">
+                  전체 {summary.totalCount}명
                 </span>
-              ))}
+                <span className="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 md:px-4 md:text-sm">
+                  남자 {summary.maleCount}명
+                </span>
+                <span className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 md:px-4 md:text-sm">
+                  여자 {summary.femaleCount}명
+                </span>
+              </div>
+              {summary.levels.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {summary.levels.map((item) => (
+                    <span
+                      key={item.level}
+                      className={`rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:text-sm ${getLevelBadgeClass(item.level)}`}
+                    >
+                      {clubLevels.find((l) => String(l.rank) === item.level)?.name ?? item.level} {item.count}명
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {participantListOpen && (
