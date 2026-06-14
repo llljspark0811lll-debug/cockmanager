@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Court, CourtBoard, CourtPlayer, SessionParticipant } from "@/components/dashboard/types";
+import type { ClubLevel, Court, CourtBoard, CourtPlayer, SessionParticipant } from "@/components/dashboard/types";
 import {
   getParticipantDisplayName,
   getParticipantGenderLabel,
@@ -32,6 +32,7 @@ type BoardData = {
 type CourtBoardModalProps = {
   open: boolean;
   clubName: string;
+  clubLevels?: ClubLevel[];
   session: {
     id: number;
     title: string;
@@ -111,11 +112,13 @@ function computeAgeDecade(participant: SessionParticipant): string {
   return decade >= 10 && decade <= 100 ? `${decade}` : "";
 }
 
-function getPlayerTag(participant: SessionParticipant): string {
-  const level = getParticipantLevelLabel(participant);
+function getPlayerTag(participant: SessionParticipant, clubLevels?: ClubLevel[]): string {
+  const rawLevel = getParticipantLevelLabel(participant);
+  const level = clubLevels?.find((l) => String(l.rank) === rawLevel)?.name ?? rawLevel;
+  const displayLevel = level === "-" ? "-" : level;
   const decade = computeAgeDecade(participant);
-  if (decade && level !== "-") return `${decade}${level}`;
-  if (level !== "-") return level;
+  if (decade && displayLevel !== "-") return `${decade} ${displayLevel}`;
+  if (displayLevel !== "-") return displayLevel;
   return "";
 }
 
@@ -144,17 +147,19 @@ function PoolChip({
   participant,
   isSelected,
   gameCount,
+  clubLevels,
   onClick,
 }: {
   participant: SessionParticipant;
   isSelected: boolean;
   gameCount: number;
+  clubLevels?: ClubLevel[];
   onClick: () => void;
 }) {
   const isGuest = Boolean(participant.guestName);
   const name = getParticipantDisplayName(participant);
   const gender = getParticipantGenderLabel(participant);
-  const tag = getPlayerTag(participant);
+  const tag = getPlayerTag(participant, clubLevels);
   const levelClass = getLevelTextClasses(getParticipantLevelLabel(participant));
 
   return (
@@ -199,17 +204,19 @@ function CourtPlayerChip({
   participant,
   team,
   gameCount,
+  clubLevels,
   onRemove,
 }: {
   player: CourtPlayer;
   participant: SessionParticipant | undefined;
   team: "A" | "B";
   gameCount: number;
+  clubLevels?: ClubLevel[];
   onRemove: () => void;
 }) {
   const isGuest = Boolean(participant?.guestName);
   const gender = participant ? getParticipantGenderLabel(participant) : "";
-  const tag = participant ? getPlayerTag(participant) : "";
+  const tag = participant ? getPlayerTag(participant, clubLevels) : "";
   const levelClass = participant ? getLevelTextClasses(getParticipantLevelLabel(participant)) : "";
   const teamBg = team === "A" ? "bg-sky-50 border-sky-100" : "bg-rose-50 border-rose-100";
 
@@ -301,7 +308,7 @@ function MobilePoolChip({
 }
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────
-export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoardModalProps) {
+export function CourtBoardModal({ open, clubName, clubLevels, session, onClose }: CourtBoardModalProps) {
   const [boardId, setBoardId] = useState<number | null>(null);
   const [boardData, setBoardData] = useState<BoardData>(() => ({
     v: 3, courtCount: 2, courts: [buildEmptyCourt(1), buildEmptyCourt(2)], history: [],
@@ -787,6 +794,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                               participant={participantMap.get(player.participantId)}
                               team="A"
                               gameCount={gameCounts.get(player.participantId) ?? 0}
+                              clubLevels={clubLevels}
                               onRemove={() => handleRemoveFromCourt(court.id, "A", player.participantId)}
                             />
                           ))}
@@ -817,6 +825,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                               participant={participantMap.get(player.participantId)}
                               team="B"
                               gameCount={gameCounts.get(player.participantId) ?? 0}
+                              clubLevels={clubLevels}
                               onRemove={() => handleRemoveFromCourt(court.id, "B", player.participantId)}
                             />
                           ))}
@@ -883,6 +892,7 @@ export function CourtBoardModal({ open, clubName, session, onClose }: CourtBoard
                       participant={p}
                       isSelected={selectedParticipantId === p.id}
                       gameCount={gameCounts.get(p.id) ?? 0}
+                      clubLevels={clubLevels}
                       onClick={() => handleSelectPool(p.id)}
                     />
                   ))}

@@ -7,12 +7,19 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import {
   generateSessionBracket,
+  generateSessionBracketLevelGroups,
+  normalizeLevel,
   type SessionBracketPlayerInput,
 } from "@/lib/session-bracket";
 import { ensureSessionBracketTable } from "@/lib/session-bracket-schema";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { sendTelegramAlert } from "@/lib/telegram";
 import { NextResponse } from "next/server";
+import type {
+  SessionBracketLevelGroupData,
+  SessionBracketRound,
+  SessionBracketSummary,
+} from "@/components/dashboard/types";
 
 type BracketMode = "STANDARD" | "TEAM_BATTLE";
 
@@ -55,11 +62,18 @@ type StoredConfigVariantEnvelope = {
 };
 
 type StoredRoundsVariantEnvelope = {
-  variants?: Partial<Record<BracketMode, { rounds: unknown }>>;
+  variants?: Partial<Record<BracketMode, { rounds: unknown; levelGroupRounds?: unknown }>>;
 };
 
 type StoredSummaryVariantEnvelope = {
-  variants?: Partial<Record<BracketMode, { summary: unknown }>>;
+  variants?: Partial<Record<BracketMode, { summary: unknown; levelGroupSummaries?: unknown }>>;
+};
+
+type LevelGroupConfig = {
+  id: string;
+  name: string;
+  levels: string[];
+  courtCount: number;
 };
 
 function normalizeBracketMode(value: string | null | undefined): BracketMode {
@@ -124,6 +138,53 @@ function normalizeSavedBracket(
 
   if (!target) {
     return null;
+  }
+
+  const config = target.config as Record<string, unknown> | null;
+  const levelMode = config?.levelMode;
+
+  if (levelMode && levelMode !== "none" && bracket) {
+    const rawRoundsEnvelope = bracket.rounds as {
+      variants?: Record<string, { rounds?: unknown; levelGroupRounds?: unknown }>;
+    } | null;
+    const rawSummaryEnvelope = bracket.summary as {
+      variants?: Record<string, { summary?: unknown; levelGroupSummaries?: unknown }>;
+    } | null;
+
+    const rawRoundsVariant = rawRoundsEnvelope?.variants?.[mode];
+    const rawSummaryVariant = rawSummaryEnvelope?.variants?.[mode];
+
+    const levelGroupRounds = (rawRoundsVariant?.levelGroupRounds ?? {}) as Record<string, SessionBracketRound[]>;
+    const levelGroupSummaries = (rawSummaryVariant?.levelGroupSummaries ?? {}) as Record<string, SessionBracketSummary>;
+
+    const levelGroupConfigs = (config?.levelGroups ?? []) as LevelGroupConfig[];
+
+    const levelGroupData: SessionBracketLevelGroupData[] = levelGroupConfigs
+      .map((g) => ({
+        groupId: g.id,
+        groupName: g.name,
+        levels: g.levels,
+        rounds: (levelGroupRounds[g.id] ?? []) as SessionBracketRound[],
+        summary: (levelGroupSummaries[g.id] ?? {
+          totalPlayers: 0,
+          totalRounds: 0,
+          totalMatches: 0,
+          warnings: [],
+          playerStats: [],
+        }) as SessionBracketSummary,
+      }))
+      .filter((g) => g.rounds.length > 0);
+
+    return {
+      id: target.id,
+      sessionId: target.sessionId,
+      config: target.config,
+      rounds: [],
+      summary: target.summary,
+      levelGroupData,
+      createdAt: target.createdAt,
+      updatedAt: target.updatedAt,
+    };
   }
 
   return {
@@ -440,6 +501,24 @@ export async function POST(req: Request) {
         )
       : [];
 
+    const levelMode: "none" | "separate" | "filter" =
+      body.levelMode === "separate" || body.levelMode === "filter"
+        ? body.levelMode
+        : "none";
+
+    const rawLevelGroupsConfig: unknown[] = Array.isArray(body.levelGroupsConfig)
+      ? body.levelGroupsConfig
+      : [];
+    const levelGroupsConfig: LevelGroupConfig[] = rawLevelGroupsConfig.filter(
+      (g): g is LevelGroupConfig =>
+        g !== null &&
+        typeof g === "object" &&
+        typeof (g as Record<string, unknown>).id === "string" &&
+        typeof (g as Record<string, unknown>).name === "string" &&
+        Array.isArray((g as Record<string, unknown>).levels) &&
+        typeof (g as Record<string, unknown>).courtCount === "number"
+    );
+
     if (
       !Number.isFinite(sessionId) ||
       !Number.isFinite(courtCount) ||
@@ -469,6 +548,127 @@ export async function POST(req: Request) {
     }
 
     const players = buildBracketPlayers(session.participants);
+
+    // 레벨 그룹 대진 모드 (STANDARD 전용)
+    if (levelMode !== "none" && generationMode === "STANDARD" && levelGroupsConfig.length > 0) {
+      // 인원 수 최소 검증
+      for (const groupConfig of levelGroupsConfig) {
+        const groupPlayers = players.filter((p) =>
+          groupConfig.levels.includes(normalizeLevel(p.level))
+        );
+        if (groupPlayers.length < 4) {
+          return NextResponse.json(
+            {
+              error: `"${groupConfig.name}" 그룹 인원이 ${groupPlayers.length}명입니다. 대진 생성에는 최소 4명이 필요합니다.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // 라운드별 동적 코트 배분으로 모든 그룹 동시 생성
+      const groupResults = generateSessionBracketLevelGroups(
+        levelGroupsConfig.map((groupConfig) => ({
+          groupId: groupConfig.id,
+          groupName: groupConfig.name,
+          players: players.filter((p) =>
+            groupConfig.levels.includes(normalizeLevel(p.level))
+          ),
+          fixedPairs: fixedPairs.filter(([a, b]) => {
+            const gPlayers = players.filter((p) =>
+              groupConfig.levels.includes(normalizeLevel(p.level))
+            );
+            return (
+              gPlayers.some((p) => p.playerId === a) &&
+              gPlayers.some((p) => p.playerId === b)
+            );
+          }),
+        })),
+        courtCount,
+        minGamesPerPlayer,
+        separateByGender,
+        relaxedMode,
+        Date.now() + Math.floor(Math.random() * 1_000_000)
+      );
+
+      const levelGroupRounds: Record<string, SessionBracketRound[]> = {};
+      const levelGroupSummaries: Record<string, SessionBracketSummary> = {};
+      for (const result of groupResults) {
+        levelGroupRounds[result.groupId] = result.rounds;
+        levelGroupSummaries[result.groupId] = result.summary;
+      }
+
+      const totalCourtCount = courtCount;
+
+      const levelConfig = {
+        courtCount: totalCourtCount,
+        minGamesPerPlayer,
+        separateByGender,
+        relaxedMode,
+        generationMode: "STANDARD" as const,
+        fixedPairs,
+        levelMode,
+        levelGroups: levelGroupsConfig,
+      };
+
+      // 빈 summary (레벨 그룹 모드에서는 개별 그룹 summary 사용)
+      const aggregateSummary = {
+        totalPlayers: players.length,
+        totalRounds: 0,
+        totalMatches: 0,
+        warnings: [],
+        playerStats: [],
+      };
+
+      const storedPayload = buildStoredVariantPayload(session.bracket, "STANDARD", {
+        config: levelConfig,
+        rounds: null as unknown,
+        summary: aggregateSummary as unknown,
+      });
+
+      // rounds와 summary를 레벨그룹 구조로 오버라이드
+      const roundsEnvelope = storedPayload.rounds as { variants: Record<string, unknown> };
+      roundsEnvelope.variants["STANDARD"] = { rounds: null, levelGroupRounds };
+
+      const summaryEnvelope = storedPayload.summary as { variants: Record<string, unknown> };
+      summaryEnvelope.variants["STANDARD"] = { summary: aggregateSummary, levelGroupSummaries };
+
+      const savedBracket = await prisma.sessionBracket.upsert({
+        where: { sessionId: session.id },
+        update: {
+          config: storedPayload.config,
+          rounds: storedPayload.rounds,
+          summary: storedPayload.summary,
+        },
+        create: {
+          sessionId: session.id,
+          config: storedPayload.config,
+          rounds: storedPayload.rounds,
+          summary: storedPayload.summary,
+        },
+      });
+
+      const club = await prisma.club.findUnique({ where: { id: admin.clubId }, select: { name: true } });
+      void sendTelegramAlert({
+        event: "SESSION_BRACKET_CREATE",
+        clubName: club?.name ?? String(admin.clubId),
+        sessionTitle: session.title,
+        generationMode: "STANDARD",
+        courtCount: totalCourtCount,
+        minGamesPerPlayer,
+        separateByGender,
+        fixedPairsCount: fixedPairs.length,
+      });
+
+      return NextResponse.json({
+        sessionId: session.id,
+        sessionTitle: session.title,
+        participantCount: session.participants.length,
+        bracket: normalizeSavedBracket(savedBracket, "STANDARD"),
+      });
+    }
+
+    // 기존 일반 대진 생성
     const generated = generateSessionBracket({
       players,
       courtCount,

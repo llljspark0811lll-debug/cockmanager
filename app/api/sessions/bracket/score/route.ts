@@ -10,7 +10,7 @@ function normalizeBracketMode(value: string | null | undefined): BracketMode {
 }
 
 // PATCH /api/sessions/bracket/score
-// Body: { sessionId, generationMode, roundNumber, courtNumber, scoreA, scoreB }
+// Body: { sessionId, generationMode, roundNumber, courtNumber, scoreA, scoreB, levelGroupId? }
 export async function PATCH(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -21,6 +21,7 @@ export async function PATCH(req: Request) {
     const generationMode = normalizeBracketMode(body.generationMode);
     const roundNumber = Number(body.roundNumber);
     const courtNumber = Number(body.courtNumber);
+    const levelGroupId = typeof body.levelGroupId === "string" ? body.levelGroupId : null;
     // null 허용: 점수 삭제(초기화)도 지원
     const scoreA = body.scoreA === null ? null : Number(body.scoreA);
     const scoreB = body.scoreB === null ? null : Number(body.scoreB);
@@ -45,7 +46,6 @@ export async function PATCH(req: Request) {
     if (!session) return notFoundResponse("운동 일정을 찾을 수 없습니다.");
     if (!session.bracket) return notFoundResponse("저장된 대진표가 없습니다.");
 
-    // 저장된 bracket JSON에서 해당 variant 꺼내기
     const bracketRecord = session.bracket as {
       config: unknown;
       rounds: unknown;
@@ -54,10 +54,66 @@ export async function PATCH(req: Request) {
 
     type VariantEnvelope<T> = { variants?: Partial<Record<BracketMode, T>> };
 
-    const roundsEnvelope = bracketRecord.rounds as VariantEnvelope<{ rounds: unknown }>;
+    const roundsEnvelope = bracketRecord.rounds as VariantEnvelope<{
+      rounds: unknown;
+      levelGroupRounds?: unknown;
+    }>;
     const isVariant = Boolean(roundsEnvelope?.variants);
 
-    // rounds 추출
+    // 레벨 그룹 모드인지 확인
+    const variantData = isVariant ? roundsEnvelope.variants?.[generationMode] : null;
+    const isLevelGroupMode = levelGroupId !== null && variantData && "levelGroupRounds" in variantData;
+
+    if (isLevelGroupMode && variantData) {
+      // 레벨 그룹 모드: 해당 그룹의 rounds에서 점수 업데이트
+      const levelGroupRounds = variantData.levelGroupRounds as Record<
+        string,
+        Array<{
+          roundNumber: number;
+          matches: Array<{
+            courtNumber: number;
+            scoreA?: number | null;
+            scoreB?: number | null;
+            [key: string]: unknown;
+          }>;
+          [key: string]: unknown;
+        }>
+      >;
+
+      const groupRounds = levelGroupRounds[levelGroupId];
+      if (!groupRounds) return notFoundResponse("해당 그룹의 대진표가 없습니다.");
+
+      const targetRound = groupRounds.find((r) => r.roundNumber === roundNumber);
+      if (!targetRound) return notFoundResponse("해당 라운드를 찾을 수 없습니다.");
+
+      const targetMatch = targetRound.matches.find((m) => m.courtNumber === courtNumber);
+      if (!targetMatch) return notFoundResponse("해당 경기를 찾을 수 없습니다.");
+
+      targetMatch.scoreA = scoreA;
+      targetMatch.scoreB = scoreB;
+
+      const newRoundsPayload = {
+        variants: {
+          ...roundsEnvelope.variants,
+          [generationMode]: {
+            ...variantData,
+            levelGroupRounds: {
+              ...levelGroupRounds,
+              [levelGroupId]: groupRounds,
+            },
+          },
+        },
+      };
+
+      await prisma.sessionBracket.update({
+        where: { sessionId },
+        data: { rounds: newRoundsPayload as never },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // 기존 일반 모드
     let rounds: Array<{
       roundNumber: number;
       matches: Array<{
@@ -77,7 +133,6 @@ export async function PATCH(req: Request) {
       rounds = (bracketRecord.rounds as { rounds: typeof rounds }).rounds ?? (bracketRecord.rounds as typeof rounds);
     }
 
-    // 해당 라운드/코트 매치 찾아서 점수 업데이트
     const targetRound = rounds.find((r) => r.roundNumber === roundNumber);
     if (!targetRound) return notFoundResponse("해당 라운드를 찾을 수 없습니다.");
 
@@ -87,7 +142,6 @@ export async function PATCH(req: Request) {
     targetMatch.scoreA = scoreA;
     targetMatch.scoreB = scoreB;
 
-    // 변경된 rounds를 다시 저장
     let newRoundsPayload: unknown;
     if (isVariant) {
       newRoundsPayload = {
@@ -97,7 +151,6 @@ export async function PATCH(req: Request) {
         },
       };
     } else {
-      // 레거시 포맷 (variants 없음) — rounds 배열이 직접 저장된 경우
       newRoundsPayload = { rounds };
     }
 

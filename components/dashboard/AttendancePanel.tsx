@@ -227,6 +227,7 @@ export function AttendancePanel({
 
   const [filters, setFilters] = useState<ParticipantFilterState>(initialFilters);
   const [page, setPage] = useState(1);
+  const [participantListOpen, setParticipantListOpen] = useState(false);
 
   const sessionPickerOptions = useMemo(
     () =>
@@ -254,6 +255,7 @@ export function AttendancePanel({
 
   useEffect(() => {
     setFilters(initialFilters);
+    setParticipantListOpen(false);
   }, [selectedSession?.id]);
 
   const registeredParticipants = useMemo(
@@ -407,7 +409,10 @@ export function AttendancePanel({
           className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm"
           data-tutorial-id="attendance-participant-summary"
         >
-          <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 md:px-4 md:py-4">
+          <div
+            className="cursor-pointer border-b border-slate-200 bg-slate-50 px-3 py-3 md:px-4 md:py-4"
+            onClick={() => setParticipantListOpen((v) => !v)}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h4 className="text-base font-black text-slate-900">최종 참석 명단</h4>
@@ -415,8 +420,13 @@ export function AttendancePanel({
                   운동 일정을 마감한 최종 참석자 명단입니다.
                 </p>
               </div>
-              <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 md:px-3 md:text-xs">
-                회원 {filteredMemberCount}명 / 게스트 {filteredGuestCount}명
+              <div className="flex items-center gap-2">
+                <div className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600 md:px-3 md:text-xs">
+                  회원 {filteredMemberCount}명 / 게스트 {filteredGuestCount}명
+                </div>
+                <span className="text-xs font-bold text-slate-400">
+                  {participantListOpen ? "▲" : "▼"}
+                </span>
               </div>
             </div>
 
@@ -440,6 +450,7 @@ export function AttendancePanel({
               ))}
             </div>
 
+            {participantListOpen && (
             <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
               <input
                 value={filters.searchQuery}
@@ -508,9 +519,10 @@ export function AttendancePanel({
                 <option value="recent">최근 신청순</option>
               </select>
             </div>
+            )}
           </div>
 
-          <div className="overflow-hidden">
+          {participantListOpen && <div className="overflow-hidden">
             <table className="w-full table-auto text-[10px] sm:text-[11px] md:text-sm">
               <thead className="bg-white text-left text-slate-500">
                 <tr>
@@ -581,16 +593,34 @@ export function AttendancePanel({
                 ) : null}
               </tbody>
             </table>
-          </div>
+          </div>}
 
-          <div className="border-t border-slate-100 px-4 py-4">
+          {participantListOpen && <div className="border-t border-slate-100 px-4 py-4">
             <PaginationControls
               page={page}
               totalPages={totalPages}
               onChange={setPage}
             />
-          </div>
+          </div>}
         </section>
+      ) : null}
+
+      {selectedSession && onOpenCourtBoard ? (
+        <div className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-violet-200 bg-violet-50 px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-sm font-black text-violet-900">실시간 코트 배정</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              자동 대진 대신 직접 선수를 코트에 배정하고 현장에서 실시간으로 경기를 관리합니다.
+            </p>
+          </div>
+          <button
+            onClick={() => onOpenCourtBoard(selectedSession.id)}
+            disabled={selectedSession.status !== "CLOSED"}
+            className="shrink-0 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-violet-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-violet-300"
+          >
+            실시간 대진 시작 →
+          </button>
+        </div>
       ) : null}
 
       {selectedSession ? (
@@ -598,7 +628,6 @@ export function AttendancePanel({
           session={selectedSession}
           tutorialDefaultsActive={tutorialDefaultsActive}
           onBracketGenerated={onBracketGenerated}
-          onOpenCourtBoard={onOpenCourtBoard}
           clubLevels={clubLevels}
         />
       ) : null}

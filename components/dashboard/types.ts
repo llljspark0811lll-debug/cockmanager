@@ -159,6 +159,23 @@ export interface ClubSession {
   bracket?: SessionBracket | null;
 }
 
+export type LevelMode = "none" | "separate" | "filter";
+
+export interface SessionBracketLevelGroup {
+  id: string;
+  name: string;
+  levels: string[];
+  courtCount: number;
+}
+
+export interface SessionBracketLevelGroupData {
+  groupId: string;
+  groupName: string;
+  levels: string[];
+  rounds: SessionBracketRound[];
+  summary: SessionBracketSummary;
+}
+
 export interface SessionBracketConfig {
   courtCount: number;
   minGamesPerPlayer: number;
@@ -171,6 +188,8 @@ export interface SessionBracketConfig {
     B: string;
   };
   fixedPairs?: Array<[string, string]>;
+  levelMode?: LevelMode;
+  levelGroups?: SessionBracketLevelGroup[];
 }
 
 export interface SessionBracketPlayerEntry {
@@ -226,6 +245,7 @@ export interface SessionBracket {
   config: SessionBracketConfig;
   rounds: SessionBracketRound[];
   summary: SessionBracketSummary;
+  levelGroupData?: SessionBracketLevelGroupData[];
   createdAt: string | Date;
   updatedAt: string | Date;
 }

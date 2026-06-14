@@ -176,7 +176,7 @@ const LEGACY_LEVEL_TO_RANK: Record<string, string> = {
   S: "1", A: "2", B: "3", C: "4", D: "5", E: "6", 초심: "7",
 };
 
-function normalizeLevel(value: string | null | undefined) {
+export function normalizeLevel(value: string | null | undefined) {
   const normalized = String(value ?? "").trim();
   if (!normalized) return "7";
   if (LEVEL_SCORE_MAP[normalized] !== undefined) return normalized;
@@ -2220,6 +2220,402 @@ function generateTeamBattleRounds(
     rounds,
     summary: buildSummary(players, states, config, rounds, warnings),
   };
+}
+
+// 급수 구분 대진 코트 배분.
+// need > 0: 필수 활성 그룹 (minGames 미달 선수 존재)
+// need == -1: filler 그룹 (minGames 달성, minGames+1 미달 — 코트 채우기 보조)
+// need == -2: super-filler 그룹 (minGames+1 달성, 다른 그룹이 아직 활성 — 빈 코트 채우기)
+// need == 0: 완전 완료 — 배정 없음
+//
+// 핵심 원칙:
+//   모든 eligible 그룹(need ≠ 0)에 credit 기반 선수 비율 배분을 통일 적용.
+//   active/filler 구분 없이 선수 수 비율로 장기적으로 동일한 1인당 게임수 보장.
+//   연속 휴식 방지 최솟값은 사후 보정으로만 적용.
+function allocateCourtsForLevelGroups(
+  groups: Array<{ id: string; need: number; maxCourts: number; prevRestedCount: number; playerCount: number; courtCredit: number }>,
+  totalCourts: number
+): { courts: Map<string, number>; credits: Map<string, number> } {
+  const courts = new Map<string, number>(groups.map((g) => [g.id, 0]));
+  const credits = new Map<string, number>(groups.map((g) => [g.id, g.courtCredit]));
+
+  // 완전 완료(need=0)는 배정 제외
+  const eligibleGroups = groups.filter((g) => g.need !== 0 && g.maxCourts >= 1);
+  if (eligibleGroups.length === 0) return { courts, credits };
+
+  const totalPlayers = eligibleGroups.reduce((s, g) => s + g.playerCount, 0);
+
+  // 연속 휴식 방지 최솟값 계산
+  const minCourts = new Map<string, number>(
+    eligibleGroups.map((g) => [
+      g.id,
+      Math.min(Math.ceil(g.prevRestedCount / 4), g.maxCourts),
+    ])
+  );
+  const totalMin = [...minCourts.values()].reduce((s, v) => s + v, 0);
+
+  if (totalMin > totalCourts) {
+    // 최솟값 합이 전체 코트 초과 → 이전 휴식자 많은 그룹 우선 보장
+    const sorted = [...eligibleGroups].sort((a, b) => b.prevRestedCount - a.prevRestedCount);
+    let rem = totalCourts;
+    for (const g of sorted) {
+      if (rem <= 0) break;
+      const min = minCourts.get(g.id) ?? 1;
+      courts.set(g.id, Math.min(min, rem));
+      rem -= courts.get(g.id)!;
+    }
+    // 이 경우에도 credit 업데이트
+    for (const g of eligibleGroups) {
+      const fairShare = (g.playerCount / totalPlayers) * totalCourts;
+      credits.set(g.id, g.courtCredit + fairShare - (courts.get(g.id) ?? 0));
+    }
+    return { courts, credits };
+  }
+
+  // credit 기반 비례 배분:
+  //   effectiveCredit = 이전 잔여 credit + 이번 라운드 공정 분담량
+  //   → 장기적으로 선수 비율에 비례하는 코트를 정확히 배정 (Deficit Round Robin)
+  const shares = eligibleGroups.map((g) => {
+    const fairShare = (g.playerCount / totalPlayers) * totalCourts;
+    return {
+      id: g.id,
+      maxCourts: g.maxCourts,
+      fairShare,
+      effectiveCredit: g.courtCredit + fairShare,
+    };
+  });
+
+  let allocated = 0;
+  for (const s of shares) {
+    const c = Math.min(Math.floor(s.effectiveCredit), s.maxCourts);
+    courts.set(s.id, c);
+    allocated += c;
+  }
+
+  // 소수점 나머지를 effectiveCredit fraction이 큰 순서로 1씩 추가 배분
+  let remaining = totalCourts - allocated;
+  const sortedByFrac = [...shares].sort((a, b) => (b.effectiveCredit % 1) - (a.effectiveCredit % 1));
+  for (const s of sortedByFrac) {
+    if (remaining <= 0) break;
+    const cur = courts.get(s.id) ?? 0;
+    if (cur < s.maxCourts) { courts.set(s.id, cur + 1); remaining--; }
+  }
+
+  // 사후 보정: 최솟값(연속휴식 방지) 미달 그룹이 있으면 잉여 그룹에서 차감
+  for (const g of eligibleGroups) {
+    const min = minCourts.get(g.id) ?? 1;
+    const cur = courts.get(g.id) ?? 0;
+    if (cur < min) {
+      let deficit = min - cur;
+      courts.set(g.id, min);
+      const donors = [...eligibleGroups]
+        .filter((d) => d.id !== g.id)
+        .sort((a, b) => {
+          const sA = (courts.get(a.id) ?? 0) - (minCourts.get(a.id) ?? 1);
+          const sB = (courts.get(b.id) ?? 0) - (minCourts.get(b.id) ?? 1);
+          return sB - sA;
+        });
+      for (const donor of donors) {
+        if (deficit <= 0) break;
+        const donorCur = courts.get(donor.id) ?? 0;
+        const donorMin = minCourts.get(donor.id) ?? 1;
+        const canDonate = Math.max(0, donorCur - donorMin);
+        const donated = Math.min(canDonate, deficit);
+        if (donated > 0) {
+          courts.set(donor.id, donorCur - donated);
+          deficit -= donated;
+        }
+      }
+    }
+  }
+
+  // credit 업데이트: effectiveCredit - 실제 배정 코트
+  for (const s of shares) {
+    credits.set(s.id, s.effectiveCredit - (courts.get(s.id) ?? 0));
+  }
+
+  return { courts, credits };
+}
+
+export type LevelGroupBracketInput = {
+  groupId: string;
+  groupName: string;
+  players: SessionBracketPlayerInput[];
+  fixedPairs: Array<[string, string]>;
+};
+
+export type LevelGroupBracketResult = {
+  groupId: string;
+  rounds: SessionBracketRound[];
+  summary: SessionBracketSummary;
+};
+
+export function generateSessionBracketLevelGroups(
+  groupInputs: LevelGroupBracketInput[],
+  totalCourtCount: number,
+  minGamesPerPlayer: number,
+  separateByGender: boolean,
+  relaxedMode: boolean,
+  seed: number
+): LevelGroupBracketResult[] {
+  type GroupState = {
+    groupId: string;
+    groupName: string;
+    players: InternalPlayer[];
+    pools: Pool[];
+    states: Map<string, PlayerState>;
+    partnerHistory: Map<string, number>;
+    opponentHistory: Map<string, number>;
+    previousRested: Set<string>;
+    randomOrder: Map<string, number>;
+    random: RandomFn;
+    fixedPairMap: Map<string, string>;
+    playerEntryMap: Map<string, InternalPlayer>;
+    rounds: SessionBracketRound[];
+    warnings: string[];
+    courtCredit: number; // 그룹 간 게임수 균등화를 위한 누적 코트 크레딧
+  };
+
+  const baseRandom = createSeededRandom(seed);
+
+  const groupStates: GroupState[] = groupInputs.map((input) => {
+    const groupSeed = Math.floor(baseRandom() * 2147483647) + 1;
+    const random = createSeededRandom(groupSeed);
+    const players = shuffleArray(
+      input.players.map((p) => createPlayerEntry(p, separateByGender)),
+      random
+    );
+    const playerIdSet = new Set(players.map((p) => p.playerId));
+    const fixedPairMap = new Map<string, string>();
+    for (const [a, b] of input.fixedPairs) {
+      if (playerIdSet.has(a) && playerIdSet.has(b) && a !== b) {
+        fixedPairMap.set(a, b);
+        fixedPairMap.set(b, a);
+      }
+    }
+    const randomOrder = new Map(players.map((p) => [p.playerId, random()]));
+
+    return {
+      groupId: input.groupId,
+      groupName: input.groupName,
+      players,
+      pools: buildPools(players, separateByGender),
+      states: new Map(
+        players.map((p) => [p.playerId, { games: 0, rests: 0, lastPlayedRound: 0 }])
+      ),
+      partnerHistory: new Map(),
+      opponentHistory: new Map(),
+      previousRested: new Set(),
+      randomOrder,
+      random,
+      fixedPairMap,
+      playerEntryMap: getEntryMap(players),
+      rounds: [],
+      warnings: [],
+      courtCredit: 0,
+    };
+  });
+
+  const maxRoundsEstimate = Math.max(
+    ...groupStates.map((gs) =>
+      Math.ceil(
+        (gs.players.length * minGamesPerPlayer) / Math.max(1, totalCourtCount * 4)
+      ) * 4
+    ),
+    minGamesPerPlayer * 5,
+    40
+  );
+
+  for (let roundNumber = 1; roundNumber <= maxRoundsEstimate; roundNumber++) {
+    // 잔여 경기 수 계산
+    // need > 0: 필수 활성 (minGames 미달 선수 있음)
+    // need == -1: filler (minGames 달성, minGames+1 미달 — 코트 채우기 보조)
+    // need == -2: super-filler (minGames+1 달성, 다른 그룹 아직 활성 — 빈 코트 채우기)
+    // need == 0: 완전 완료 (다른 그룹도 모두 완료)
+    const rawNeeds = groupStates.map((gs) => {
+      if (!allPlayersSatisfied(gs.players, gs.states, minGamesPerPlayer)) {
+        return gs.players.reduce((sum, p) => {
+          const state = gs.states.get(p.playerId)!;
+          return sum + Math.max(0, minGamesPerPlayer - state.games);
+        }, 0);
+      }
+      if (!allPlayersSatisfied(gs.players, gs.states, minGamesPerPlayer + 1)) {
+        return -1; // filler
+      }
+      return 0; // minGames+1 달성 (잠정 완료)
+    });
+
+    // 모든 그룹이 minGames+1 달성(0)이면 종료
+    const allDone = rawNeeds.every((n) => n === 0);
+    if (roundNumber > 1 && allDone) break;
+
+    // 잠정 완료(0) 그룹 중 다른 그룹이 아직 활성/filler이면 super-filler(-2)로 전환
+    // → 빈 코트를 채워 "모든 라운드 전체 코트 활용" 원칙 유지
+    const anyStillActive = rawNeeds.some((n) => n > 0 || n === -1);
+    const groupNeeds = rawNeeds.map((n) => (n === 0 && anyStillActive ? -2 : n));
+
+    // 라운드별 동적 코트 배분 (credit 기반 선수 비율 배분 + 연속 휴식 방지 보정)
+    const { courts: courtAllocations, credits: updatedCredits } = allocateCourtsForLevelGroups(
+      groupStates.map((gs, i) => ({
+        id: gs.groupId,
+        need: groupNeeds[i]!,
+        maxCourts: Math.floor(gs.players.length / 4),
+        prevRestedCount: gs.previousRested.size,
+        playerCount: gs.players.length,
+        courtCredit: gs.courtCredit,
+      })),
+      totalCourtCount
+    );
+
+    // credit 업데이트
+    for (const gs of groupStates) {
+      gs.courtCredit = updatedCredits.get(gs.groupId) ?? gs.courtCredit;
+    }
+
+    // 어떤 그룹도 코트를 받지 못하면 종료 (무한 루프 방지)
+    const totalAllocated = [...courtAllocations.values()].reduce((s, v) => s + v, 0);
+    if (totalAllocated === 0) break;
+
+    let anyMatchThisRound = false;
+
+    for (let gi = 0; gi < groupStates.length; gi++) {
+      const gs = groupStates[gi]!;
+      const courts = courtAllocations.get(gs.groupId) ?? 0;
+      if (courts === 0) continue;
+
+      // filler/super-filler 그룹은 목표 경기수를 높여 내부 우선순위 계산
+      const effectiveMinGames =
+        groupNeeds[gi] === -1 ? minGamesPerPlayer + 1 :
+        groupNeeds[gi] === -2 ? minGamesPerPlayer + 2 :
+        minGamesPerPlayer;
+
+      // 이 그룹의 1라운드 생성
+      let allocations: Map<DivisionKey, number>;
+      try {
+        allocations = allocateMatchesForRound(
+          gs.pools,
+          courts,
+          gs.states,
+          gs.previousRested,
+          effectiveMinGames,
+          gs.randomOrder,
+          relaxedMode
+        );
+      } catch {
+        try {
+          allocations = allocateMatchesForRound(
+            gs.pools,
+            courts,
+            gs.states,
+            gs.previousRested,
+            effectiveMinGames,
+            gs.randomOrder,
+            true
+          );
+        } catch {
+          continue;
+        }
+      }
+
+      const roundMatches: SessionBracketMatch[] = [];
+      const restedPlayerIds = new Set<string>();
+      let nextCourtNumber = 1;
+
+      for (const pool of gs.pools) {
+        const matchCount = allocations.get(pool.key) ?? 0;
+        const selectedPlayers = chooseSelectedPlayersForPool(
+          pool,
+          matchCount,
+          gs.states,
+          gs.previousRested,
+          effectiveMinGames,
+          gs.randomOrder,
+          gs.fixedPairMap
+        );
+        const finalSelected =
+          pool.key === "ALL"
+            ? adjustSelectedForGenderBalance(
+                selectedPlayers,
+                pool.players,
+                gs.previousRested,
+                gs.states
+              )
+            : selectedPlayers;
+        const selectedIdSet = new Set(finalSelected.map((p) => p.playerId));
+        for (const p of pool.players) {
+          if (!selectedIdSet.has(p.playerId)) restedPlayerIds.add(p.playerId);
+        }
+        const poolMatches = buildRoundMatchesForPool(
+          pool,
+          finalSelected,
+          nextCourtNumber,
+          gs.partnerHistory,
+          gs.opponentHistory,
+          gs.randomOrder,
+          gs.random,
+          gs.fixedPairMap
+        );
+        roundMatches.push(...poolMatches);
+        nextCourtNumber += poolMatches.length;
+      }
+
+      if (roundMatches.length === 0) continue;
+
+      anyMatchThisRound = true;
+
+      for (const match of roundMatches) {
+        registerMatchHistory(match, gs.partnerHistory, gs.opponentHistory);
+      }
+
+      for (const p of gs.players) {
+        const state = gs.states.get(p.playerId)!;
+        if (restedPlayerIds.has(p.playerId)) {
+          state.rests++;
+        } else {
+          state.games++;
+          state.lastPlayedRound = roundNumber;
+        }
+      }
+
+      gs.previousRested = restedPlayerIds;
+      gs.rounds.push({
+        roundNumber,
+        matches: roundMatches,
+        restingPlayers: [...restedPlayerIds]
+          .map((id) => gs.playerEntryMap.get(id)!)
+          .filter(Boolean)
+          .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ko")),
+      });
+    }
+
+    if (!anyMatchThisRound) break;
+  }
+
+  for (const gs of groupStates) {
+    for (const p of gs.players) {
+      const state = gs.states.get(p.playerId)!;
+      if (state.games > minGamesPerPlayer + 3) {
+        gs.warnings.push(
+          `${p.name} 선수는 경기 수가 다른 인원보다 많게 배정되었습니다.`
+        );
+      }
+    }
+  }
+
+  const fakeConfig: SessionBracketConfig = {
+    courtCount: totalCourtCount,
+    minGamesPerPlayer,
+    separateByGender,
+    relaxedMode,
+    generationMode: "STANDARD",
+    fixedPairs: [],
+  };
+
+  return groupStates.map((gs) => ({
+    groupId: gs.groupId,
+    rounds: gs.rounds,
+    summary: buildSummary(gs.players, gs.states, fakeConfig, gs.rounds, gs.warnings),
+  }));
 }
 
 export function generateSessionBracket(

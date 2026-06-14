@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ClubLevel,
   ClubSession,
+  LevelMode,
   SessionBracket,
+  SessionBracketLevelGroup,
   SessionParticipant,
 } from "@/components/dashboard/types";
 import { normalizeGenderLabel } from "@/components/dashboard/utils";
@@ -24,7 +26,6 @@ type SessionBracketPanelProps = {
   session: ClubSession;
   tutorialDefaultsActive?: boolean;
   onBracketGenerated?: () => void;
-  onOpenCourtBoard?: (sessionId: number) => void;
   clubLevels: ClubLevel[];
 };
 
@@ -74,6 +75,44 @@ async function notifyAdminActivity(payload: Record<string, unknown>) {
   } catch {
     // Ignore telemetry failures so the editing flow stays responsive.
   }
+}
+
+const LEGACY_LEVEL_MAP: Record<string, string> = {
+  S: "1", A: "2", B: "3", C: "4", D: "5", E: "6", 초심: "7",
+};
+
+function normalizeLevelLocal(v: string): string {
+  const t = String(v ?? "").trim();
+  if (!t) return "7";
+  if (["1", "2", "3", "4", "5", "6", "7"].includes(t)) return t;
+  return LEGACY_LEVEL_MAP[t] ?? "7";
+}
+
+function allocateCourtsProportionally(
+  groups: { id: string; count: number }[],
+  totalCourts: number
+): Record<string, number> {
+  if (groups.length === 0) return {};
+  const total = groups.reduce((s, g) => s + g.count, 0);
+  if (total === 0) return {};
+
+  const floored = groups.map((g) => Math.max(1, Math.floor((g.count / total) * totalCourts)));
+  let remainder = totalCourts - floored.reduce((s, v) => s + v, 0);
+
+  if (remainder > 0) {
+    const fracs = groups
+      .map((g, i) => ({ i, frac: (g.count / total) * totalCourts - Math.floor((g.count / total) * totalCourts) }))
+      .sort((a, b) => b.frac - a.frac);
+    for (const { i } of fracs) {
+      if (remainder <= 0) break;
+      floored[i]++;
+      remainder--;
+    }
+  }
+
+  const result: Record<string, number> = {};
+  groups.forEach((g, i) => { result[g.id] = floored[i]; });
+  return result;
 }
 
 function buildDefaultCourtCount(session: ClubSession) {
@@ -207,7 +246,6 @@ export function SessionBracketPanel({
   session,
   tutorialDefaultsActive = false,
   onBracketGenerated,
-  onOpenCourtBoard,
   clubLevels: clubLevelsProp,
 }: SessionBracketPanelProps) {
   const clubLevels = clubLevelsProp.length > 0 ? clubLevelsProp : DEFAULT_CLUB_LEVELS;
@@ -240,6 +278,13 @@ export function SessionBracketPanel({
   // 점수 입력 모드: 어느 경기가 활성화됐는지 (roundNumber-courtNumber)
   const [scoreEditKey, setScoreEditKey] = useState<string | null>(null);
   const [scoreSaving, setScoreSaving] = useState(false);
+  // 급수별 대진 모드
+  const [levelMode, setLevelMode] = useState<LevelMode>("none");
+  const [filterGroups, setFilterGroups] = useState<SessionBracketLevelGroup[]>([
+    { id: "group_0", name: "그룹 1", levels: [], courtCount: 1 },
+    { id: "group_1", name: "그룹 2", levels: [], courtCount: 1 },
+  ]);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
   type SwapSelection = {
     roundIndex: number;
@@ -275,6 +320,12 @@ export function SessionBracketPanel({
     setExportError("");
     setSwapNotice("");
     setExportingMode(null);
+    setLevelMode("none");
+    setFilterGroups([
+      { id: "group_0", name: "그룹 1", levels: [], courtCount: 1 },
+      { id: "group_1", name: "그룹 2", levels: [], courtCount: 1 },
+    ]);
+    setActiveGroupId(null);
   }, [session.id, tutorialDefaultsActive]);
 
   useEffect(() => {
@@ -345,6 +396,26 @@ export function SessionBracketPanel({
 
         setBracket(data.bracket);
         if (data.bracket) {
+          const savedLevelMode = data.bracket.config.levelMode ?? "none";
+          if (!tutorialDefaultsActive && savedLevelMode !== "none") {
+            setLevelMode(savedLevelMode);
+            if (savedLevelMode === "filter") {
+              setFilterGroups(
+                (data.bracket.config.levelGroups ?? []).map((g) => ({
+                  id: g.id,
+                  name: g.name,
+                  levels: g.levels,
+                  courtCount: g.courtCount,
+                }))
+              );
+            }
+            if (data.bracket.levelGroupData && data.bracket.levelGroupData.length > 0) {
+              setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
+            }
+          } else if (!tutorialDefaultsActive) {
+            setLevelMode("none");
+            setActiveGroupId(null);
+          }
           setCourtCount(
             tutorialDefaultsActive ? 2 : data.bracket.config.courtCount
           );
@@ -436,14 +507,145 @@ export function SessionBracketPanel({
     };
   }, [canGenerate, generationMode, session.id, tutorialDefaultsActive]);
 
-  const playerStats = useMemo(
-    () => bracket?.summary.playerStats ?? [],
-    [bracket]
-  );
-
   const registeredParticipants = useMemo(
     () => (session.participants ?? []).filter((p) => p.status === "REGISTERED"),
     [session.participants]
+  );
+
+  // 급수별 참가자 현황 (registeredParticipants 이후)
+  const participantLevelCounts = useMemo(() => {
+    const map = new Map<string, { count: number; maleCount: number; femaleCount: number }>();
+    for (const p of registeredParticipants) {
+      const level = normalizeLevelLocal(String(p.member?.level ?? p.guestLevel ?? ""));
+      const existing = map.get(level) ?? { count: 0, maleCount: 0, femaleCount: 0 };
+      const gender = getParticipantGenderGroup(p);
+      map.set(level, {
+        count: existing.count + 1,
+        maleCount: existing.maleCount + (gender === "MEN" ? 1 : 0),
+        femaleCount: existing.femaleCount + (gender === "WOMEN" ? 1 : 0),
+      });
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([level, { count, maleCount, femaleCount }]) => ({ level, count, maleCount, femaleCount }));
+  }, [registeredParticipants]);
+
+  // 동일급수별 모드: 자동 감지 그룹 (코트 수는 전역 설정 사용)
+  const separateGroups = useMemo(() => {
+    return participantLevelCounts.map(({ level, count, maleCount, femaleCount }) => {
+      const id = `level_${level}`;
+      const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? `${level}급`;
+      return { id, name: levelName, levels: [level], count, maleCount, femaleCount, courtCount };
+    });
+  }, [participantLevelCounts, clubLevels, courtCount]);
+
+  // 급수필터별 모드: 그룹별 인원수
+  const filterGroupsWithCounts = useMemo(() => {
+    return filterGroups.map((g) => {
+      const matched = participantLevelCounts.filter(({ level }) => g.levels.includes(level));
+      return {
+        ...g,
+        count: matched.reduce((s, { count }) => s + count, 0),
+        maleCount: matched.reduce((s, { maleCount }) => s + maleCount, 0),
+        femaleCount: matched.reduce((s, { femaleCount }) => s + femaleCount, 0),
+      };
+    });
+  }, [filterGroups, participantLevelCounts]);
+
+  // 필터 모드에서 미배정 급수
+  const assignedLevelsInFilter = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of filterGroups) for (const l of g.levels) set.add(l);
+    return set;
+  }, [filterGroups]);
+
+  const unassignedLevels = useMemo(() => {
+    return participantLevelCounts.filter(({ level }) => !assignedLevelsInFilter.has(level));
+  }, [participantLevelCounts, assignedLevelsInFilter]);
+
+  // 급수 모드 유효성 오류
+  const levelModeErrors = useMemo(() => {
+    if (levelMode === "none") return [];
+    const errors: string[] = [];
+    const checkGroup = (name: string, count: number, maleCount: number, femaleCount: number) => {
+      if (separateByGender) {
+        if (maleCount < 4) errors.push(`${name} 남복 (${maleCount}명): 4명 미만 — 대진 생성 불가`);
+        if (femaleCount < 4) errors.push(`${name} 여복 (${femaleCount}명): 4명 미만 — 대진 생성 불가`);
+      } else {
+        if (count < 4) errors.push(`${name} (${count}명): 4명 미만 — 대진 생성 불가`);
+      }
+    };
+    if (levelMode === "separate") {
+      for (const g of separateGroups) {
+        checkGroup(g.name, g.count, g.maleCount, g.femaleCount);
+      }
+    }
+    if (levelMode === "filter") {
+      const unassignedCount = unassignedLevels.reduce((s, l) => s + l.count, 0);
+      if (unassignedCount > 0) errors.push(`${unassignedCount}명이 아직 그룹에 배정되지 않았습니다.`);
+      for (const g of filterGroupsWithCounts) {
+        if (g.levels.length > 0) checkGroup(g.name, g.count, g.maleCount, g.femaleCount);
+      }
+    }
+    return errors;
+  }, [levelMode, separateGroups, filterGroupsWithCounts, unassignedLevels, separateByGender]);
+
+  // 급수 구분 모드: 모든 그룹 라운드를 합산해서 표시
+  // MergedMatch = SessionBracketMatch + 그룹 메타 (cast로 접근)
+  const { displayRounds, displaySummary } = useMemo(() => {
+    if (!bracket) return { displayRounds: [], displaySummary: null };
+    const groups = bracket.levelGroupData;
+    if (!groups || groups.length === 0) {
+      return { displayRounds: bracket.rounds, displaySummary: bracket.summary };
+    }
+
+    // 동적 코트 배분 — 그룹별 rounds 배열은 코트 배정 받은 라운드만 존재(압축됨)
+    // 반드시 roundNumber 기준으로 조회해야 그룹 간 라운드가 정확히 정렬됨
+    const maxRounds = Math.max(
+      ...groups.map((g) =>
+        g.rounds.reduce((m, r) => Math.max(m, r.roundNumber), 0)
+      )
+    );
+    const merged = Array.from({ length: maxRounds }, (_, ri) => {
+      const allMatches: Array<ReturnType<typeof Object.assign>> = [];
+      const allResting: typeof bracket.rounds[0]["restingPlayers"] = [];
+      let courtOffset = 0;
+
+      groups.forEach((g) => {
+        const round = g.rounds.find((r) => r.roundNumber === ri + 1);
+        if (!round) return;
+        round.matches.forEach((m, origMatchIdx) => {
+          allMatches.push(Object.assign({}, m, {
+            courtNumber: m.courtNumber + courtOffset,
+            _levelGroupId: g.groupId,
+            _levelGroupName: g.groupName,
+            _origCourtNumber: m.courtNumber,
+            _origMatchIndex: origMatchIdx,
+          }));
+        });
+        courtOffset += round.matches.length;
+        allResting.push(...round.restingPlayers);
+      });
+
+      return { roundNumber: ri + 1, matches: allMatches, restingPlayers: allResting };
+    }) as typeof bracket.rounds;
+
+    const aggregateSummary = {
+      totalPlayers: groups.reduce((s, g) => s + g.summary.totalPlayers, 0),
+      totalRounds: maxRounds,
+      totalMatches: groups.reduce((s, g) => s + g.summary.totalMatches, 0),
+      warnings: groups.flatMap((g) =>
+        g.summary.warnings.map((w) => `[${g.groupName}] ${w}`)
+      ),
+      playerStats: groups.flatMap((g) => g.summary.playerStats),
+    };
+
+    return { displayRounds: merged, displaySummary: aggregateSummary };
+  }, [bracket]);
+
+  const playerStats = useMemo(
+    () => displaySummary?.playerStats ?? [],
+    [displaySummary]
   );
 
   const teamGroupedParticipants = useMemo(
@@ -637,7 +839,59 @@ export function SessionBracketPanel({
     setFixedPairs((prev) => prev.filter((_, i) => i !== pairIndex));
   }
 
+  function assignLevelToGroup(level: string, groupId: string) {
+    setFilterGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) return { ...g, levels: g.levels.includes(level) ? g.levels : [...g.levels, level] };
+        return { ...g, levels: g.levels.filter((l) => l !== level) };
+      })
+    );
+  }
+
+  function removeLevelFromFilterGroup(groupId: string, level: string) {
+    setFilterGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, levels: g.levels.filter((l) => l !== level) } : g))
+    );
+  }
+
+  function addFilterGroup() {
+    const nextIndex = filterGroups.length;
+    setFilterGroups((prev) => [
+      ...prev,
+      { id: `group_${nextIndex}`, name: `그룹 ${nextIndex + 1}`, levels: [], courtCount: 1 },
+    ]);
+  }
+
+  function removeFilterGroup(groupId: string) {
+    setFilterGroups((prev) => prev.filter((g) => g.id !== groupId));
+  }
+
+
   async function requestBracketGeneration(relaxedMode = false) {
+    const activeLevelMode = generationMode === "STANDARD" ? levelMode : "none";
+
+    const levelGroupsConfig = (() => {
+      if (activeLevelMode === "separate") {
+        const eligible = separateGroups.filter((g) => g.count >= 4);
+        const allocated = allocateCourtsProportionally(eligible, courtCount);
+        return eligible.map((g) => ({
+          id: g.id, name: g.name, levels: g.levels,
+          courtCount: allocated[g.id] ?? 1,
+        }));
+      }
+      if (activeLevelMode === "filter") {
+        const eligible = filterGroupsWithCounts.filter((g) => g.levels.length > 0 && g.count >= 4);
+        const allocated = allocateCourtsProportionally(eligible, courtCount);
+        return eligible.map((g) => ({
+          id: g.id, name: g.name, levels: g.levels,
+          courtCount: allocated[g.id] ?? 1,
+        }));
+      }
+      return [];
+    })();
+
+    const totalCourtCount = courtCount;
+
     const response = await fetch("/api/sessions/bracket", {
       method: "POST",
       credentials: "include",
@@ -646,7 +900,7 @@ export function SessionBracketPanel({
       },
       body: JSON.stringify({
         sessionId: session.id,
-        courtCount,
+        courtCount: totalCourtCount,
         minGamesPerPlayer,
         separateByGender,
         relaxedMode,
@@ -654,6 +908,8 @@ export function SessionBracketPanel({
         teamAssignments,
         teamLabels,
         fixedPairs,
+        levelMode: activeLevelMode,
+        levelGroupsConfig,
       }),
     });
 
@@ -711,6 +967,11 @@ export function SessionBracketPanel({
 
       setBracket(data.bracket);
       setSwapSelection(null);
+      if (data.bracket?.levelGroupData && data.bracket.levelGroupData.length > 0) {
+        setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
+      } else {
+        setActiveGroupId(null);
+      }
       onBracketGenerated?.();
     } catch (generateError) {
       setError(
@@ -781,12 +1042,42 @@ export function SessionBracketPanel({
     }
 
     // 같은 라운드 다른 선수 → 스왑
+    // merged 모드에서는 match에 _levelGroupId, _origMatchIndex 메타가 있음
+    type M = typeof displayRounds[0]["matches"][0] & {
+      _levelGroupId?: string;
+      _origMatchIndex?: number;
+      _origCourtNumber?: number;
+    };
+    const fromDisplayMatch = displayRounds[swapSelection.roundIndex]?.matches[swapSelection.matchIndex] as M | undefined;
+    const toDisplayMatch = displayRounds[roundIndex]?.matches[matchIndex] as M | undefined;
+
+    const fromGroupId = fromDisplayMatch?._levelGroupId ?? null;
+    const toGroupId = toDisplayMatch?._levelGroupId ?? null;
+
+    // 급수 구분 모드에서 다른 그룹 간 스왑 방지
+    if (bracket.levelGroupData && fromGroupId !== toGroupId) {
+      showTransientNotice("급수 구분 대진에서는 같은 급수 그룹 내에서만 선수를 교체할 수 있습니다.");
+      setSwapSelection(null);
+      return;
+    }
+
+    const swapGroupId = fromGroupId ?? activeGroupId;
+    const fromOrigMatchIdx = fromDisplayMatch?._origMatchIndex ?? swapSelection.matchIndex;
+    const toOrigMatchIdx = toDisplayMatch?._origMatchIndex ?? matchIndex;
+
     const newBracket = JSON.parse(JSON.stringify(bracket)) as SessionBracket;
-    const fromMatch =
-      newBracket.rounds[swapSelection.roundIndex].matches[swapSelection.matchIndex];
-    const toMatch = newBracket.rounds[roundIndex].matches[matchIndex];
-    const fromTeam =
-      swapSelection.team === "A" ? fromMatch.teamA : fromMatch.teamB;
+    const getMutableRounds = (b: SessionBracket) => {
+      if (swapGroupId && b.levelGroupData) {
+        return b.levelGroupData.find((g) => g.groupId === swapGroupId)?.rounds ?? b.rounds;
+      }
+      return b.rounds;
+    };
+    const mutableRounds = getMutableRounds(newBracket);
+    const fromMatch = mutableRounds[swapSelection.roundIndex]?.matches[fromOrigMatchIdx];
+    const toMatch = mutableRounds[roundIndex]?.matches[toOrigMatchIdx];
+    if (!fromMatch || !toMatch) { setSwapSelection(null); return; }
+
+    const fromTeam = swapSelection.team === "A" ? fromMatch.teamA : fromMatch.teamB;
     const toTeam = team === "A" ? toMatch.teamA : toMatch.teamB;
     const fromPlayer = fromTeam.players[swapSelection.playerIndex];
     const toPlayer = toTeam.players[playerIndex];
@@ -805,7 +1096,8 @@ export function SessionBracketPanel({
           body: JSON.stringify({
             sessionId: session.id,
             generationMode: newBracket.config.generationMode ?? "STANDARD",
-            rounds: newBracket.rounds,
+            rounds: getMutableRounds(newBracket),
+            levelGroupId: swapGroupId ?? undefined,
           }),
         });
         if (!res.ok) {
@@ -825,9 +1117,9 @@ export function SessionBracketPanel({
     void notifyAdminActivity({
       event: "SESSION_BRACKET_SWAP",
       sessionTitle: session.title,
-      roundNumber: newBracket.rounds[roundIndex].roundNumber,
-      fromCourtNumber: fromMatch.courtNumber,
-      toCourtNumber: toMatch.courtNumber,
+      roundNumber: roundIndex + 1,
+      fromCourtNumber: fromDisplayMatch?._origCourtNumber ?? fromMatch.courtNumber,
+      toCourtNumber: toDisplayMatch?._origCourtNumber ?? toMatch.courtNumber,
       fromPlayerName: fromPlayer.name,
       toPlayerName: toPlayer.name,
     });
@@ -835,11 +1127,15 @@ export function SessionBracketPanel({
 
   async function handleSaveScore(
     roundNumber: number,
-    courtNumber: number,
+    courtNumber: number,  // merged 뷰에서는 remapped court number — origCourtNumber/levelGroupId로 보정
     scoreA: number | null,
-    scoreB: number | null
+    scoreB: number | null,
+    overrideLevelGroupId?: string,
+    origCourtNumber?: number
   ) {
     if (!bracket) return;
+    const levelGroupId = overrideLevelGroupId ?? activeGroupId ?? undefined;
+    const actualCourtNumber = origCourtNumber ?? courtNumber;
     setScoreSaving(true);
     try {
       const res = await fetch("/api/sessions/bracket/score", {
@@ -850,9 +1146,10 @@ export function SessionBracketPanel({
           sessionId: session.id,
           generationMode: bracket.config.generationMode ?? "STANDARD",
           roundNumber,
-          courtNumber,
+          courtNumber: actualCourtNumber,
           scoreA,
           scoreB,
+          levelGroupId,
         }),
       });
       if (!res.ok) {
@@ -863,12 +1160,20 @@ export function SessionBracketPanel({
       setBracket((prev) => {
         if (!prev) return prev;
         const next = JSON.parse(JSON.stringify(prev)) as SessionBracket;
-        const round = next.rounds.find((r) => r.roundNumber === roundNumber);
-        if (round) {
-          const match = round.matches.find((m) => m.courtNumber === courtNumber);
-          if (match) {
-            match.scoreA = scoreA;
-            match.scoreB = scoreB;
+        if (levelGroupId && next.levelGroupData) {
+          const group = next.levelGroupData.find((g) => g.groupId === levelGroupId);
+          if (group) {
+            const round = group.rounds.find((r) => r.roundNumber === roundNumber);
+            if (round) {
+              const match = round.matches.find((m) => m.courtNumber === actualCourtNumber);
+              if (match) { match.scoreA = scoreA; match.scoreB = scoreB; }
+            }
+          }
+        } else {
+          const round = next.rounds.find((r) => r.roundNumber === roundNumber);
+          if (round) {
+            const match = round.matches.find((m) => m.courtNumber === actualCourtNumber);
+            if (match) { match.scoreA = scoreA; match.scoreB = scoreB; }
           }
         }
         return next;
@@ -1023,7 +1328,13 @@ export function SessionBracketPanel({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setGenerationMode(option.value)}
+                    onClick={() => {
+                      setGenerationMode(option.value);
+                      if (option.value !== "STANDARD") {
+                        setLevelMode("none");
+                        setActiveGroupId(null);
+                      }
+                    }}
                     disabled={!canGenerate || loading || tutorialDefaultsActive}
                     className={[
                       "rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:bg-slate-50",
@@ -1068,6 +1379,159 @@ export function SessionBracketPanel({
             </div>
           </div>
 
+        {/* 급수 구분 옵션 (일반 자동대진 전용) */}
+        {generationMode === "STANDARD" && (
+          <div className="space-y-2">
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-slate-500">급수 구분</span>
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { value: "none" as LevelMode, label: "급수 통합" },
+                    { value: "separate" as LevelMode, label: "동일급수별" },
+                    { value: "filter" as LevelMode, label: "급수필터별" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setLevelMode(opt.value); setActiveGroupId(null); }}
+                    disabled={!canGenerate || loading}
+                    className={[
+                      "rounded-full px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50",
+                      levelMode === opt.value
+                        ? "bg-slate-900 text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 동일급수별: 자동 감지 그룹 + 코트 수 설정 */}
+            {levelMode === "separate" && (
+              <div className="space-y-1.5 rounded-2xl border border-slate-200 p-3">
+                <p className="text-xs font-bold text-slate-700">급수별 그룹 구성</p>
+                {separateGroups.length === 0 ? (
+                  <p className="text-xs text-slate-400">참가자 급수 정보가 없습니다.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {separateGroups.map((g) => (
+                      <div key={g.id} className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-800">{g.name}</span>
+                        {separateByGender ? (
+                          <>
+                            <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.maleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
+                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠" : ""}
+                            </span>
+                            <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.femaleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
+                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠" : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <span className={["text-xs font-bold", g.count < 4 ? "text-rose-600" : "text-slate-800"].join(" ")}>
+                            {g.count}명{g.count < 4 ? " ⚠ 4명 미만" : ""}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 급수필터별: 유저 직접 그룹 배정 */}
+            {levelMode === "filter" && (
+              <div className="space-y-2 rounded-2xl border border-slate-200 p-3">
+                <p className="text-xs font-bold text-slate-700">급수 그룹 배정</p>
+                <p className="text-[11px] text-slate-400">각 그룹 안의 회색 급수를 탭하면 해당 그룹에 배정됩니다. 배정된 급수는 탭하면 해제됩니다.</p>
+                {/* 그룹 목록 — 각 그룹 안에 배정된 급수 + 미배정 급수를 함께 표시 */}
+                {filterGroupsWithCounts.map((g, groupIndex) => (
+                  <div key={g.id} className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-700">그룹 {groupIndex + 1}</span>
+                        {g.levels.length > 0 && (separateByGender ? (
+                          <>
+                            <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.maleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
+                              남 {g.maleCount}명{g.maleCount < 4 ? " ⚠" : ""}
+                            </span>
+                            <span className={["text-xs font-bold rounded-full px-2 py-0.5", g.femaleCount < 4 ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"].join(" ")}>
+                              여 {g.femaleCount}명{g.femaleCount < 4 ? " ⚠" : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <span className={["text-xs font-bold", g.count < 4 ? "text-rose-600" : "text-slate-700"].join(" ")}>
+                            {g.count}명{g.count < 4 ? " ⚠ 4명 미만" : ""}
+                          </span>
+                        ))}
+                      </div>
+                      {filterGroups.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeFilterGroup(g.id)}
+                          className="text-[11px] font-bold text-slate-400 hover:text-rose-500"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {/* 이 그룹에 배정된 급수 (탭하면 해제) */}
+                      {g.levels.map((level) => {
+                        const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? `${level}급`;
+                        const cnt = participantLevelCounts.find((pl) => pl.level === level)?.count ?? 0;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => removeLevelFromFilterGroup(g.id, level)}
+                            className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-700 hover:bg-rose-100 hover:text-rose-700"
+                            title="탭하면 해제"
+                          >
+                            {levelName} {cnt}명 ×
+                          </button>
+                        );
+                      })}
+                      {/* 미배정 급수 (탭하면 이 그룹에 배정) */}
+                      {unassignedLevels.map(({ level, count }) => {
+                        const levelName = clubLevels.find((l) => String(l.rank) === level)?.name ?? `${level}급`;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => assignLevelToGroup(level, g.id)}
+                            className="rounded-full border border-dashed border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-400 hover:border-sky-400 hover:bg-sky-50 hover:text-sky-700"
+                            title="탭하면 이 그룹에 배정"
+                          >
+                            {levelName} {count}명 +
+                          </button>
+                        );
+                      })}
+                      {g.levels.length === 0 && unassignedLevels.length === 0 && (
+                        <span className="text-xs text-slate-400">다른 그룹의 급수를 탭해서 이동할 수 있습니다</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {filterGroups.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={addFilterGroup}
+                    className="w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-500 hover:border-slate-400 hover:text-slate-700"
+                  >
+                    + 그룹 추가
+                  </button>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 코트 수 / 경기 수 / 복식 구분 (급수 통합 모드에서만 코트 수 표시) */}
         <div className="grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))]">
 
           <label className="space-y-1.5">
@@ -1536,7 +2000,7 @@ export function SessionBracketPanel({
             onClick={() => {
               handleGenerateBracket().catch(() => undefined);
             }}
-            disabled={!canGenerate || loading}
+            disabled={!canGenerate || loading || levelModeErrors.length > 0}
             data-tutorial-id="bracket-generate-button"
             className="flex-1 rounded-2xl bg-slate-900 px-2 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:px-4 sm:text-sm"
           >
@@ -1550,7 +2014,7 @@ export function SessionBracketPanel({
             onClick={() => {
               handleExport().catch(() => undefined);
             }}
-            disabled={!bracket || loading || exportingMode !== null}
+            disabled={!bracket || loading || exportingMode !== null || levelModeErrors.length > 0}
             data-tutorial-id="bracket-export-button"
             className="flex-1 rounded-2xl border border-amber-300 bg-amber-50 px-2 py-2.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
@@ -1564,8 +2028,16 @@ export function SessionBracketPanel({
               disabled={
                 loading ||
                 exportingMode !== null ||
-                !bracket.rounds.some((r) =>
-                  r.matches.some((m) => m.scoreA != null && m.scoreB != null)
+                levelModeErrors.length > 0 ||
+                !(
+                  bracket.rounds?.some((r) =>
+                    r.matches?.some((m) => m.scoreA != null && m.scoreB != null)
+                  ) ||
+                  bracket.levelGroupData?.some((g) =>
+                    g.rounds?.some((r) =>
+                      r.matches?.some((m) => m.scoreA != null && m.scoreB != null)
+                    )
+                  )
                 )
               }
               className="flex-1 rounded-2xl border border-sky-200 bg-sky-50 px-2 py-2.5 text-xs font-bold text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
@@ -1574,24 +2046,6 @@ export function SessionBracketPanel({
             </button>
           )}
         </div>
-
-        {onOpenCourtBoard ? (
-          <div className="flex items-center justify-between gap-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
-            <div>
-              <p className="text-sm font-black text-violet-900">실시간 코트 배정</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                자동 대진 대신 직접 선수를 코트에 배정하고 현장에서 실시간으로 경기를 관리합니다.
-              </p>
-            </div>
-            <button
-              onClick={() => onOpenCourtBoard(session.id)}
-              disabled={session.status !== "CLOSED"}
-              className="shrink-0 rounded-2xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-violet-700 active:scale-95 disabled:cursor-not-allowed disabled:bg-violet-300"
-            >
-              실시간 대진 시작 →
-            </button>
-          </div>
-        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium leading-6 text-rose-700">
@@ -1619,7 +2073,7 @@ export function SessionBracketPanel({
                   생성 라운드
                 </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
-                  {bracket.summary.totalRounds}
+                  {displaySummary?.totalRounds ?? 0}
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
@@ -1627,7 +2081,7 @@ export function SessionBracketPanel({
                   총 경기 수
                 </p>
                 <p className="mt-2 text-2xl font-black text-slate-900">
-                  {bracket.summary.totalMatches}
+                  {displaySummary?.totalMatches ?? 0}
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-50 p-4">
@@ -1635,8 +2089,10 @@ export function SessionBracketPanel({
                   생성 조건
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-slate-900">
-                  {bracket.config.courtCount}코트 · 최소{" "}
-                  {bracket.config.minGamesPerPlayer}경기
+                  {bracket.levelGroupData && activeGroupId
+                    ? `${bracket.config.levelGroups?.find((g) => g.id === activeGroupId)?.courtCount ?? bracket.config.courtCount}코트`
+                    : `${bracket.config.courtCount}코트`}{" "}
+                  · 최소 {bracket.config.minGamesPerPlayer}경기
                   <br />
                   {bracket.config.generationMode === "TEAM_BATTLE"
                     ? `${teamLabels.A || "팀A"} vs ${teamLabels.B || "팀B"}`
@@ -1647,14 +2103,14 @@ export function SessionBracketPanel({
               </div>
             </div>
 
-            {bracket.summary.warnings.length > 0 &&
+            {(displaySummary?.warnings.length ?? 0) > 0 &&
             !bracket.config.relaxedMode ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <p className="text-sm font-bold text-amber-700">
                   확인 메시지
                 </p>
                 <ul className="mt-2 space-y-1.5 text-sm leading-6 text-amber-700">
-                  {bracket.summary.warnings.map((warning) => (
+                  {(displaySummary?.warnings ?? []).map((warning) => (
                     <li key={warning}>- {warning}</li>
                   ))}
                 </ul>
@@ -1677,7 +2133,7 @@ export function SessionBracketPanel({
                 </div>
               )}
 
-            {bracket.rounds.map((round, roundIndex) => (
+            {displayRounds.map((round, roundIndex) => (
                 <section
                   key={round.roundNumber}
                   className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white"
@@ -1694,7 +2150,14 @@ export function SessionBracketPanel({
                   </div>
 
                   <div className="space-y-3 p-4">
-                    {round.matches.map((match, matchIndex) => (
+                    {round.matches.map((match, matchIndex) => {
+                      // merged 모드에서 그룹 메타 추출
+                      type MM = typeof match & { _levelGroupId?: string; _levelGroupName?: string; _origCourtNumber?: number };
+                      const mm = match as MM;
+                      const matchGroupId = mm._levelGroupId;
+                      const matchGroupName = mm._levelGroupName;
+                      const origCourtNum = mm._origCourtNumber;
+                      return (
                       <div
                         key={`${round.roundNumber}-${match.courtNumber}`}
                         className={[
@@ -1706,9 +2169,16 @@ export function SessionBracketPanel({
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-slate-400">
-                              Court {match.courtNumber}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold uppercase tracking-[0.28em] text-slate-400">
+                                Court {match.courtNumber}
+                              </p>
+                              {matchGroupName && (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                                  {matchGroupName}
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 text-sm font-bold text-slate-900">
                               {groupLabel(match.division)}
                             </p>
@@ -1779,9 +2249,9 @@ export function SessionBracketPanel({
                                       swapSelection?.team === team &&
                                       swapSelection?.playerIndex === playerIndex;
                                     const selectedMatch = swapSelection
-                                      ? bracket.rounds[swapSelection.roundIndex].matches[
+                                      ? displayRounds[swapSelection.roundIndex]?.matches[
                                           swapSelection.matchIndex
-                                        ]
+                                        ] ?? null
                                       : null;
                                     const isSameDivision =
                                       !selectedMatch ||
@@ -1849,14 +2319,17 @@ export function SessionBracketPanel({
                                   saving={scoreSaving}
                                   teamLabelA={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.A || "팀A" : "팀A"}
                                   teamLabelB={bracket.config.generationMode === "TEAM_BATTLE" ? teamLabels.B || "팀B" : "팀B"}
-                                  onSave={handleSaveScore}
+                                  onSave={(rn, _cn, sA, sB) =>
+                                    handleSaveScore(rn, _cn, sA, sB, matchGroupId, origCourtNum)
+                                  }
                                 />
                               )}
                             </>
                           );
                         })()}
                       </div>
-                    ))}
+                    );
+                    })}
 
                     <div className="rounded-2xl bg-slate-50 px-4 py-3">
                       <p className="text-xs font-bold text-slate-500">

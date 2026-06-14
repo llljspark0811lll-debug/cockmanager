@@ -43,7 +43,12 @@
       "Bash(npx ts-node *)",
       "Bash(cat \"/c/Users/user/AppData/Roaming/Code/User/settings.json\")",
       "Read(//c/Users/user/AppData/Roaming/Code/User/**)",
-      "Bash(grep -v \"^\\\\s*//\")"
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(node scripts/check-teamdshot.mjs)",
+      "Bash(node scripts/list-tables.mjs)",
+      "Bash(node scripts/test-allocation.mjs)",
+      "Bash(node scripts/test-allocation-multi.mjs)",
+      "Bash(node scripts/test-debug.mjs)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",

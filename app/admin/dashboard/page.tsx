@@ -2451,6 +2451,7 @@ export default function DashboardPage() {
       <CourtBoardModal
         open={courtBoardSessionId !== null}
         clubName={clubInfo?.name ?? ""}
+        clubLevels={levels}
         session={
           courtBoardSessionId !== null
             ? (sessions.find((s) => s.id === courtBoardSessionId) ?? null)

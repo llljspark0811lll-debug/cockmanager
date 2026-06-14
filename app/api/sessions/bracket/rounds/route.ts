@@ -10,7 +10,7 @@ function normalizeBracketMode(value: string | null | undefined): BracketMode {
 }
 
 // PATCH /api/sessions/bracket/rounds
-// Body: { sessionId, generationMode, rounds }
+// Body: { sessionId, generationMode, rounds, levelGroupId? }
 export async function PATCH(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -20,6 +20,7 @@ export async function PATCH(req: Request) {
     const sessionId = Number(body.sessionId);
     const generationMode = normalizeBracketMode(body.generationMode);
     const rounds = body.rounds;
+    const levelGroupId = typeof body.levelGroupId === "string" ? body.levelGroupId : null;
 
     if (!Number.isFinite(sessionId)) {
       return NextResponse.json({ error: "올바른 요청 값을 확인해 주세요." }, { status: 400 });
@@ -45,9 +46,41 @@ export async function PATCH(req: Request) {
     };
 
     type VariantEnvelope<T> = { variants?: Partial<Record<BracketMode, T>> };
-    const roundsEnvelope = bracketRecord.rounds as VariantEnvelope<{ rounds: unknown }>;
+    const roundsEnvelope = bracketRecord.rounds as VariantEnvelope<{
+      rounds: unknown;
+      levelGroupRounds?: unknown;
+    }>;
     const isVariant = Boolean(roundsEnvelope?.variants);
 
+    // 레벨 그룹 모드: 해당 그룹 rounds만 업데이트
+    const variantData = isVariant ? roundsEnvelope.variants?.[generationMode] : null;
+    const isLevelGroupMode = levelGroupId !== null && variantData && "levelGroupRounds" in variantData;
+
+    if (isLevelGroupMode && variantData) {
+      const levelGroupRounds = (variantData.levelGroupRounds ?? {}) as Record<string, unknown>;
+
+      const newRoundsPayload = {
+        variants: {
+          ...roundsEnvelope.variants,
+          [generationMode]: {
+            ...variantData,
+            levelGroupRounds: {
+              ...levelGroupRounds,
+              [levelGroupId]: rounds,
+            },
+          },
+        },
+      };
+
+      await prisma.sessionBracket.update({
+        where: { sessionId },
+        data: { rounds: newRoundsPayload as never },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // 기존 일반 모드
     let newRoundsPayload: unknown;
     if (isVariant) {
       newRoundsPayload = {
