@@ -2468,7 +2468,7 @@ export function generateSessionBracketLevelGroups(
     });
 
     // 모든 그룹이 minGames+1 달성(0)이면 종료
-    const allDone = rawNeeds.every((n) => n === 0);
+    const allDone = rawNeeds.every((n) => n <= 0);
     if (roundNumber > 1 && allDone) break;
 
     // 잠정 완료(0) 그룹 중 다른 그룹이 아직 활성/filler이면 super-filler(-2)로 전환

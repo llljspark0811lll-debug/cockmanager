@@ -598,13 +598,13 @@ export function SessionBracketPanel({
       for (const g of filterGroupsWithCounts) {
         if (g.levels.length > 0) checkGroup(g.name, g.count, g.maleCount, g.femaleCount);
       }
-      // 급수필터별 전용: 그룹별 최소 코트 수 합산 검증
+      // 급수필터별 전용: 그룹별 연속 휴식 방지 최소 코트 합산 검증
       const activeGroups = filterGroupsWithCounts.filter((g) => g.levels.length > 0 && g.count >= 4);
       if (activeGroups.length > 0) {
-        const requiredCourts = activeGroups.reduce((sum, g) => sum + Math.floor(g.count / 4), 0);
+        const requiredCourts = activeGroups.reduce((sum, g) => sum + Math.ceil(g.count / 8), 0);
         if (requiredCourts > courtCount) {
           const breakdown = activeGroups
-            .map((g) => `${g.name} ${g.count}명 → ${Math.floor(g.count / 4)}코트`)
+            .map((g) => `${g.name} ${g.count}명 → ${Math.ceil(g.count / 8)}코트`)
             .join(" / ");
           errors.push(
             `코트 수 부족 — 최소 ${requiredCourts}코트 필요 (${breakdown})`

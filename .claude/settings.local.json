@@ -49,7 +49,9 @@
       "Bash(node scripts/test-allocation.mjs)",
       "Bash(node scripts/test-allocation-multi.mjs)",
       "Bash(node scripts/test-debug.mjs)",
-      "Bash(node scripts/check-partner.mjs)"
+      "Bash(node scripts/check-partner.mjs)",
+      "Bash(node --env-file=.env scripts/check-qwer.mjs)",
+      "Bash(node --env-file=.env -e ' *)"
     ],
     "additionalDirectories": [
       "\\mnt\\c\\Users\\user\\cockmanager\\app\\api\\positions",
