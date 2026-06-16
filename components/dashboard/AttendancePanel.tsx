@@ -457,7 +457,7 @@ export function AttendancePanel({
             </div>
 
             {participantListOpen && (
-            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5 md:gap-3" onClick={(e) => e.stopPropagation()}>
               <input
                 value={filters.searchQuery}
                 onChange={(event) =>
