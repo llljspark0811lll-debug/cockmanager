@@ -262,11 +262,12 @@ export function SessionBracketPanel({
     Record<string, "A" | "B">
   >({});
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
-  const [bracket, setBracket] = useState<SessionBracket | null>(
-    null
-  );
+  // 슬롯별 대진 저장: 키 = "STANDARD_none" | "STANDARD_separate" | "STANDARD_filter" | "TEAM_BATTLE"
+  const [bracketSlots, setBracketSlots] = useState<Record<string, SessionBracket | null>>({});
+  // 이미 로드 시도한 슬롯 추적 (ref = 비반응형 가드, state = 렌더 트리거)
+  const loadedSlotsRef = useRef<Set<string>>(new Set());
+  const [loadedSlots, setLoadedSlots] = useState<Set<string>>(new Set());
   const [exportMessage, setExportMessage] = useState("");
   const [exportError, setExportError] = useState("");
   const [swapNotice, setSwapNotice] = useState("");
@@ -295,6 +296,16 @@ export function SessionBracketPanel({
   const [swapSelection, setSwapSelection] = useState<SwapSelection | null>(null);
   const swapNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 현재 활성 슬롯 키 / 대진 / 로드 여부 (파생값)
+  const slotKey = generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : `STANDARD_${levelMode}`;
+  const bracket = bracketSlots[slotKey] ?? null;
+  const loaded = loadedSlots.has(slotKey);
+
+  function markSlotLoaded(key: string) {
+    loadedSlotsRef.current.add(key);
+    setLoadedSlots(new Set(loadedSlotsRef.current));
+  }
+
   const registeredCount =
     session.registeredCount ??
     (session.participants ?? []).filter(
@@ -303,6 +314,7 @@ export function SessionBracketPanel({
 
   const canGenerate = session.status === "CLOSED" && registeredCount >= 4;
 
+  // 세션 변경 시 전체 초기화
   useEffect(() => {
     setGenerationMode("STANDARD");
     setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
@@ -314,8 +326,9 @@ export function SessionBracketPanel({
     setPendingPairPlayerId(null);
     setSwapSelection(null);
     setError("");
-    setBracket(null);
-    setLoaded(false);
+    loadedSlotsRef.current = new Set();
+    setLoadedSlots(new Set());
+    setBracketSlots({});
     setExportMessage("");
     setExportError("");
     setSwapNotice("");
@@ -336,46 +349,43 @@ export function SessionBracketPanel({
     };
   }, []);
 
+  // 슬롯별 대진표 lazy 로드: generationMode/levelMode 전환 시 해당 슬롯이 없으면 fetch
   useEffect(() => {
+    const currentSlotKey = generationMode === "TEAM_BATTLE" ? "TEAM_BATTLE" : `STANDARD_${levelMode}`;
+
+    // 이미 로드된 슬롯이면 스킵 (ref로 최신값 확인)
+    if (loadedSlotsRef.current.has(currentSlotKey)) return;
+
     let cancelled = false;
 
-    async function loadBracket() {
+    async function loadSlot() {
       if (!canGenerate) {
-        setLoaded(true);
+        loadedSlotsRef.current.add(currentSlotKey);
+        setLoadedSlots(new Set(loadedSlotsRef.current));
         return;
       }
 
       setLoading(true);
-      setLoaded(false);
       setError("");
-      setBracket(null);
 
       let autoSwitching = false;
 
       try {
-          const response = await fetch(
-          `/api/sessions/bracket?sessionId=${session.id}&generationMode=${generationMode}`,
-           {
-             credentials: "include",
-           }
+        const levelModeParam = generationMode === "STANDARD" ? `&levelMode=${levelMode}` : "";
+        const response = await fetch(
+          `/api/sessions/bracket?sessionId=${session.id}&generationMode=${generationMode}${levelModeParam}`,
+          { credentials: "include" }
         );
-        const data = (await response.json()) as BracketApiResponse & {
-          error?: string;
-        };
+        const data = (await response.json()) as BracketApiResponse & { error?: string };
 
         if (!response.ok) {
-          throw new Error(
-            data.error ?? "자동 대진표 정보를 불러오지 못했습니다."
-          );
+          throw new Error(data.error ?? "자동 대진표 정보를 불러오지 못했습니다.");
         }
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
-        // STANDARD 모드에서 저장된 대진표가 없을 때,
-        // 팀 대항 대진표가 있으면 자동으로 팀 대항 모드로 전환합니다.
-        if (!data.bracket && generationMode === "STANDARD") {
+        // 초기 STANDARD_none 로드 시 TEAM_BATTLE 대진표 자동 감지
+        if (!data.bracket && currentSlotKey === "STANDARD_none") {
           try {
             const tbRes = await fetch(
               `/api/sessions/bracket?sessionId=${session.id}&generationMode=TEAM_BATTLE`,
@@ -390,52 +400,33 @@ export function SessionBracketPanel({
               }
             }
           } catch {
-            // 자동 감지 실패 시 무시하고 빈 상태로 표시
+            // 자동 감지 실패 시 무시
           }
         }
 
-        setBracket(data.bracket);
+        setBracketSlots((prev) => ({ ...prev, [currentSlotKey]: data.bracket }));
+
+        // 초기 슬롯(none/TEAM_BATTLE)에서만 폼 설정 복원
+        const isInitialSlot = currentSlotKey === "STANDARD_none" || currentSlotKey === "TEAM_BATTLE";
+
         if (data.bracket) {
-          const savedLevelMode = data.bracket.config.levelMode ?? "none";
-          if (!tutorialDefaultsActive && savedLevelMode !== "none") {
-            setLevelMode(savedLevelMode);
-            if (savedLevelMode === "filter") {
-              setFilterGroups(
-                (data.bracket.config.levelGroups ?? []).map((g) => ({
-                  id: g.id,
-                  name: g.name,
-                  levels: g.levels,
-                  courtCount: g.courtCount,
-                }))
-              );
+          // 급수필터별 슬롯: filterGroups 복원
+          if (currentSlotKey === "STANDARD_filter" && !tutorialDefaultsActive) {
+            const groups = data.bracket.config.levelGroups ?? [];
+            if (groups.length > 0) {
+              setFilterGroups(groups.map((g) => ({
+                id: g.id, name: g.name, levels: g.levels, courtCount: g.courtCount,
+              })));
             }
-            if (data.bracket.levelGroupData && data.bracket.levelGroupData.length > 0) {
-              setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
-            }
-          } else if (!tutorialDefaultsActive) {
-            setLevelMode("none");
-            setActiveGroupId(null);
           }
-          setCourtCount(
-            tutorialDefaultsActive ? 2 : data.bracket.config.courtCount
-          );
-          setMinGamesPerPlayer(
-            tutorialDefaultsActive
-              ? 4
-              : data.bracket.config.minGamesPerPlayer
-          );
-          setSeparateByGender(
-            tutorialDefaultsActive
-              ? false
-              : data.bracket.config.separateByGender
-          );
-          setFixedPairs(
-            tutorialDefaultsActive ? [] : data.bracket.config.fixedPairs ?? []
-          );
-          if (tutorialDefaultsActive) {
-            setTeamLabels({ A: "팀A", B: "팀B" });
-          } else {
-            // localStorage에 저장된 팀명 우선 적용, 없으면 bracket config 사용
+          if (data.bracket.levelGroupData && data.bracket.levelGroupData.length > 0) {
+            setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
+          }
+          if (isInitialSlot && !tutorialDefaultsActive) {
+            setCourtCount(data.bracket.config.courtCount);
+            setMinGamesPerPlayer(data.bracket.config.minGamesPerPlayer);
+            setSeparateByGender(data.bracket.config.separateByGender);
+            setFixedPairs(data.bracket.config.fixedPairs ?? []);
             let resolved = {
               A: data.bracket.config.teamLabels?.A?.trim() || "팀A",
               B: data.bracket.config.teamLabels?.B?.trim() || "팀B",
@@ -449,40 +440,21 @@ export function SessionBracketPanel({
               }
             } catch {}
             setTeamLabels(resolved);
+            setTeamAssignments(data.bracket.config.teamAssignments ?? {});
           }
-          setTeamAssignments(
-            tutorialDefaultsActive
-              ? {}
-              : data.bracket.config.teamAssignments ?? {}
-          );
-        } else {
-          setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
-          setMinGamesPerPlayer(tutorialDefaultsActive ? 4 : 2);
-          setSeparateByGender(false);
-          setFixedPairs([]);
-          setPendingPairPlayerId(null);
-          setSwapSelection(null);
-          setExportMessage("");
-          setExportError("");
-          setSwapNotice("");
-          if (generationMode === "TEAM_BATTLE") {
-            // bracket 없어도 localStorage에 저장된 팀명 복원
-            try {
-              const saved = localStorage.getItem(`team_labels_${session.id}`);
-              if (saved) {
-                const parsed = JSON.parse(saved) as { A?: string; B?: string };
-                setTeamLabels({
-                  A: parsed.A?.trim() || "팀A",
-                  B: parsed.B?.trim() || "팀B",
-                });
-              } else {
-                setTeamLabels({ A: "팀A", B: "팀B" });
-              }
-            } catch {
+        } else if (currentSlotKey === "TEAM_BATTLE" && !tutorialDefaultsActive) {
+          try {
+            const saved = localStorage.getItem(`team_labels_${session.id}`);
+            if (saved) {
+              const parsed = JSON.parse(saved) as { A?: string; B?: string };
+              setTeamLabels({ A: parsed.A?.trim() || "팀A", B: parsed.B?.trim() || "팀B" });
+            } else {
               setTeamLabels({ A: "팀A", B: "팀B" });
             }
-            setTeamAssignments({});
+          } catch {
+            setTeamLabels({ A: "팀A", B: "팀B" });
           }
+          setTeamAssignments({});
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -494,18 +466,20 @@ export function SessionBracketPanel({
         }
       } finally {
         if (!cancelled && !autoSwitching) {
+          loadedSlotsRef.current.add(currentSlotKey);
+          setLoadedSlots(new Set(loadedSlotsRef.current));
           setLoading(false);
-          setLoaded(true);
         }
       }
     }
 
-    loadBracket().catch(() => undefined);
+    loadSlot().catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
-  }, [canGenerate, generationMode, session.id, tutorialDefaultsActive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canGenerate, generationMode, levelMode, session.id, tutorialDefaultsActive]);
 
   const registeredParticipants = useMemo(
     () => (session.participants ?? []).filter((p) => p.status === "REGISTERED"),
@@ -977,7 +951,8 @@ export function SessionBracketPanel({
         }
       }
 
-      setBracket(data.bracket);
+      setBracketSlots((prev) => ({ ...prev, [slotKey]: data.bracket }));
+      markSlotLoaded(slotKey);
       setSwapSelection(null);
       if (data.bracket?.levelGroupData && data.bracket.levelGroupData.length > 0) {
         setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
@@ -993,7 +968,6 @@ export function SessionBracketPanel({
       );
     } finally {
       setLoading(false);
-      setLoaded(true);
     }
   }
 
@@ -1095,7 +1069,7 @@ export function SessionBracketPanel({
     const toPlayer = toTeam.players[playerIndex];
     fromTeam.players[swapSelection.playerIndex] = toPlayer;
     toTeam.players[playerIndex] = fromPlayer;
-    setBracket(newBracket);
+    setBracketSlots((prev) => ({ ...prev, [slotKey]: newBracket }));
     setSwapSelection(null);
     setSwapNotice("");
 
@@ -1108,6 +1082,7 @@ export function SessionBracketPanel({
           body: JSON.stringify({
             sessionId: session.id,
             generationMode: newBracket.config.generationMode ?? "STANDARD",
+            levelMode: newBracket.config.levelMode ?? "none",
             rounds: getMutableRounds(newBracket),
             levelGroupId: swapGroupId ?? undefined,
           }),
@@ -1157,6 +1132,7 @@ export function SessionBracketPanel({
         body: JSON.stringify({
           sessionId: session.id,
           generationMode: bracket.config.generationMode ?? "STANDARD",
+          levelMode: bracket.config.levelMode ?? "none",
           roundNumber,
           courtNumber: actualCourtNumber,
           scoreA,
@@ -1168,10 +1144,11 @@ export function SessionBracketPanel({
         const data = (await res.json()) as { error?: string };
         throw new Error(data.error ?? "점수 저장에 실패했습니다.");
       }
-      // 로컬 bracket 상태에도 바로 반영
-      setBracket((prev) => {
-        if (!prev) return prev;
-        const next = JSON.parse(JSON.stringify(prev)) as SessionBracket;
+      // 로컬 슬롯 상태에도 바로 반영
+      setBracketSlots((prev) => {
+        const current = prev[slotKey];
+        if (!current) return prev;
+        const next = JSON.parse(JSON.stringify(current)) as SessionBracket;
         if (levelGroupId && next.levelGroupData) {
           const group = next.levelGroupData.find((g) => g.groupId === levelGroupId);
           if (group) {
@@ -1188,7 +1165,7 @@ export function SessionBracketPanel({
             if (match) { match.scoreA = scoreA; match.scoreB = scoreB; }
           }
         }
-        return next;
+        return { ...prev, [slotKey]: next };
       });
       setScoreEditKey(null);
     } catch (err) {

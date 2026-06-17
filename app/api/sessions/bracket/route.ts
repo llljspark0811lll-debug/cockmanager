@@ -15,14 +15,13 @@ import { getClubLevels } from "@/lib/club-levels";
 import { ensureSessionBracketTable } from "@/lib/session-bracket-schema";
 import { hasSessionParticipantGuestProfileColumns } from "@/lib/session-participant-schema";
 import { sendTelegramAlert } from "@/lib/telegram";
+import { getVariantKey, normalizeLevelMode, type BracketMode, type LevelMode } from "@/lib/bracket-variant-key";
 import { NextResponse } from "next/server";
 import type {
   SessionBracketLevelGroupData,
   SessionBracketRound,
   SessionBracketSummary,
 } from "@/components/dashboard/types";
-
-type BracketMode = "STANDARD" | "TEAM_BATTLE";
 
 const RELAXED_MODE_MESSAGE =
   "현재 조건에서는 모든 선수의 경기수, 휴식수, 밸런스를 만족하는 대진표를 만들 수 없습니다.";
@@ -59,15 +58,15 @@ type SessionBracketRecord = {
 };
 
 type StoredConfigVariantEnvelope = {
-  variants?: Partial<Record<BracketMode, { config: unknown }>>;
+  variants?: Partial<Record<string, { config: unknown }>>;
 };
 
 type StoredRoundsVariantEnvelope = {
-  variants?: Partial<Record<BracketMode, { rounds: unknown; levelGroupRounds?: unknown }>>;
+  variants?: Partial<Record<string, { rounds: unknown; levelGroupRounds?: unknown }>>;
 };
 
 type StoredSummaryVariantEnvelope = {
-  variants?: Partial<Record<BracketMode, { summary: unknown; levelGroupSummaries?: unknown }>>;
+  variants?: Partial<Record<string, { summary: unknown; levelGroupSummaries?: unknown }>>;
 };
 
 type LevelGroupConfig = {
@@ -83,28 +82,26 @@ function normalizeBracketMode(value: string | null | undefined): BracketMode {
 
 function getStoredBracketVariant(
   bracket: SessionBracketRecord | null,
-  mode: BracketMode
+  mode: BracketMode,
+  levelMode: LevelMode = "none"
 ) {
-  if (!bracket) {
-    return null;
-  }
+  if (!bracket) return null;
 
   const configEnvelope =
     bracket.config && typeof bracket.config === "object"
-      ? (bracket.config as StoredConfigVariantEnvelope)
-      : null;
+      ? (bracket.config as StoredConfigVariantEnvelope) : null;
   const roundsEnvelope =
     bracket.rounds && typeof bracket.rounds === "object"
-      ? (bracket.rounds as StoredRoundsVariantEnvelope)
-      : null;
+      ? (bracket.rounds as StoredRoundsVariantEnvelope) : null;
   const summaryEnvelope =
     bracket.summary && typeof bracket.summary === "object"
-      ? (bracket.summary as StoredSummaryVariantEnvelope)
-      : null;
+      ? (bracket.summary as StoredSummaryVariantEnvelope) : null;
 
-  const configVariant = configEnvelope?.variants?.[mode];
-  const roundsVariant = roundsEnvelope?.variants?.[mode];
-  const summaryVariant = summaryEnvelope?.variants?.[mode];
+  // Try new key: STANDARD_none / STANDARD_separate / STANDARD_filter / TEAM_BATTLE
+  const variantKey = getVariantKey(mode, levelMode);
+  const configVariant = configEnvelope?.variants?.[variantKey];
+  const roundsVariant = roundsEnvelope?.variants?.[variantKey];
+  const summaryVariant = summaryEnvelope?.variants?.[variantKey];
 
   if (configVariant && roundsVariant && summaryVariant) {
     return {
@@ -118,14 +115,41 @@ function getStoredBracketVariant(
     };
   }
 
-  const directConfig =
-    bracket.config && typeof bracket.config === "object"
-      ? (bracket.config as { generationMode?: BracketMode })
-      : null;
-  const directMode = normalizeBracketMode(directConfig?.generationMode);
+  // Backward compat 1: old "STANDARD" key (before per-levelMode refactor)
+  if (mode === "STANDARD") {
+    const oldConfigVariant = configEnvelope?.variants?.["STANDARD"];
+    const oldRoundsVariant = roundsEnvelope?.variants?.["STANDARD"];
+    const oldSummaryVariant = summaryEnvelope?.variants?.["STANDARD"];
 
-  if (!configEnvelope?.variants && directMode === mode) {
-    return bracket;
+    if (oldConfigVariant && oldRoundsVariant && oldSummaryVariant) {
+      const storedLevelMode = ((oldConfigVariant.config as Record<string, unknown>)?.levelMode ?? "none") as string;
+      if (storedLevelMode === levelMode) {
+        return {
+          id: bracket.id,
+          sessionId: bracket.sessionId,
+          config: oldConfigVariant.config,
+          rounds: oldRoundsVariant.rounds,
+          summary: oldSummaryVariant.summary,
+          createdAt: bracket.createdAt,
+          updatedAt: bracket.updatedAt,
+        };
+      }
+      return null;
+    }
+  }
+
+  // Backward compat 2: no variants envelope (very old format)
+  if (!configEnvelope?.variants) {
+    const directConfig =
+      bracket.config && typeof bracket.config === "object"
+        ? (bracket.config as { generationMode?: BracketMode; levelMode?: string })
+        : null;
+    const directMode = normalizeBracketMode(directConfig?.generationMode);
+    const directLevelMode = directConfig?.levelMode ?? "none";
+
+    if (directMode === mode && (mode !== "STANDARD" || directLevelMode === levelMode)) {
+      return bracket;
+    }
   }
 
   return null;
@@ -133,18 +157,19 @@ function getStoredBracketVariant(
 
 function normalizeSavedBracket(
   bracket: SessionBracketRecord | null,
-  mode: BracketMode
+  mode: BracketMode,
+  levelMode: LevelMode = "none"
 ) {
-  const target = getStoredBracketVariant(bracket, mode);
+  const target = getStoredBracketVariant(bracket, mode, levelMode);
 
   if (!target) {
     return null;
   }
 
   const config = target.config as Record<string, unknown> | null;
-  const levelMode = config?.levelMode;
+  const savedLevelMode = config?.levelMode;
 
-  if (levelMode && levelMode !== "none" && bracket) {
+  if (savedLevelMode && savedLevelMode !== "none" && bracket) {
     const rawRoundsEnvelope = bracket.rounds as {
       variants?: Record<string, { rounds?: unknown; levelGroupRounds?: unknown }>;
     } | null;
@@ -152,8 +177,9 @@ function normalizeSavedBracket(
       variants?: Record<string, { summary?: unknown; levelGroupSummaries?: unknown }>;
     } | null;
 
-    const rawRoundsVariant = rawRoundsEnvelope?.variants?.[mode];
-    const rawSummaryVariant = rawSummaryEnvelope?.variants?.[mode];
+    const variantKey = getVariantKey(mode, levelMode);
+    const rawRoundsVariant = rawRoundsEnvelope?.variants?.[variantKey] ?? rawRoundsEnvelope?.variants?.[mode];
+    const rawSummaryVariant = rawSummaryEnvelope?.variants?.[variantKey] ?? rawSummaryEnvelope?.variants?.[mode];
 
     const levelGroupRounds = (rawRoundsVariant?.levelGroupRounds ?? {}) as Record<string, SessionBracketRound[]>;
     const levelGroupSummaries = (rawSummaryVariant?.levelGroupSummaries ?? {}) as Record<string, SessionBracketSummary>;
@@ -202,6 +228,7 @@ function normalizeSavedBracket(
 function buildStoredVariantPayload(
   existingBracket: SessionBracketRecord | null,
   mode: BracketMode,
+  levelMode: LevelMode,
   generated: {
     config: unknown;
     rounds: unknown;
@@ -221,33 +248,56 @@ function buildStoredVariantPayload(
       ? (existingBracket.summary as StoredSummaryVariantEnvelope)
       : {};
 
-  const fallbackMode = normalizeBracketMode(
-    (
-      existingBracket?.config as
-        | { generationMode?: BracketMode }
-        | undefined
-        | null
-    )?.generationMode
-  );
+  const configVariants: Record<string, { config: unknown }> = Object.fromEntries(
+    Object.entries(existingConfigEnvelope.variants ?? {}).filter(([, v]) => v !== undefined)
+  ) as Record<string, { config: unknown }>;
+  const roundsVariants: Record<string, { rounds: unknown; levelGroupRounds?: unknown }> = Object.fromEntries(
+    Object.entries(existingRoundsEnvelope.variants ?? {}).filter(([, v]) => v !== undefined)
+  ) as Record<string, { rounds: unknown; levelGroupRounds?: unknown }>;
+  const summaryVariants: Record<string, { summary: unknown; levelGroupSummaries?: unknown }> = Object.fromEntries(
+    Object.entries(existingSummaryEnvelope.variants ?? {}).filter(([, v]) => v !== undefined)
+  ) as Record<string, { summary: unknown; levelGroupSummaries?: unknown }>;
 
-  const configVariants = { ...(existingConfigEnvelope.variants ?? {}) };
-  const roundsVariants = { ...(existingRoundsEnvelope.variants ?? {}) };
-  const summaryVariants = { ...(existingSummaryEnvelope.variants ?? {}) };
-
+  // Migration: very old format (no variants envelope) → new key format
   if (
     existingBracket &&
     !existingConfigEnvelope.variants &&
     !existingRoundsEnvelope.variants &&
     !existingSummaryEnvelope.variants
   ) {
-    configVariants[fallbackMode] = { config: existingBracket.config };
-    roundsVariants[fallbackMode] = { rounds: existingBracket.rounds };
-    summaryVariants[fallbackMode] = { summary: existingBracket.summary };
+    const storedConfig = existingBracket.config as { generationMode?: BracketMode; levelMode?: string } | null;
+    const migratedMode = normalizeBracketMode(storedConfig?.generationMode);
+    const migratedLevelMode = normalizeLevelMode(storedConfig?.levelMode);
+    const migratedKey = getVariantKey(migratedMode, migratedLevelMode);
+    configVariants[migratedKey] = { config: existingBracket.config };
+    roundsVariants[migratedKey] = { rounds: existingBracket.rounds };
+    summaryVariants[migratedKey] = { summary: existingBracket.summary };
   }
 
-  configVariants[mode] = { config: generated.config };
-  roundsVariants[mode] = { rounds: generated.rounds };
-  summaryVariants[mode] = { summary: generated.summary };
+  // Migration: old "STANDARD" key → STANDARD_${levelMode} key
+  if (
+    configVariants["STANDARD"] &&
+    !configVariants["STANDARD_none"] &&
+    !configVariants["STANDARD_separate"] &&
+    !configVariants["STANDARD_filter"]
+  ) {
+    const oldLevelMode = normalizeLevelMode(
+      (configVariants["STANDARD"].config as Record<string, unknown>)?.levelMode as string | undefined
+    );
+    const migratedKey = `STANDARD_${oldLevelMode}`;
+    configVariants[migratedKey] = configVariants["STANDARD"];
+    roundsVariants[migratedKey] = roundsVariants["STANDARD"] ?? { rounds: null };
+    summaryVariants[migratedKey] = summaryVariants["STANDARD"] ?? { summary: null };
+    delete configVariants["STANDARD"];
+    delete roundsVariants["STANDARD"];
+    delete summaryVariants["STANDARD"];
+  }
+
+  // Write the new variant
+  const variantKey = getVariantKey(mode, levelMode);
+  configVariants[variantKey] = { config: generated.config };
+  roundsVariants[variantKey] = { rounds: generated.rounds };
+  summaryVariants[variantKey] = { summary: generated.summary };
 
   return {
     config: { variants: configVariants } as Prisma.InputJsonValue,
@@ -458,6 +508,7 @@ export async function GET(req: Request) {
     const generationMode = normalizeBracketMode(
       searchParams.get("generationMode")
     );
+    const levelMode = normalizeLevelMode(searchParams.get("levelMode"));
 
     if (!Number.isFinite(sessionId)) {
       return NextResponse.json(
@@ -478,7 +529,7 @@ export async function GET(req: Request) {
       sessionId: session.id,
       sessionTitle: session.title,
       participantCount: session.participants.length,
-      bracket: normalizeSavedBracket(session.bracket, generationMode),
+      bracket: normalizeSavedBracket(session.bracket, generationMode, levelMode),
     });
   } catch (error) {
     console.error(error);
@@ -649,18 +700,19 @@ export async function POST(req: Request) {
         playerStats: [],
       };
 
-      const storedPayload = buildStoredVariantPayload(session.bracket, "STANDARD", {
+      const storedPayload = buildStoredVariantPayload(session.bracket, "STANDARD", levelMode, {
         config: levelConfig,
         rounds: null as unknown,
         summary: aggregateSummary as unknown,
       });
 
       // rounds와 summary를 레벨그룹 구조로 오버라이드
+      const variantKey = getVariantKey("STANDARD", levelMode);
       const roundsEnvelope = storedPayload.rounds as { variants: Record<string, unknown> };
-      roundsEnvelope.variants["STANDARD"] = { rounds: null, levelGroupRounds };
+      roundsEnvelope.variants[variantKey] = { rounds: null, levelGroupRounds };
 
       const summaryEnvelope = storedPayload.summary as { variants: Record<string, unknown> };
-      summaryEnvelope.variants["STANDARD"] = { summary: aggregateSummary, levelGroupSummaries };
+      summaryEnvelope.variants[variantKey] = { summary: aggregateSummary, levelGroupSummaries };
 
       const savedBracket = await prisma.sessionBracket.upsert({
         where: { sessionId: session.id },
@@ -699,7 +751,7 @@ export async function POST(req: Request) {
         sessionId: session.id,
         sessionTitle: session.title,
         participantCount: session.participants.length,
-        bracket: normalizeSavedBracket(savedBracket, "STANDARD"),
+        bracket: normalizeSavedBracket(savedBracket, "STANDARD", levelMode),
       });
     }
 
@@ -720,6 +772,7 @@ export async function POST(req: Request) {
     const storedPayload = buildStoredVariantPayload(
       session.bracket,
       generationMode,
+      levelMode,
       generated
     );
 
@@ -762,7 +815,7 @@ export async function POST(req: Request) {
       sessionId: session.id,
       sessionTitle: session.title,
       participantCount: session.participants.length,
-      bracket: normalizeSavedBracket(savedBracket, generationMode),
+      bracket: normalizeSavedBracket(savedBracket, generationMode, levelMode),
     });
   } catch (error) {
     console.error(error);

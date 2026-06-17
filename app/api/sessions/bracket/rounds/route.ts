@@ -2,15 +2,14 @@ import { requireAuthAdmin, unauthorizedResponse, notFoundResponse } from "@/lib/
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { ensureSessionBracketTable } from "@/lib/session-bracket-schema";
-
-type BracketMode = "STANDARD" | "TEAM_BATTLE";
+import { getVariantKey, normalizeLevelMode, type BracketMode } from "@/lib/bracket-variant-key";
 
 function normalizeBracketMode(value: string | null | undefined): BracketMode {
   return value === "TEAM_BATTLE" ? "TEAM_BATTLE" : "STANDARD";
 }
 
 // PATCH /api/sessions/bracket/rounds
-// Body: { sessionId, generationMode, rounds, levelGroupId? }
+// Body: { sessionId, generationMode, levelMode?, rounds, levelGroupId? }
 export async function PATCH(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -19,6 +18,7 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const sessionId = Number(body.sessionId);
     const generationMode = normalizeBracketMode(body.generationMode);
+    const levelMode = normalizeLevelMode(body.levelMode);
     const rounds = body.rounds;
     const levelGroupId = typeof body.levelGroupId === "string" ? body.levelGroupId : null;
 
@@ -45,15 +45,16 @@ export async function PATCH(req: Request) {
       summary: unknown;
     };
 
-    type VariantEnvelope<T> = { variants?: Partial<Record<BracketMode, T>> };
+    type VariantEnvelope<T> = { variants?: Partial<Record<string, T>> };
     const roundsEnvelope = bracketRecord.rounds as VariantEnvelope<{
       rounds: unknown;
       levelGroupRounds?: unknown;
     }>;
     const isVariant = Boolean(roundsEnvelope?.variants);
+    const variantKey = getVariantKey(generationMode, levelMode);
 
     // 레벨 그룹 모드: 해당 그룹 rounds만 업데이트
-    const variantData = isVariant ? roundsEnvelope.variants?.[generationMode] : null;
+    const variantData = isVariant ? (roundsEnvelope.variants?.[variantKey] ?? roundsEnvelope.variants?.["STANDARD"]) : null;
     const isLevelGroupMode = levelGroupId !== null && variantData && "levelGroupRounds" in variantData;
 
     if (isLevelGroupMode && variantData) {
@@ -62,7 +63,7 @@ export async function PATCH(req: Request) {
       const newRoundsPayload = {
         variants: {
           ...roundsEnvelope.variants,
-          [generationMode]: {
+          [variantKey]: {
             ...variantData,
             levelGroupRounds: {
               ...levelGroupRounds,
@@ -80,13 +81,13 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // 기존 일반 모드
+    // 일반 모드
     let newRoundsPayload: unknown;
     if (isVariant) {
       newRoundsPayload = {
         variants: {
           ...roundsEnvelope.variants,
-          [generationMode]: { rounds },
+          [variantKey]: { rounds },
         },
       };
     } else {

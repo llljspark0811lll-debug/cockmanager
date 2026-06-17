@@ -1,4 +1,4 @@
-const CACHE_NAME = "kokmani-pwa-v3";
+const CACHE_NAME = "kokmani-pwa-v1781668751159";
 const PRECACHE_URLS = [
   "/",
   "/admin/login",
