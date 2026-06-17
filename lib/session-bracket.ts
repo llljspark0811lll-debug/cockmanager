@@ -1686,11 +1686,17 @@ function adjustSelectedForGenderBalance(
       (states.get(b.playerId)?.games ?? 0) -
       (states.get(a.playerId)?.games ?? 0)
   )[0]!;
-  const playerIn = largerResting.sort(
-    (a, b) =>
-      (states.get(a.playerId)?.games ?? 0) -
-      (states.get(b.playerId)?.games ?? 0)
-  )[0]!;
+  const outGames = states.get(playerOut.playerId)?.games ?? 0;
+  // playerIn은 playerOut보다 경기수가 적을 때만 교체 — 더 많이 뛴 사람을 넣으면 경기수 불균형 심화
+  const playerIn = largerResting
+    .filter((p) => (states.get(p.playerId)?.games ?? 0) < outGames)
+    .sort(
+      (a, b) =>
+        (states.get(a.playerId)?.games ?? 0) -
+        (states.get(b.playerId)?.games ?? 0)
+    )[0];
+
+  if (!playerIn) return selected;
 
   return selected
     .filter((p) => p.playerId !== playerOut.playerId)
