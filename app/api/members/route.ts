@@ -212,10 +212,13 @@ export async function PUT(req: Request) {
       );
     }
 
-    const existingMember = await findClubMember(
-      memberId,
-      admin.clubId
-    );
+    const [existingMember, clubLevels] = await Promise.all([
+      findClubMember(memberId, admin.clubId),
+      prisma.clubLevel.findMany({
+        where: { clubId: admin.clubId },
+        select: { rank: true, name: true },
+      }),
+    ]);
 
     if (!existingMember) {
       return notFoundResponse("수정할 회원을 찾을 수 없습니다.");
@@ -236,6 +239,12 @@ export async function PUT(req: Request) {
         { status: 409 }
       );
     }
+
+    const levelNameMap = new Map(clubLevels.map((l) => [String(l.rank), l.name]));
+    const getLevelName = (rank: string | null) => {
+      if (!rank) return "-";
+      return levelNameMap.get(rank) ?? rank;
+    };
 
     const formatBirth = (value: Date | null) => {
       if (!value) return "-";
@@ -259,7 +268,7 @@ export async function PUT(req: Request) {
     if (existingMember.phone !== normalizedPhone)
       changes.push({ field: "연락처", before: existingMember.phone || "-", after: normalizedPhone || "-" });
     if ((existingMember.level ?? "-") !== (level ?? "-"))
-      changes.push({ field: "급수", before: existingMember.level || "-", after: level || "-" });
+      changes.push({ field: "급수", before: getLevelName(existingMember.level), after: getLevelName(level) });
     if ((existingMember.customFieldValue ?? "") !== normalizedCustomFieldValue)
       changes.push({ field: "추가정보", before: existingMember.customFieldValue || "-", after: normalizedCustomFieldValue || "-" });
     if ((existingMember.note ?? "") !== normalizedNote)
