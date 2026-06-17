@@ -879,19 +879,6 @@ export function SessionBracketPanel({
     );
   }
 
-  function addFilterGroup() {
-    const nextIndex = filterGroups.length;
-    setFilterGroups((prev) => [
-      ...prev,
-      { id: `group_${nextIndex}`, name: `그룹 ${nextIndex + 1}`, levels: [], courtCount: 1 },
-    ]);
-  }
-
-  function removeFilterGroup(groupId: string) {
-    setFilterGroups((prev) => prev.filter((g) => g.id !== groupId));
-  }
-
-
   async function requestBracketGeneration(relaxedMode = false) {
     const activeLevelMode = generationMode === "STANDARD" ? levelMode : "none";
 
@@ -1493,15 +1480,6 @@ export function SessionBracketPanel({
                           </span>
                         ))}
                       </div>
-                      {filterGroups.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => removeFilterGroup(g.id)}
-                          className="text-[11px] font-bold text-slate-400 hover:text-rose-500"
-                        >
-                          삭제
-                        </button>
-                      )}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {/* 이 그룹에 배정된 급수 (탭하면 해제) */}
@@ -1541,15 +1519,6 @@ export function SessionBracketPanel({
                     </div>
                   </div>
                 ))}
-                {filterGroups.length < 4 && (
-                  <button
-                    type="button"
-                    onClick={addFilterGroup}
-                    className="w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-500 hover:border-slate-400 hover:text-slate-700"
-                  >
-                    + 그룹 추가
-                  </button>
-                )}
               </div>
             )}
 
