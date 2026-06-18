@@ -1576,7 +1576,7 @@ export default function PublicSessionPage() {
                   <div className="rounded-[1.5rem] border border-slate-200 p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-black text-slate-900">댓글 <span className="text-sm font-semibold text-slate-400">({commentsTotalCount}개)</span></h3>
+                        <h3 className="text-lg font-black text-slate-900">댓글</h3>
                         <p className="mt-1 text-sm text-slate-500">
                           게스트 요청, 콕 구매, 특이사항 같은 내용을 자유롭게 남겨주세요.
                         </p>

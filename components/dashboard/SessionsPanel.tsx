@@ -1040,6 +1040,11 @@ export function SessionsPanel({
       return;
     }
 
+    if (selectedSession.status === "CLOSED") {
+      alert("마감된 일정은 수정할 수 없습니다. 모집중으로 변경 후 다시 시도해주세요.");
+      return;
+    }
+
     setEditingSessionId(selectedSession.id);
     setForm(toSessionForm(selectedSession));
   }
