@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PaginationControls } from "@/components/dashboard/PaginationControls";
 import type {
   ClubLevel,
@@ -99,7 +99,8 @@ type ParticipantSectionProps = {
   onPageChange: (page: number) => void;
 };
 
-const SESSION_LIST_PAGE_SIZE = 5;
+const SESSION_LIST_PAGE_SIZE_DESKTOP = 5;
+const SESSION_LIST_PAGE_SIZE_MOBILE = 3;
 const PARTICIPANT_LIST_PAGE_SIZE = 15;
 
 const SESSION_STATUS_LABEL: Record<ClubSession["status"], string> = {
@@ -641,6 +642,21 @@ export function SessionsPanel({
   const [editingSessionId, setEditingSessionId] = useState<number | null>(
     null
   );
+  const formSectionRef = useRef<HTMLElement>(null);
+  const [sessionListPageSize, setSessionListPageSize] = useState(
+    typeof window !== "undefined" && window.innerWidth < 768
+      ? SESSION_LIST_PAGE_SIZE_MOBILE
+      : SESSION_LIST_PAGE_SIZE_DESKTOP
+  );
+  useEffect(() => {
+    function handleResize() {
+      setSessionListPageSize(
+        window.innerWidth < 768 ? SESSION_LIST_PAGE_SIZE_MOBILE : SESSION_LIST_PAGE_SIZE_DESKTOP
+      );
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   const [registeredFilters, setRegisteredFilters] = useState(
     initialParticipantFilters
   );
@@ -682,11 +698,11 @@ export function SessionsPanel({
   useEffect(() => {
     const totalPages = Math.max(
       1,
-      Math.ceil(sessions.length / SESSION_LIST_PAGE_SIZE)
+      Math.ceil(sessions.length / sessionListPageSize)
     );
 
     setSessionListPage((current) => Math.min(current, totalPages));
-  }, [sessions.length]);
+  }, [sessions.length, sessionListPageSize]);
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -702,9 +718,9 @@ export function SessionsPanel({
     }
 
     setSessionListPage(
-      Math.floor(selectedIndex / SESSION_LIST_PAGE_SIZE) + 1
+      Math.floor(selectedIndex / sessionListPageSize) + 1
     );
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, sessions, sessionListPageSize]);
 
   useEffect(() => {
     if (!selectedSession) return;
@@ -722,17 +738,17 @@ export function SessionsPanel({
 
   const sessionListTotalPages = Math.max(
     1,
-    Math.ceil(sessions.length / SESSION_LIST_PAGE_SIZE)
+    Math.ceil(sessions.length / sessionListPageSize)
   );
   const paginatedSessions = useMemo(() => {
     const startIndex =
-      (sessionListPage - 1) * SESSION_LIST_PAGE_SIZE;
+      (sessionListPage - 1) * sessionListPageSize;
 
     return sessions.slice(
       startIndex,
-      startIndex + SESSION_LIST_PAGE_SIZE
+      startIndex + sessionListPageSize
     );
-  }, [sessionListPage, sessions]);
+  }, [sessionListPage, sessions, sessionListPageSize]);
 
   const publicSessionLink = useMemo(() => {
     if (!selectedSession) {
@@ -1047,6 +1063,9 @@ export function SessionsPanel({
 
     setEditingSessionId(selectedSession.id);
     setForm(toSessionForm(selectedSession));
+    setTimeout(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   return (
@@ -1141,7 +1160,7 @@ export function SessionsPanel({
         </div>
       ) : null}
       <div className="min-w-0 space-y-6">
-        <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+        <section ref={formSectionRef} className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-xl font-black text-slate-900">
@@ -1326,7 +1345,7 @@ export function SessionsPanel({
           </div>
 
 
-          {sessions.length > SESSION_LIST_PAGE_SIZE ? (
+          {sessions.length > sessionListPageSize ? (
             <div className="mt-4 flex items-center justify-center gap-2">
               <button
                 onClick={() =>
