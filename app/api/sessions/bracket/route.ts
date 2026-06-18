@@ -735,6 +735,7 @@ export async function POST(req: Request) {
       ]);
       const levelNameMap = new Map(clubLevels.map((l) => [String(l.rank), l.name]));
       const stats = calcPlayerStats(players, levelNameMap);
+      const groupNameMap = new Map(levelGroupsConfig.map((g) => [g.id, g.name]));
       void sendTelegramAlert({
         event: "SESSION_BRACKET_CREATE",
         clubName: club?.name ?? String(admin.clubId),
@@ -745,6 +746,12 @@ export async function POST(req: Request) {
         separateByGender,
         fixedPairsCount: fixedPairs.length,
         ...stats,
+        levelGroupRounds: groupResults.map((result) => ({
+          groupName: groupNameMap.get(result.groupId) ?? result.groupId,
+          rounds: result.rounds,
+          playerStats: result.summary.playerStats,
+        })),
+        levelNameMap: Object.fromEntries(levelNameMap),
       });
 
       return NextResponse.json({
@@ -809,6 +816,9 @@ export async function POST(req: Request) {
       separateByGender,
       fixedPairsCount: fixedPairs.length,
       ...stats,
+      rounds: generated.rounds,
+      playerStats: generated.summary.playerStats,
+      levelNameMap: Object.fromEntries(levelNameMap),
     });
 
     return NextResponse.json({

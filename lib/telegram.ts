@@ -6,6 +6,19 @@ type TelegramNewClubAlertInput = {
 
 type BracketGenerationMode = "STANDARD" | "TEAM_BATTLE";
 
+type TelegramBracketPlayer = { name: string; gender: string; level: string };
+type TelegramBracketMatch = {
+  courtNumber: number;
+  teamA: { players: TelegramBracketPlayer[] };
+  teamB: { players: TelegramBracketPlayer[] };
+};
+type TelegramBracketRound = {
+  roundNumber: number;
+  matches: TelegramBracketMatch[];
+  restingPlayers: TelegramBracketPlayer[];
+};
+type TelegramPlayerStat = { name: string; gender: string; level: string; games: number; rests: number };
+
 export type TelegramAlertInput =
   | {
       event: "ACCOUNT_DELETE";
@@ -61,6 +74,10 @@ export type TelegramAlertInput =
       maleCount: number;
       femaleCount: number;
       levelCounts: Record<string, number>;
+      rounds?: TelegramBracketRound[];
+      playerStats?: TelegramPlayerStat[];
+      levelGroupRounds?: { groupName: string; rounds: TelegramBracketRound[]; playerStats?: TelegramPlayerStat[] }[];
+      levelNameMap?: Record<string, string>;
     }
   | {
       event: "SUPPORT_INQUIRY";
@@ -209,6 +226,53 @@ function getBracketModeLabel(mode: BracketGenerationMode) {
   return mode === "TEAM_BATTLE" ? "팀대항 자동대진" : "일반 자동대진";
 }
 
+function normalizeGenderShort(gender: string): string {
+  const v = gender.trim().toLowerCase();
+  if (["남", "남자", "m", "male"].includes(v)) return "남";
+  if (["여", "여자", "f", "female"].includes(v)) return "여";
+  return gender.trim() || "-";
+}
+
+function formatPlayerStatsText(
+  stats: TelegramPlayerStat[],
+  levelNameMap?: Record<string, string>
+): string[] {
+  if (stats.length === 0) return [];
+  const lines = ["── 경기 수 ──"];
+  for (const s of stats) {
+    const levelName = levelNameMap?.[s.level] ?? s.level;
+    const restSuffix = s.rests > 0 ? ` (휴식 ${s.rests})` : "";
+    lines.push(`${s.name}(${normalizeGenderShort(s.gender)}·${levelName}): ${s.games}경기${restSuffix}`);
+  }
+  return lines;
+}
+
+function formatBracketRoundsText(
+  rounds: TelegramBracketRound[],
+  levelNameMap?: Record<string, string>
+): string[] {
+  const lines: string[] = [];
+  for (const round of rounds) {
+    lines.push(`[라운드 ${round.roundNumber}]`);
+    for (const match of round.matches) {
+      const teamText = (players: TelegramBracketPlayer[]) =>
+        players
+          .map((p) => {
+            const levelName = levelNameMap?.[p.level] ?? p.level;
+            return `${p.name}(${normalizeGenderShort(p.gender)}·${levelName})`;
+          })
+          .join("/");
+      lines.push(`${match.courtNumber}코트: ${teamText(match.teamA.players)} vs ${teamText(match.teamB.players)}`);
+    }
+    if (round.restingPlayers.length > 0) {
+      lines.push(`휴식: ${round.restingPlayers.map((p) => p.name).join(", ")}`);
+    }
+    lines.push("");
+  }
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines;
+}
+
 function buildNewClubAlertMessage({ clubName }: TelegramNewClubAlertInput) {
   return ["🎉 콕매니저 새 클럽 생성", `클럽: ${clubName}`].join("\n");
 }
@@ -330,7 +394,7 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([level, count]) => `${level} ${count}명`)
         .join(" / ");
-      return [
+      const lines = [
         "🏸 자동 대진 생성",
         `클럽: ${input.clubName}`,
         `일정: ${input.sessionTitle}`,
@@ -341,7 +405,23 @@ function buildAlertMessage(input: TelegramAlertInput): string {
         `고정 파트너: ${input.fixedPairsCount > 0 ? `${input.fixedPairsCount}쌍` : "없음"}`,
         `참가 선수: 총 ${input.totalPlayers}명 (남 ${input.maleCount}명 / 여 ${input.femaleCount}명)`,
         ...(levelSummary ? [`급수별: ${levelSummary}`] : []),
-      ].join("\n");
+      ];
+      if (input.levelGroupRounds && input.levelGroupRounds.length > 0) {
+        for (const group of input.levelGroupRounds) {
+          lines.push("", `── ${group.groupName} ──`);
+          lines.push(...formatBracketRoundsText(group.rounds, input.levelNameMap));
+          if (group.playerStats && group.playerStats.length > 0) {
+            lines.push(...formatPlayerStatsText(group.playerStats, input.levelNameMap));
+          }
+        }
+      } else if (input.rounds && input.rounds.length > 0) {
+        lines.push("──────────────────────");
+        lines.push(...formatBracketRoundsText(input.rounds, input.levelNameMap));
+        if (input.playerStats && input.playerStats.length > 0) {
+          lines.push(...formatPlayerStatsText(input.playerStats, input.levelNameMap));
+        }
+      }
+      return lines.join("\n");
     }
 
     case "SUPPORT_INQUIRY":

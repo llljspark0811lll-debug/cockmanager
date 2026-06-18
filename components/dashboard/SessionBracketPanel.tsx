@@ -252,11 +252,13 @@ export function SessionBracketPanel({
   const [generationMode, setGenerationMode] = useState<
     "STANDARD" | "TEAM_BATTLE"
   >("STANDARD");
-  const [courtCount, setCourtCount] = useState(
-    buildDefaultCourtCount(session)
-  );
-  const [minGamesPerPlayer, setMinGamesPerPlayer] = useState(2);
-  const [separateByGender, setSeparateByGender] = useState(false);
+  type SlotSettings = {
+    courtCount: number;
+    minGamesPerPlayer: number;
+    separateByGender: boolean;
+    fixedPairs: Array<[string, string]>;
+  };
+  const [slotSettings, setSlotSettings] = useState<Record<string, SlotSettings>>({});
   const [teamLabels, setTeamLabels] = useState({ A: "팀A", B: "팀B" });
   const [teamAssignments, setTeamAssignments] = useState<
     Record<string, "A" | "B">
@@ -274,7 +276,7 @@ export function SessionBracketPanel({
   const [exportingMode, setExportingMode] = useState<
     "download" | null
   >(null);
-  const [fixedPairs, setFixedPairs] = useState<Array<[string, string]>>([]);
+  // fixedPairs → slotSettings 안으로 통합됨 (아래 slotKey 이후 참조)
   const [pendingPairPlayerId, setPendingPairPlayerId] = useState<string | null>(null);
   // 점수 입력 모드: 어느 경기가 활성화됐는지 (roundNumber-courtNumber)
   const [scoreEditKey, setScoreEditKey] = useState<string | null>(null);
@@ -301,6 +303,35 @@ export function SessionBracketPanel({
   const bracket = bracketSlots[slotKey] ?? null;
   const loaded = loadedSlots.has(slotKey);
 
+  // 슬롯별 독립 설정값 — 슬롯이 없으면 기본값 사용
+  const _defaultSlotSettings: SlotSettings = {
+    courtCount: tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session),
+    minGamesPerPlayer: tutorialDefaultsActive ? 4 : 2,
+    separateByGender: false,
+    fixedPairs: [],
+  };
+  const { courtCount, minGamesPerPlayer, separateByGender, fixedPairs } =
+    slotSettings[slotKey] ?? _defaultSlotSettings;
+
+  function updateCurrentSlot(patch: Partial<SlotSettings>) {
+    setSlotSettings((prev) => ({
+      ...prev,
+      [slotKey]: { ...(prev[slotKey] ?? _defaultSlotSettings), ...patch },
+    }));
+  }
+  const setCourtCount = (n: number) => updateCurrentSlot({ courtCount: n });
+  const setMinGamesPerPlayer = (n: number) => updateCurrentSlot({ minGamesPerPlayer: n });
+  const setSeparateByGender = (b: boolean) => updateCurrentSlot({ separateByGender: b });
+  function setFixedPairs(
+    updater: Array<[string, string]> | ((prev: Array<[string, string]>) => Array<[string, string]>)
+  ) {
+    setSlotSettings((prev) => {
+      const curr = prev[slotKey] ?? _defaultSlotSettings;
+      const newPairs = typeof updater === "function" ? updater(curr.fixedPairs) : updater;
+      return { ...prev, [slotKey]: { ...curr, fixedPairs: newPairs } };
+    });
+  }
+
   function markSlotLoaded(key: string) {
     loadedSlotsRef.current.add(key);
     setLoadedSlots(new Set(loadedSlotsRef.current));
@@ -317,12 +348,9 @@ export function SessionBracketPanel({
   // 세션 변경 시 전체 초기화
   useEffect(() => {
     setGenerationMode("STANDARD");
-    setCourtCount(tutorialDefaultsActive ? 2 : buildDefaultCourtCount(session));
-    setMinGamesPerPlayer(tutorialDefaultsActive ? 4 : 2);
-    setSeparateByGender(false);
+    setSlotSettings({});
     setTeamLabels({ A: "팀A", B: "팀B" });
     setTeamAssignments({});
-    setFixedPairs([]);
     setPendingPairPlayerId(null);
     setSwapSelection(null);
     setError("");
@@ -406,9 +434,6 @@ export function SessionBracketPanel({
 
         setBracketSlots((prev) => ({ ...prev, [currentSlotKey]: data.bracket }));
 
-        // 초기 슬롯(none/TEAM_BATTLE)에서만 폼 설정 복원
-        const isInitialSlot = currentSlotKey === "STANDARD_none" || currentSlotKey === "TEAM_BATTLE";
-
         if (data.bracket) {
           // 급수필터별 슬롯: filterGroups 복원
           if (currentSlotKey === "STANDARD_filter" && !tutorialDefaultsActive) {
@@ -422,11 +447,21 @@ export function SessionBracketPanel({
           if (data.bracket.levelGroupData && data.bracket.levelGroupData.length > 0) {
             setActiveGroupId(data.bracket.levelGroupData[0]!.groupId);
           }
+          // 슬롯별 독립 설정 복원 — 모든 슬롯에 적용
+          if (!tutorialDefaultsActive) {
+            setSlotSettings((prev) => ({
+              ...prev,
+              [currentSlotKey]: {
+                courtCount: data.bracket!.config.courtCount,
+                minGamesPerPlayer: data.bracket!.config.minGamesPerPlayer,
+                separateByGender: data.bracket!.config.separateByGender,
+                fixedPairs: data.bracket!.config.fixedPairs ?? [],
+              },
+            }));
+          }
+          // teamLabels / teamAssignments 복원은 STANDARD_none / TEAM_BATTLE 슬롯만
+          const isInitialSlot = currentSlotKey === "STANDARD_none" || currentSlotKey === "TEAM_BATTLE";
           if (isInitialSlot && !tutorialDefaultsActive) {
-            setCourtCount(data.bracket.config.courtCount);
-            setMinGamesPerPlayer(data.bracket.config.minGamesPerPlayer);
-            setSeparateByGender(data.bracket.config.separateByGender);
-            setFixedPairs(data.bracket.config.fixedPairs ?? []);
             let resolved = {
               A: data.bracket.config.teamLabels?.A?.trim() || "팀A",
               B: data.bracket.config.teamLabels?.B?.trim() || "팀B",
