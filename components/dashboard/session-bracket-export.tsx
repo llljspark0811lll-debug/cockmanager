@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type {
   ClubLevel,
@@ -29,6 +29,7 @@ const MATCH_ROW_HEIGHT = 48;
 const REST_ROW_HEIGHT = 42;
 const SECTION_GAP = 26;
 const BODY_FONT = 20;
+
 
 function sanitizeFileName(value: string) {
   return value
@@ -148,8 +149,36 @@ function sectionHeight(round: SessionBracket["rounds"][number]) {
   );
 }
 
+function mergeGroupRounds(bracket: SessionBracket): SessionBracket["rounds"] {
+  const groups = bracket.levelGroupData;
+  if (!groups || groups.length === 0) return bracket.rounds;
+
+  const maxRound = Math.max(
+    ...groups.map((g) => g.rounds.reduce((m, r) => Math.max(m, r.roundNumber), 0))
+  );
+
+  return Array.from({ length: maxRound }, (_, ri) => {
+    const allMatches: SessionBracketMatch[] = [];
+    const allResting: SessionBracketPlayerEntry[] = [];
+    let courtOffset = 0;
+
+    groups.forEach((g) => {
+      const round = g.rounds.find((r) => r.roundNumber === ri + 1);
+      if (!round) return;
+      round.matches.forEach((m) => {
+        allMatches.push({ ...m, courtNumber: m.courtNumber + courtOffset });
+      });
+      courtOffset += round.matches.length;
+      allResting.push(...round.restingPlayers);
+    });
+
+    return { roundNumber: ri + 1, matches: allMatches, restingPlayers: allResting };
+  });
+}
+
 function totalImageHeight(bracket: SessionBracket) {
-  const roundsHeight = bracket.rounds.reduce(
+  const rounds = mergeGroupRounds(bracket);
+  const roundsHeight = rounds.reduce(
     (sum, round) => sum + sectionHeight(round) + SECTION_GAP,
     0
   );
@@ -164,6 +193,7 @@ function totalImageHeight(bracket: SessionBracket) {
     24
   );
 }
+
 
 function tableColumnX() {
   const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
@@ -185,6 +215,15 @@ function renderSummary(bracket: SessionBracket, y: number) {
   const teamBattleLabel = `${bracket.config.teamLabels?.A?.trim() || "팀A"} vs ${
     bracket.config.teamLabels?.B?.trim() || "팀B"
   }`;
+  const groups = bracket.levelGroupData;
+  const isMultiGroup = groups && groups.length > 0;
+  const totalRounds = isMultiGroup
+    ? groups.reduce((s, g) => s + g.summary.totalRounds, 0)
+    : bracket.summary.totalRounds;
+  const totalMatches = isMultiGroup
+    ? groups.reduce((s, g) => s + g.summary.totalMatches, 0)
+    : bracket.summary.totalMatches;
+
   const entries = [
     {
       label: "코트 / 최소 경기",
@@ -193,14 +232,14 @@ function renderSummary(bracket: SessionBracket, y: number) {
     },
     {
       label: "총 라운드 / 총 경기",
-      value: `${bracket.summary.totalRounds}라운드 · ${bracket.summary.totalMatches}경기`,
+      value: `${totalRounds}라운드 · ${totalMatches}경기`,
       fill: "#0f172a",
     },
     {
       label: "생성 방식",
-      value: bracket.config.separateByGender
-        ? "남복 / 여복 분리"
-        : "랜덤 복식",
+      value: isMultiGroup
+        ? (bracket.config.levelMode === "filter" ? "급수필터별" : "동일급수별")
+        : bracket.config.separateByGender ? "남복 / 여복 분리" : "랜덤 복식",
       fill: "#0f172a",
     },
   ];
@@ -243,6 +282,15 @@ function renderSummaryCards(bracket: SessionBracket, y: number) {
   const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
   const cardGap = 16;
   const cardWidth = (innerWidth - cardGap * 2) / 3;
+  const groups = bracket.levelGroupData;
+  const isMultiGroup = groups && groups.length > 0;
+  const totalRounds = isMultiGroup
+    ? groups.reduce((s, g) => s + g.summary.totalRounds, 0)
+    : bracket.summary.totalRounds;
+  const totalMatches = isMultiGroup
+    ? groups.reduce((s, g) => s + g.summary.totalMatches, 0)
+    : bracket.summary.totalMatches;
+
   const entries = [
     {
       label: "코트 / 최소 경기",
@@ -251,7 +299,7 @@ function renderSummaryCards(bracket: SessionBracket, y: number) {
     },
     {
       label: "총 라운드 / 총 경기",
-      value: `${bracket.summary.totalRounds}라운드 · ${bracket.summary.totalMatches}경기`,
+      value: `${totalRounds}라운드 · ${totalMatches}경기`,
       fill: "#0f172a",
     },
     {
@@ -474,7 +522,7 @@ function renderSvg(session: ClubSession, bracket: SessionBracket, clubLevels: Cl
   markup += renderSummaryCards(bracket, currentY);
   currentY += SUMMARY_HEIGHT + 28;
 
-  bracket.rounds.forEach((round) => {
+  mergeGroupRounds(bracket).forEach((round) => {
     markup += renderRoundSection(round, currentY, bracket, clubLevels, includeScores);
     currentY += sectionHeight(round) + SECTION_GAP;
   });
