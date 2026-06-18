@@ -6,6 +6,7 @@ import type {
   SessionBracket,
   SessionBracketMatch,
   SessionBracketPlayerEntry,
+  SessionBracketRound,
 } from "@/components/dashboard/types";
 import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
 
@@ -29,6 +30,17 @@ const MATCH_ROW_HEIGHT = 48;
 const REST_ROW_HEIGHT = 42;
 const SECTION_GAP = 26;
 const BODY_FONT = 20;
+const RANK_SECTION_GAP = 36;
+const RANK_HEADER_HEIGHT = 52;
+const RANK_TABLE_HEADER_HEIGHT = 44;
+const RANK_ROW_HEIGHT = 44;
+const RANK_MSG_HEIGHT = 72;
+const RC_RANK = 70;
+const RC_NAME = 400;
+const RC_GAMES = 96;
+const RC_WIN = 110;
+const RC_LOSS = 110;
+const RC_WP = 110;
 
 
 function sanitizeFileName(value: string) {
@@ -164,7 +176,10 @@ function mergeGroupRounds(bracket: SessionBracket): SessionBracket["rounds"] {
 
     groups.forEach((g) => {
       const round = g.rounds.find((r) => r.roundNumber === ri + 1);
-      if (!round) return;
+      if (!round) {
+        allResting.push(...g.summary.playerStats);
+        return;
+      }
       round.matches.forEach((m) => {
         allMatches.push({ ...m, courtNumber: m.courtNumber + courtOffset });
       });
@@ -176,7 +191,7 @@ function mergeGroupRounds(bracket: SessionBracket): SessionBracket["rounds"] {
   });
 }
 
-function totalImageHeight(bracket: SessionBracket) {
+function totalImageHeight(bracket: SessionBracket, includeScores = false) {
   const rounds = mergeGroupRounds(bracket);
   const roundsHeight = rounds.reduce(
     (sum, round) => sum + sectionHeight(round) + SECTION_GAP,
@@ -190,7 +205,8 @@ function totalImageHeight(bracket: SessionBracket) {
     SUMMARY_HEIGHT +
     28 +
     roundsHeight +
-    24
+    24 +
+    totalRankingHeight(bracket, includeScores)
   );
 }
 
@@ -494,8 +510,265 @@ function renderRoundSection(
   return markup;
 }
 
+
+interface PlayerRankEntry {
+  player: SessionBracketPlayerEntry;
+  games: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}
+
+function allScoresEntered(rounds: SessionBracketRound[]): boolean {
+  const all = rounds.flatMap((r) => r.matches);
+  return all.length > 0 && all.every((m) => m.scoreA != null && m.scoreB != null);
+}
+
+function computePlayerRankings(rounds: SessionBracketRound[]): PlayerRankEntry[] {
+  const map = new Map<string, PlayerRankEntry>();
+  for (const round of rounds) {
+    for (const match of round.matches) {
+      if (match.scoreA == null || match.scoreB == null) continue;
+      const sA = match.scoreA;
+      const sB = match.scoreB;
+      const aWon = sA > sB;
+      const bWon = sB > sA;
+      const drew = !aWon && !bWon;
+      const update = (
+        player: SessionBracketPlayerEntry,
+        pf: number,
+        pa: number,
+        won: boolean,
+        draw: boolean
+      ) => {
+        let e = map.get(player.playerId);
+        if (!e) {
+          e = { player, games: 0, wins: 0, draws: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
+          map.set(player.playerId, e);
+        }
+        e.games++;
+        e.pointsFor += pf;
+        e.pointsAgainst += pa;
+        if (won) e.wins++;
+        else if (draw) e.draws++;
+        else e.losses++;
+      };
+      for (const p of match.teamA.players) update(p, sA, sB, aWon, drew);
+      for (const p of match.teamB.players) update(p, sB, sA, bWon, drew);
+    }
+  }
+  return [...map.values()].sort((a, b) => {
+    const aWP = a.wins * 2 + a.draws;
+    const bWP = b.wins * 2 + b.draws;
+    if (bWP !== aWP) return bWP - aWP;
+    const aDiff = a.pointsFor - a.pointsAgainst;
+    const bDiff = b.pointsFor - b.pointsAgainst;
+    if (bDiff !== aDiff) return bDiff - aDiff;
+    return b.pointsFor - a.pointsFor;
+  });
+}
+
+function rankingSectionHeight(rowCount: number): number {
+  return RANK_HEADER_HEIGHT + RANK_TABLE_HEADER_HEIGHT + rowCount * RANK_ROW_HEIGHT;
+}
+
+const RANK_INCOMPLETE_HEIGHT = RANK_SECTION_GAP + RANK_HEADER_HEIGHT + RANK_MSG_HEIGHT;
+
+function totalRankingHeight(bracket: SessionBracket, includeScores: boolean): number {
+  if (!includeScores) return 0;
+  const isTeamBattle = bracket.config.generationMode === "TEAM_BATTLE";
+  if (isTeamBattle) {
+    if (!allScoresEntered(bracket.rounds)) return RANK_INCOMPLETE_HEIGHT;
+    return RANK_SECTION_GAP + rankingSectionHeight(2);
+  }
+  const groups = bracket.levelGroupData;
+  if (groups && groups.length > 0) {
+    if (!groups.every((g) => allScoresEntered(g.rounds))) return RANK_INCOMPLETE_HEIGHT;
+    return groups.reduce((sum, g) => {
+      const count = new Set(
+        g.rounds.flatMap((r) =>
+          r.matches.flatMap((m) =>
+            [...m.teamA.players, ...m.teamB.players].map((p) => p.playerId)
+          )
+        )
+      ).size;
+      return sum + RANK_SECTION_GAP + rankingSectionHeight(Math.min(count, 5));
+    }, 0);
+  }
+  const rounds = mergeGroupRounds(bracket);
+  if (!allScoresEntered(rounds)) return RANK_INCOMPLETE_HEIGHT;
+  const count = new Set(
+    rounds.flatMap((r) =>
+      r.matches.flatMap((m) =>
+        [...m.teamA.players, ...m.teamB.players].map((p) => p.playerId)
+      )
+    )
+  ).size;
+  return RANK_SECTION_GAP + rankingSectionHeight(Math.min(count, 5));
+}
+
+function renderPlayerRankingSection(
+  title: string,
+  entries: PlayerRankEntry[],
+  y: number,
+  clubLevels: ClubLevel[]
+): string {
+  const top5 = entries.slice(0, 5);
+  const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
+  const rcDiff = innerWidth - RC_RANK - RC_NAME - RC_GAMES - RC_WIN - RC_LOSS - RC_WP;
+  const xRank = PADDING_X;
+  const xName = PADDING_X + RC_RANK;
+  const xGames = xName + RC_NAME;
+  const xWin = xGames + RC_GAMES;
+  const xLoss = xWin + RC_WIN;
+  const xWP = xLoss + RC_LOSS;
+  const xDiff = xWP + RC_WP;
+
+  let markup = `
+    <rect x="${PADDING_X}" y="${y}" width="${innerWidth}" height="${RANK_HEADER_HEIGHT}" rx="16" fill="#1e293b" />
+    ${textBlock(PADDING_X + 20, y + 34, [escapeXml(title)], { fontSize: 24, lineHeight: 26, fill: "#ffffff", fontWeight: 900 })}
+  `;
+
+  const hy = y + RANK_HEADER_HEIGHT;
+  markup += `
+    <rect x="${xRank}" y="${hy}" width="${RC_RANK}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xName}" y="${hy}" width="${RC_NAME}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xGames}" y="${hy}" width="${RC_GAMES}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xWin}" y="${hy}" width="${RC_WIN}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xLoss}" y="${hy}" width="${RC_LOSS}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xWP}" y="${hy}" width="${RC_WP}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    <rect x="${xDiff}" y="${hy}" width="${rcDiff}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />
+    ${textBlock(xRank + RC_RANK / 2, hy + 28, ["순위"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xName + 16, hy + 28, ["선수"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800 })}
+    ${textBlock(xGames + RC_GAMES / 2, hy + 28, ["경기"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xWin + RC_WIN / 2, hy + 28, ["승"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xLoss + RC_LOSS / 2, hy + 28, ["패"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xWP + RC_WP / 2, hy + 28, ["승점"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xDiff + rcDiff / 2, hy + 28, ["득실차"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+  `;
+
+  top5.forEach((entry, idx) => {
+    const ry = hy + RANK_TABLE_HEADER_HEIGHT + idx * RANK_ROW_HEIGHT;
+    const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+    const diff = entry.pointsFor - entry.pointsAgainst;
+    const diffLabel = diff > 0 ? `+${diff}` : String(diff);
+    const rankColor =
+      idx === 0 ? "#d97706" : idx === 1 ? "#64748b" : idx === 2 ? "#b45309" : "#1e293b";
+    const levelName =
+      clubLevels.find((l) => String(l.rank) === entry.player.level)?.name ?? entry.player.level;
+    const nameLabel = `${stripTrialPrefix(entry.player.name)} ${normalizeGenderLabel(entry.player.gender)} · ${levelName}`;
+    markup += `
+      <rect x="${xRank}" y="${ry}" width="${RC_RANK}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xName}" y="${ry}" width="${RC_NAME}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xGames}" y="${ry}" width="${RC_GAMES}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xWin}" y="${ry}" width="${RC_WIN}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xLoss}" y="${ry}" width="${RC_LOSS}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xWP}" y="${ry}" width="${RC_WP}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      <rect x="${xDiff}" y="${ry}" width="${rcDiff}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />
+      ${textBlock(xRank + RC_RANK / 2, ry + 28, [String(idx + 1)], { fontSize: 20, lineHeight: 22, fill: rankColor, fontWeight: 900, anchor: "middle" })}
+      ${textBlock(xName + 16, ry + 28, wrapText(nameLabel, RC_NAME - 32, BODY_FONT), { fontSize: BODY_FONT, lineHeight: 22, fill: "#1e293b", fontWeight: 700 })}
+      ${textBlock(xGames + RC_GAMES / 2, ry + 28, [String(entry.games)], { fontSize: 20, lineHeight: 22, fill: "#475569", fontWeight: 700, anchor: "middle" })}
+      ${textBlock(xWin + RC_WIN / 2, ry + 28, [String(entry.wins)], { fontSize: 20, lineHeight: 22, fill: "#16a34a", fontWeight: 800, anchor: "middle" })}
+      ${textBlock(xLoss + RC_LOSS / 2, ry + 28, [String(entry.losses)], { fontSize: 20, lineHeight: 22, fill: "#dc2626", fontWeight: 800, anchor: "middle" })}
+      ${textBlock(xWP + RC_WP / 2, ry + 28, [String(entry.wins * 2 + entry.draws)], { fontSize: 22, lineHeight: 24, fill: "#0f172a", fontWeight: 900, anchor: "middle" })}
+      ${textBlock(xDiff + rcDiff / 2, ry + 28, [diffLabel], { fontSize: 20, lineHeight: 22, fill: diff > 0 ? "#16a34a" : diff < 0 ? "#dc2626" : "#475569", fontWeight: 800, anchor: "middle" })}
+    `;
+  });
+
+  return markup;
+}
+
+function renderTeamRankingSection(bracket: SessionBracket, y: number): string {
+  const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
+  const teamALabel = bracket.config.teamLabels?.A?.trim() || "팀A";
+  const teamBLabel = bracket.config.teamLabels?.B?.trim() || "팀B";
+  let teamAWins = 0;
+  let teamBWins = 0;
+  let draws = 0;
+  for (const round of bracket.rounds) {
+    for (const match of round.matches) {
+      if (match.scoreA == null || match.scoreB == null) continue;
+      if (match.scoreA > match.scoreB) teamAWins++;
+      else if (match.scoreB > match.scoreA) teamBWins++;
+      else draws++;
+    }
+  }
+  const totalMatches = teamAWins + teamBWins + draws;
+  const teams = [
+    { label: teamALabel, wins: teamAWins, draws, losses: teamBWins, wp: teamAWins * 2 + draws },
+    { label: teamBLabel, wins: teamBWins, draws, losses: teamAWins, wp: teamBWins * 2 + draws },
+  ].sort((a, b) => b.wp - a.wp);
+
+  const tcRank = 70;
+  const tcTeam = 430;
+  const tcWin = 112;
+  const tcDraw = 112;
+  const tcLoss = 112;
+  const tcWP = innerWidth - tcRank - tcTeam - tcWin - tcDraw - tcLoss;
+  const xRank = PADDING_X;
+  const xTeam = xRank + tcRank;
+  const xWin = xTeam + tcTeam;
+  const xDraw = xWin + tcWin;
+  const xLoss = xDraw + tcDraw;
+  const xWP = xLoss + tcLoss;
+
+  let markup = `
+    <rect x="${PADDING_X}" y="${y}" width="${innerWidth}" height="${RANK_HEADER_HEIGHT}" rx="16" fill="#1e293b" />
+    ${textBlock(PADDING_X + 20, y + 34, ["팀 순위"], { fontSize: 24, lineHeight: 26, fill: "#ffffff", fontWeight: 900 })}
+    ${textBlock(IMAGE_WIDTH - PADDING_X - 20, y + 34, [`총 ${totalMatches}경기`], { fontSize: 18, lineHeight: 20, fill: "#94a3b8", fontWeight: 700, anchor: "end" })}
+  `;
+
+  const hy = y + RANK_HEADER_HEIGHT;
+  for (const col of [
+    { x: xRank, w: tcRank },
+    { x: xTeam, w: tcTeam },
+    { x: xWin, w: tcWin },
+    { x: xDraw, w: tcDraw },
+    { x: xLoss, w: tcLoss },
+    { x: xWP, w: tcWP },
+  ]) {
+    markup += `<rect x="${col.x}" y="${hy}" width="${col.w}" height="${RANK_TABLE_HEADER_HEIGHT}" fill="#e2e8f0" />`;
+  }
+  markup += `
+    ${textBlock(xRank + tcRank / 2, hy + 28, ["순위"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xTeam + 16, hy + 28, ["팀"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800 })}
+    ${textBlock(xWin + tcWin / 2, hy + 28, ["승"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xDraw + tcDraw / 2, hy + 28, ["무"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xLoss + tcLoss / 2, hy + 28, ["패"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+    ${textBlock(xWP + tcWP / 2, hy + 28, ["승점"], { fontSize: 17, lineHeight: 19, fill: "#475569", fontWeight: 800, anchor: "middle" })}
+  `;
+
+  teams.forEach((team, idx) => {
+    const ry = hy + RANK_TABLE_HEADER_HEIGHT + idx * RANK_ROW_HEIGHT;
+    const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+    const rankColor = idx === 0 ? "#d97706" : "#64748b";
+    for (const col of [
+      { x: xRank, w: tcRank },
+      { x: xTeam, w: tcTeam },
+      { x: xWin, w: tcWin },
+      { x: xDraw, w: tcDraw },
+      { x: xLoss, w: tcLoss },
+      { x: xWP, w: tcWP },
+    ]) {
+      markup += `<rect x="${col.x}" y="${ry}" width="${col.w}" height="${RANK_ROW_HEIGHT}" fill="${bg}" />`;
+    }
+    markup += `
+      ${textBlock(xRank + tcRank / 2, ry + 28, [String(idx + 1)], { fontSize: 20, lineHeight: 22, fill: rankColor, fontWeight: 900, anchor: "middle" })}
+      ${textBlock(xTeam + 16, ry + 28, [escapeXml(team.label)], { fontSize: 22, lineHeight: 24, fill: "#1e293b", fontWeight: 900 })}
+      ${textBlock(xWin + tcWin / 2, ry + 28, [String(team.wins)], { fontSize: 20, lineHeight: 22, fill: "#16a34a", fontWeight: 800, anchor: "middle" })}
+      ${textBlock(xDraw + tcDraw / 2, ry + 28, [String(team.draws)], { fontSize: 20, lineHeight: 22, fill: "#475569", fontWeight: 700, anchor: "middle" })}
+      ${textBlock(xLoss + tcLoss / 2, ry + 28, [String(team.losses)], { fontSize: 20, lineHeight: 22, fill: "#dc2626", fontWeight: 800, anchor: "middle" })}
+      ${textBlock(xWP + tcWP / 2, ry + 28, [String(team.wp)], { fontSize: 22, lineHeight: 24, fill: "#0f172a", fontWeight: 900, anchor: "middle" })}
+    `;
+  });
+
+  return markup;
+}
+
 function renderSvg(session: ClubSession, bracket: SessionBracket, clubLevels: ClubLevel[], includeScores = false) {
-  const height = totalImageHeight(bracket);
+  const height = totalImageHeight(bracket, includeScores);
   let currentY = PADDING_Y;
 
   let markup = `
@@ -527,7 +800,51 @@ function renderSvg(session: ClubSession, bracket: SessionBracket, clubLevels: Cl
     currentY += sectionHeight(round) + SECTION_GAP;
   });
 
-  // 워터마크: 헤더 우측 상단 (제목/날짜가 중앙 정렬이라 우측에 여백)
+  // 순위표 (결과 포함 저장 시 항상 표시, 점수 미입력 시 안내 문구)
+  if (includeScores) {
+    const isTeamBattle = bracket.config.generationMode === "TEAM_BATTLE";
+    const innerWidth = IMAGE_WIDTH - PADDING_X * 2;
+    const renderIncompleteNotice = (y: number) => `
+      <rect x="${PADDING_X}" y="${y}" width="${innerWidth}" height="${RANK_HEADER_HEIGHT}" rx="16" fill="#1e293b" />
+      ${textBlock(PADDING_X + 20, y + 34, ["순위"], { fontSize: 24, lineHeight: 26, fill: "#ffffff", fontWeight: 900 })}
+      <rect x="${PADDING_X}" y="${y + RANK_HEADER_HEIGHT}" width="${innerWidth}" height="${RANK_MSG_HEIGHT}" fill="#f8fafc" />
+      ${textBlock(IMAGE_WIDTH / 2, y + RANK_HEADER_HEIGHT + RANK_MSG_HEIGHT / 2 + 8, ["모든 경기 점수를 입력하면 순위표가 표시됩니다."], { fontSize: 19, lineHeight: 22, fill: "#94a3b8", fontWeight: 600, anchor: "middle" })}
+    `;
+    if (isTeamBattle) {
+      currentY += RANK_SECTION_GAP;
+      if (allScoresEntered(bracket.rounds)) {
+        markup += renderTeamRankingSection(bracket, currentY);
+      } else {
+        markup += renderIncompleteNotice(currentY);
+      }
+    } else {
+      const groups = bracket.levelGroupData;
+      if (groups && groups.length > 0) {
+        if (groups.every((g) => allScoresEntered(g.rounds))) {
+          groups.forEach((g) => {
+            const entries = computePlayerRankings(g.rounds);
+            currentY += RANK_SECTION_GAP;
+            markup += renderPlayerRankingSection(`${g.groupName} 순위`, entries, currentY, clubLevels);
+            currentY += rankingSectionHeight(Math.min(entries.length, 5));
+          });
+        } else {
+          currentY += RANK_SECTION_GAP;
+          markup += renderIncompleteNotice(currentY);
+        }
+      } else {
+        const rounds = mergeGroupRounds(bracket);
+        currentY += RANK_SECTION_GAP;
+        if (allScoresEntered(rounds)) {
+          const entries = computePlayerRankings(rounds);
+          markup += renderPlayerRankingSection("순위", entries, currentY, clubLevels);
+        } else {
+          markup += renderIncompleteNotice(currentY);
+        }
+      }
+    }
+  }
+
+    // 워터마크: 헤더 우측 상단 (제목/날짜가 중앙 정렬이라 우측에 여백)
   const wmX = IMAGE_WIDTH - PADDING_X;
   const wmY = PADDING_Y + 62;
   markup += `
@@ -605,7 +922,7 @@ export async function buildBracketImageFiles(
 ) {
   const { includeScores = false } = options;
   const effectiveLevels = clubLevels.length > 0 ? clubLevels : DEFAULT_CLUB_LEVELS;
-  const height = totalImageHeight(bracket);
+  const height = totalImageHeight(bracket, includeScores);
   const svgMarkup = renderSvg(session, bracket, effectiveLevels, includeScores);
   const blob = await svgToPngBlob(svgMarkup, IMAGE_WIDTH, height);
   const suffix = includeScores ? "-결과" : "-자동대진표";

@@ -232,7 +232,7 @@ function ScoreInputRow({
             type="button"
             disabled={saving}
             onClick={() => void onSave(roundNumber, courtNumber, null, null)}
-            className="rounded-xl border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-xl bg-rose-100 px-4 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-200 disabled:opacity-50"
           >
             삭제
           </button>
@@ -612,7 +612,11 @@ export function SessionBracketPanel({
 
       groups.forEach((g) => {
         const round = g.rounds.find((r) => r.roundNumber === ri + 1);
-        if (!round) return;
+        if (!round) {
+          // 이 라운드에 코트 배정 없는 그룹 — 전원 휴식
+          allResting.push(...g.summary.playerStats);
+          return;
+        }
         round.matches.forEach((m, origMatchIdx) => {
           allMatches.push(Object.assign({}, m, {
             courtNumber: m.courtNumber + courtOffset,

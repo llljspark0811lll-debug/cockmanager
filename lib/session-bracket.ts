@@ -2155,19 +2155,6 @@ function generateTeamBattleRounds(
         fixedPairMap
       );
 
-      const selectedIdSet = new Set([
-        ...selectedPlayers.teamAPlayers.map((player) => player.playerId),
-        ...selectedPlayers.teamBPlayers.map((player) => player.playerId),
-      ]);
-
-      const restingPlayers = [...pool.teamAPlayers, ...pool.teamBPlayers].filter(
-        (player) => !selectedIdSet.has(player.playerId)
-      );
-
-      for (const restingPlayer of restingPlayers) {
-        restedPlayerIds.add(restingPlayer.playerId);
-      }
-
       const poolMatches = buildRoundMatchesForTeamBattlePool(
         pool,
         selectedPlayers.teamAPlayers,
@@ -2179,6 +2166,13 @@ function generateTeamBattleRounds(
         random,
         fixedPairMap
       );
+
+      const actualPlayingIds = new Set(
+        poolMatches.flatMap((m) => [...m.teamA.players, ...m.teamB.players]).map((p) => p.playerId)
+      );
+      for (const player of [...pool.teamAPlayers, ...pool.teamBPlayers]) {
+        if (!actualPlayingIds.has(player.playerId)) restedPlayerIds.add(player.playerId);
+      }
 
       roundMatches.push(...poolMatches);
       nextCourtNumber += poolMatches.length;
@@ -2570,10 +2564,6 @@ export function generateSessionBracketLevelGroups(
                 gs.fixedPairMap
               )
             : selectedPlayers;
-        const selectedIdSet = new Set(finalSelected.map((p) => p.playerId));
-        for (const p of pool.players) {
-          if (!selectedIdSet.has(p.playerId)) restedPlayerIds.add(p.playerId);
-        }
         const poolMatches = buildRoundMatchesForPool(
           pool,
           finalSelected,
@@ -2584,6 +2574,14 @@ export function generateSessionBracketLevelGroups(
           gs.random,
           gs.fixedPairMap
         );
+
+        const actualPlayingIds = new Set(
+          poolMatches.flatMap((m) => [...m.teamA.players, ...m.teamB.players]).map((p) => p.playerId)
+        );
+        for (const p of pool.players) {
+          if (!actualPlayingIds.has(p.playerId)) restedPlayerIds.add(p.playerId);
+        }
+
         roundMatches.push(...poolMatches);
         nextCourtNumber += poolMatches.length;
       }
@@ -2791,17 +2789,6 @@ export function generateSessionBracket(
               fixedPairMap
             )
           : selectedPlayers;
-      const selectedIdSet = new Set(
-        finalSelected.map((player) => player.playerId)
-      );
-      const restingPlayers = pool.players.filter(
-        (player) => !selectedIdSet.has(player.playerId)
-      );
-
-      for (const restingPlayer of restingPlayers) {
-        restedPlayerIds.add(restingPlayer.playerId);
-      }
-
       const poolMatches = buildRoundMatchesForPool(
         pool,
         finalSelected,
@@ -2812,6 +2799,15 @@ export function generateSessionBracket(
         random,
         fixedPairMap
       );
+
+      // 실제 경기에 배정된 선수 기준으로 휴식 판단
+      // (selectedPlayers 중 경기 배정에 실패한 leftover도 휴식으로 처리)
+      const actualPlayingIds = new Set(
+        poolMatches.flatMap((m) => [...m.teamA.players, ...m.teamB.players]).map((p) => p.playerId)
+      );
+      for (const player of pool.players) {
+        if (!actualPlayingIds.has(player.playerId)) restedPlayerIds.add(player.playerId);
+      }
 
       roundMatches.push(...poolMatches);
       nextCourtNumber += poolMatches.length;
