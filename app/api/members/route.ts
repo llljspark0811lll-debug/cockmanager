@@ -7,6 +7,7 @@ import { findDuplicateActiveMember } from "@/lib/member-identity";
 import { formatPhoneNumber } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramAlert } from "@/lib/telegram";
+import { DEFAULT_LEVEL_NAMES, LEVEL_COUNT } from "@/lib/dashboard-constants";
 import { NextResponse } from "next/server";
 
 async function findClubMember(
@@ -240,7 +241,13 @@ export async function PUT(req: Request) {
       );
     }
 
-    const levelNameMap = new Map(clubLevels.map((l) => [String(l.rank), l.name]));
+    const defaultLevels = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
+      rank: i + 1,
+      name: DEFAULT_LEVEL_NAMES[i] ?? String(i + 1),
+    }));
+    const savedMap = new Map(clubLevels.map((l) => [l.rank, l.name]));
+    const mergedLevels = defaultLevels.map((d) => ({ rank: d.rank, name: savedMap.get(d.rank) ?? d.name }));
+    const levelNameMap = new Map(mergedLevels.map((l) => [String(l.rank), l.name]));
     const getLevelName = (rank: string | null) => {
       if (!rank) return "-";
       return levelNameMap.get(rank) ?? rank;
