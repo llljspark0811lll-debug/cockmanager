@@ -44,6 +44,7 @@ const RELAXABLE_ERROR_PATTERNS = [
   "직전 라운드 휴식 인원을 모두 다음 라운드에 배치할 수 없습니다",
   "최소 경기 수를 배정할 수 없습니다",
 ];
+const MAX_BRACKET_COURTS = 12;
 
 function shouldOfferRelaxedMode(
   canProceedWithRelaxedMode: boolean | undefined,
@@ -122,7 +123,11 @@ function buildDefaultCourtCount(session: ClubSession) {
       (participant) => participant.status === "REGISTERED"
     ).length;
 
-  return Math.max(1, Math.min(6, Math.ceil(participantCount / 4)));
+  return Math.max(1, Math.min(MAX_BRACKET_COURTS, Math.ceil(participantCount / 4)));
+}
+
+function clampCourtCount(value: number) {
+  return Math.max(1, Math.min(MAX_BRACKET_COURTS, Math.floor(value)));
 }
 
 function groupLabel(division: string) {
@@ -319,7 +324,7 @@ export function SessionBracketPanel({
       [slotKey]: { ...(prev[slotKey] ?? _defaultSlotSettings), ...patch },
     }));
   }
-  const setCourtCount = (n: number) => updateCurrentSlot({ courtCount: n });
+  const setCourtCount = (n: number) => updateCurrentSlot({ courtCount: clampCourtCount(n) });
   const setMinGamesPerPlayer = (n: number) => updateCurrentSlot({ minGamesPerPlayer: n });
   const setSeparateByGender = (b: boolean) => updateCurrentSlot({ separateByGender: b });
   function setFixedPairs(
@@ -1556,7 +1561,7 @@ export function SessionBracketPanel({
               disabled={!canGenerate || loading}
               className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-50"
             >
-              {Array.from({ length: 6 }, (_, index) => index + 1).map(
+              {Array.from({ length: MAX_BRACKET_COURTS }, (_, index) => index + 1).map(
                 (value) => (
                   <option key={value} value={value}>
                     {value}코트

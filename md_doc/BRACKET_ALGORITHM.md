@@ -17,7 +17,7 @@
 
 | 파라미터 | 설명 |
 |---|---|
-| `courtCount` | 사용할 코트 수 (1~6) |
+| `courtCount` | 사용할 코트 수 (1~12) |
 | `minGamesPerPlayer` | 1인 최소 경기 수 (1~5) |
 | `separateByGender` | 남복/여복 분리 여부 |
 | `relaxedMode` | 완화 모드 (제약 조건 일부 해제) |

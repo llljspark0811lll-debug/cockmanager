@@ -41,7 +41,7 @@ type CourtBoardModalProps = {
   onClose: () => void;
 };
 
-const MAX_COURTS = 8;
+const MAX_COURTS = 12;
 const MIN_COURTS = 1;
 const MAX_TEAM_SIZE = 2;
 
