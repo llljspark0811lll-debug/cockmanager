@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { buildSessionOgImage } from "../session-og-image";
+import { buildSessionOgImage } from "../../session-og-image";
 
 export async function GET(
   _request: Request,

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 
+const siteUrl = "https://www.cockmanager.kr";
+const ogVersion = "2";
+
 type SessionLayoutProps = {
   children: React.ReactNode;
   params: Promise<{
@@ -44,12 +47,16 @@ export async function generateMetadata({
 
   const title = session.title;
   const description = `${session.club.name}\n운동 일정 참석 링크`;
-  const imageUrl = `/api/og/session/${encodeURIComponent(token)}`;
+  const encodedToken = encodeURIComponent(token);
+  const pageUrl = `${siteUrl}/session/${encodedToken}`;
+  const imageUrl = `${siteUrl}/api/og/session/${encodedToken}/preview.png?v=${ogVersion}`;
 
   return {
     title,
     description,
     openGraph: {
+      type: "website",
+      url: pageUrl,
       title,
       description,
       images: [
