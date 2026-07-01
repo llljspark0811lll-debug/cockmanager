@@ -42,8 +42,9 @@ export async function generateMetadata({
     };
   }
 
-  const title = `"${session.title}" 참석신청서`;
-  const description = `${session.club.name} 운동 일정 참석 신청 링크`;
+  const title = session.title;
+  const description = `${session.club.name}\n운동 일정 참석 링크`;
+  const imageUrl = `/api/og/session/${encodeURIComponent(token)}`;
 
   return {
     title,
@@ -51,10 +52,20 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${session.title} 참석 신청`,
+        },
+      ],
     },
     twitter: {
+      card: "summary_large_image",
       title,
       description,
+      images: [imageUrl],
     },
   };
 }
