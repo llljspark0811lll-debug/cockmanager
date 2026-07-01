@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 
 const siteUrl = "https://www.cockmanager.kr";
-const ogVersion = "2";
+const ogVersion = "3";
 
 type SessionLayoutProps = {
   children: React.ReactNode;
