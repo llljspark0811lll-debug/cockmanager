@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { buildSessionOgImage } from "../../session-og-image";
+import { buildSessionOgImageResponse } from "../../session-og-image";
 
 export async function GET(
   _request: Request,
@@ -17,15 +16,8 @@ export async function GET(
     },
   });
 
-  const png = await buildSessionOgImage({
+  return buildSessionOgImageResponse({
     title: session?.title ?? "운동 일정 참석 신청",
     clubName: session?.club.name ?? "콕매니저",
-  });
-
-  return new NextResponse(new Uint8Array(png), {
-    headers: {
-      "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=3600, s-maxage=86400",
-    },
   });
 }
