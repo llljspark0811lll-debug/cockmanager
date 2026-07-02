@@ -670,6 +670,8 @@ export function SessionsPanel({
   const [waitlistedPage, setWaitlistedPage] = useState(1);
   const [canceledPage, setCanceledPage] = useState(1);
   const [sessionListPage, setSessionListPage] = useState(1);
+  const sessionListPageChangedByUser = useRef(false);
+  const previousSelectedSessionId = useRef<number | null>(null);
   const [cancelTarget, setCancelTarget] =
     useState<SessionParticipant | null>(null);
   const [reinstateTarget, setReinstateTarget] =
@@ -705,7 +707,17 @@ export function SessionsPanel({
   }, [sessions.length, sessionListPageSize]);
 
   useEffect(() => {
+    const previous = previousSelectedSessionId.current;
+    previousSelectedSessionId.current = selectedSessionId ?? null;
+
     if (!selectedSessionId) {
+      return;
+    }
+
+    if (
+      previous === selectedSessionId ||
+      sessionListPageChangedByUser.current
+    ) {
       return;
     }
 
@@ -749,6 +761,13 @@ export function SessionsPanel({
       startIndex + sessionListPageSize
     );
   }, [sessionListPage, sessions, sessionListPageSize]);
+
+  function handleSessionListPageChange(
+    updater: (current: number) => number
+  ) {
+    sessionListPageChangedByUser.current = true;
+    setSessionListPage(updater);
+  }
 
   const publicSessionLink = useMemo(() => {
     if (!selectedSession) {
@@ -1349,7 +1368,7 @@ export function SessionsPanel({
             <div className="mt-4 flex items-center justify-center gap-2">
               <button
                 onClick={() =>
-                  setSessionListPage((current) =>
+                  handleSessionListPageChange((current) =>
                     Math.max(1, current - 1)
                   )
                 }
@@ -1363,7 +1382,7 @@ export function SessionsPanel({
               </span>
               <button
                 onClick={() =>
-                  setSessionListPage((current) =>
+                  handleSessionListPageChange((current) =>
                     Math.min(sessionListTotalPages, current + 1)
                   )
                 }
