@@ -7,6 +7,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { username, password } = body;
+    const normalizedUsername = String(username ?? "").trim().toLowerCase();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const admin = await prisma.admin.findUnique({
-      where: { username: String(username).trim() },
+      where: { username: normalizedUsername },
     });
 
     if (!admin) {

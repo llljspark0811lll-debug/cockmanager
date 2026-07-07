@@ -1,28 +1,29 @@
 import bcrypt from "bcrypt";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { createToken, setAuthCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramNewClubAlert } from "@/lib/telegram";
 
-const ADMIN_USERNAME_REGEX = /^[A-Za-z0-9]+$/;
+const ADMIN_USERNAME_REGEX = /^[a-z0-9]+$/;
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { clubName, username, email, password, confirmPassword } = body;
     const trimmedClubName = String(clubName ?? "").trim();
-    const trimmedUsername = String(username ?? "").trim();
+    const normalizedUsername = String(username ?? "").trim().toLowerCase();
     const normalizedEmail = String(email ?? "").trim().toLowerCase();
 
     console.log("[signup] New club signup requested", {
       clubName: trimmedClubName,
-      username: trimmedUsername,
+      username: normalizedUsername,
       email: normalizedEmail,
     });
 
     if (
       !trimmedClubName ||
-      !trimmedUsername ||
+      !normalizedUsername ||
       !normalizedEmail ||
       !password ||
       !confirmPassword
@@ -50,17 +51,17 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!ADMIN_USERNAME_REGEX.test(trimmedUsername)) {
+    if (!ADMIN_USERNAME_REGEX.test(normalizedUsername)) {
       return NextResponse.json(
         {
-          error: "관리자 아이디는 영문과 숫자만 사용할 수 있습니다.",
+          error: "관리자 아이디는 영문 소문자와 숫자만 사용할 수 있습니다.",
         },
         { status: 400 }
       );
     }
 
     const existingAdmin = await prisma.admin.findUnique({
-      where: { username: trimmedUsername },
+      where: { username: normalizedUsername },
     });
 
     if (existingAdmin) {
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
 
       const admin = await tx.admin.create({
         data: {
-          username: trimmedUsername,
+          username: normalizedUsername,
           email: normalizedEmail,
           password: hashedPassword,
           clubId: club.id,
@@ -156,6 +157,18 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      Array.isArray(error.meta?.target) &&
+      error.meta.target.includes("username")
+    ) {
+      return NextResponse.json(
+        { error: "이미 사용 중인 관리자 아이디입니다." },
+        { status: 400 }
+      );
+    }
+
     console.error(error);
     return NextResponse.json(
       { error: "서버 오류가 발생했습니다." },
