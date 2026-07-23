@@ -9,7 +9,7 @@ function normalizeBracketMode(value: string | null | undefined): BracketMode {
 }
 
 // PATCH /api/sessions/bracket/rounds
-// Body: { sessionId, generationMode, levelMode?, rounds, levelGroupId? }
+// Body: { sessionId, generationMode, levelMode?, rounds, summary?, levelGroupId? }
 export async function PATCH(req: Request) {
   try {
     const admin = await requireAuthAdmin();
@@ -20,6 +20,7 @@ export async function PATCH(req: Request) {
     const generationMode = normalizeBracketMode(body.generationMode);
     const levelMode = normalizeLevelMode(body.levelMode);
     const rounds = body.rounds;
+    const summary = body.summary;
     const levelGroupId = typeof body.levelGroupId === "string" ? body.levelGroupId : null;
 
     if (!Number.isFinite(sessionId)) {
@@ -52,6 +53,10 @@ export async function PATCH(req: Request) {
     }>;
     const isVariant = Boolean(roundsEnvelope?.variants);
     const variantKey = getVariantKey(generationMode, levelMode);
+    const summaryEnvelope = bracketRecord.summary as VariantEnvelope<{
+      summary: unknown;
+      levelGroupSummaries?: unknown;
+    }>;
 
     // 레벨 그룹 모드: 해당 그룹 rounds만 업데이트
     const variantData = isVariant ? (roundsEnvelope.variants?.[variantKey] ?? roundsEnvelope.variants?.["STANDARD"]) : null;
@@ -72,10 +77,31 @@ export async function PATCH(req: Request) {
           },
         },
       };
+      const summaryVariant = summaryEnvelope.variants?.[variantKey];
+      const levelGroupSummaries = (
+        summaryVariant?.levelGroupSummaries ?? {}
+      ) as Record<string, unknown>;
+      const newSummaryPayload = summary === undefined
+        ? bracketRecord.summary
+        : {
+            variants: {
+              ...summaryEnvelope.variants,
+              [variantKey]: {
+                ...summaryVariant,
+                levelGroupSummaries: {
+                  ...levelGroupSummaries,
+                  [levelGroupId]: summary,
+                },
+              },
+            },
+          };
 
       await prisma.sessionBracket.update({
         where: { sessionId },
-        data: { rounds: newRoundsPayload as never },
+        data: {
+          rounds: newRoundsPayload as never,
+          summary: newSummaryPayload as never,
+        },
       });
 
       return NextResponse.json({ ok: true });
@@ -93,10 +119,24 @@ export async function PATCH(req: Request) {
     } else {
       newRoundsPayload = { rounds };
     }
+    let newSummaryPayload: unknown = bracketRecord.summary;
+    if (summary !== undefined) {
+      newSummaryPayload = isVariant
+        ? {
+            variants: {
+              ...summaryEnvelope.variants,
+              [variantKey]: { summary },
+            },
+          }
+        : summary;
+    }
 
     await prisma.sessionBracket.update({
       where: { sessionId },
-      data: { rounds: newRoundsPayload as never },
+      data: {
+        rounds: newRoundsPayload as never,
+        summary: newSummaryPayload as never,
+      },
     });
 
     return NextResponse.json({ ok: true });

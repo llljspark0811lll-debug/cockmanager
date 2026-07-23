@@ -165,6 +165,13 @@ function getParticipantGenderGroup(participant: SessionParticipant) {
   return "OTHER";
 }
 
+function getPlayerDivision(gender: string) {
+  const raw = String(gender).trim().toLowerCase();
+  if (["남", "남자", "m", "male"].includes(raw)) return "MEN";
+  if (["여", "여자", "f", "female"].includes(raw)) return "WOMEN";
+  return "ALL";
+}
+
 function ScoreInputRow({
   roundNumber,
   courtNumber,
@@ -647,14 +654,25 @@ export function SessionBracketPanel({
     );
     const merged = Array.from({ length: maxRounds }, (_, ri) => {
       const allMatches: Array<ReturnType<typeof Object.assign>> = [];
-      const allResting: typeof bracket.rounds[0]["restingPlayers"] = [];
+      const allResting: Array<
+        typeof bracket.rounds[0]["restingPlayers"][0] & {
+          _levelGroupId?: string;
+          _hasGroupRound?: boolean;
+        }
+      > = [];
       let courtOffset = 0;
 
       groups.forEach((g) => {
         const round = g.rounds.find((r) => r.roundNumber === ri + 1);
         if (!round) {
           // 이 라운드에 코트 배정 없는 그룹 — 전원 휴식
-          allResting.push(...g.summary.playerStats);
+          allResting.push(
+            ...g.summary.playerStats.map((player) => ({
+              ...player,
+              _levelGroupId: g.groupId,
+              _hasGroupRound: false,
+            }))
+          );
           return;
         }
         round.matches.forEach((m, origMatchIdx) => {
@@ -667,7 +685,13 @@ export function SessionBracketPanel({
           }));
         });
         courtOffset += round.matches.length;
-        allResting.push(...round.restingPlayers);
+        allResting.push(
+          ...round.restingPlayers.map((player) => ({
+            ...player,
+            _levelGroupId: g.groupId,
+            _hasGroupRound: true,
+          }))
+        );
       });
 
       return { roundNumber: ri + 1, matches: allMatches, restingPlayers: allResting };
@@ -1103,8 +1127,11 @@ export function SessionBracketPanel({
       return b.rounds;
     };
     const mutableRounds = getMutableRounds(newBracket);
-    const fromMatch = mutableRounds[swapSelection.roundIndex]?.matches[fromOrigMatchIdx];
-    const toMatch = mutableRounds[roundIndex]?.matches[toOrigMatchIdx];
+    const mutableRound = mutableRounds.find(
+      (candidate) => candidate.roundNumber === displayRounds[roundIndex]?.roundNumber
+    );
+    const fromMatch = mutableRound?.matches[fromOrigMatchIdx];
+    const toMatch = mutableRound?.matches[toOrigMatchIdx];
     if (!fromMatch || !toMatch) { setSwapSelection(null); return; }
 
     const fromTeam = swapSelection.team === "A" ? fromMatch.teamA : fromMatch.teamB;
@@ -1153,6 +1180,186 @@ export function SessionBracketPanel({
       toCourtNumber: toDisplayMatch?._origCourtNumber ?? toMatch.courtNumber,
       fromPlayerName: fromPlayer.name,
       toPlayerName: toPlayer.name,
+    });
+  }
+
+  function recalculateBracketAfterRestSwap(
+    nextBracket: SessionBracket,
+    groupId: string | null
+  ) {
+    const rounds =
+      groupId && nextBracket.levelGroupData
+        ? nextBracket.levelGroupData.find((group) => group.groupId === groupId)?.rounds
+        : nextBracket.rounds;
+    const summary =
+      groupId && nextBracket.levelGroupData
+        ? nextBracket.levelGroupData.find((group) => group.groupId === groupId)?.summary
+        : nextBracket.summary;
+    if (!rounds || !summary) return;
+
+    const games = new Map<string, number>();
+    const rests = new Map<string, number>();
+    for (const round of rounds) {
+      for (const match of round.matches) {
+        match.teamA.totalScore = match.teamA.players.reduce((sum, player) => sum + player.score, 0);
+        match.teamB.totalScore = match.teamB.players.reduce((sum, player) => sum + player.score, 0);
+        match.balanceGap = Math.abs(match.teamA.totalScore - match.teamB.totalScore);
+        for (const player of [...match.teamA.players, ...match.teamB.players]) {
+          games.set(player.playerId, (games.get(player.playerId) ?? 0) + 1);
+        }
+      }
+      for (const player of round.restingPlayers) {
+        rests.set(player.playerId, (rests.get(player.playerId) ?? 0) + 1);
+      }
+    }
+
+    summary.playerStats = summary.playerStats
+      .map((player) => ({
+        ...player,
+        games: games.get(player.playerId) ?? 0,
+        rests: rests.get(player.playerId) ?? 0,
+      }))
+      .sort((left, right) =>
+        right.games - left.games ||
+        right.score - left.score ||
+        left.name.localeCompare(right.name, "ko")
+      );
+  }
+
+  async function saveEditedRounds(
+    nextBracket: SessionBracket,
+    groupId: string | null
+  ) {
+    const group = groupId
+      ? nextBracket.levelGroupData?.find((candidate) => candidate.groupId === groupId)
+      : null;
+    const rounds = group?.rounds ?? nextBracket.rounds;
+    const summary = group?.summary ?? nextBracket.summary;
+
+    try {
+      const res = await fetch("/api/sessions/bracket/rounds", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: session.id,
+          generationMode: nextBracket.config.generationMode ?? "STANDARD",
+          levelMode: nextBracket.config.levelMode ?? "none",
+          rounds,
+          summary,
+          levelGroupId: groupId ?? undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "선수 위치 저장에 실패했습니다. 페이지를 새로고침 해주세요.");
+      }
+    } catch (saveError) {
+      if (swapNoticeTimeoutRef.current) clearTimeout(swapNoticeTimeoutRef.current);
+      setSwapNotice(
+        saveError instanceof Error
+          ? saveError.message
+          : "선수 위치 저장에 실패했습니다. 페이지를 새로고침 해주세요."
+      );
+    }
+  }
+
+  function handleRestingPlayerClick(roundIndex: number, restingPlayerIndex: number) {
+    if (!bracket || !swapSelection) {
+      showTransientNotice("먼저 경기 중인 선수를 선택해 주세요.");
+      return;
+    }
+    if (swapSelection.roundIndex !== roundIndex) {
+      showTransientNotice(
+        "다른 라운드 선수와는 위치를 바꿀 수 없습니다.\n같은 라운드에서 선택해 주세요."
+      );
+      return;
+    }
+
+    type DisplayMatch = typeof displayRounds[0]["matches"][0] & {
+      _levelGroupId?: string;
+      _origMatchIndex?: number;
+      _origCourtNumber?: number;
+    };
+    type DisplayRestingPlayer = typeof displayRounds[0]["restingPlayers"][0] & {
+      _levelGroupId?: string;
+      _hasGroupRound?: boolean;
+    };
+    const selectedDisplayMatch = displayRounds[roundIndex]?.matches[
+      swapSelection.matchIndex
+    ] as DisplayMatch | undefined;
+    const restingPlayer = displayRounds[roundIndex]?.restingPlayers[
+      restingPlayerIndex
+    ] as DisplayRestingPlayer | undefined;
+    if (!selectedDisplayMatch || !restingPlayer) return;
+
+    const matchGroupId = selectedDisplayMatch._levelGroupId ?? null;
+    const restingGroupId = restingPlayer._levelGroupId ?? null;
+    if (bracket.levelGroupData && matchGroupId !== restingGroupId) {
+      showTransientNotice("급수 구분 대진에서는 같은 급수 그룹 내에서만 선수를 교체할 수 있습니다.");
+      return;
+    }
+    if (restingPlayer._hasGroupRound === false) {
+      showTransientNotice("이 급수 그룹에 경기가 없는 라운드에서는 선수를 교체할 수 없습니다.");
+      return;
+    }
+    if (bracket.config.generationMode === "TEAM_BATTLE") {
+      const restingTeam = bracket.config.teamAssignments?.[restingPlayer.playerId];
+      if (restingTeam !== swapSelection.team) {
+        showTransientNotice("팀 대항 자동대진에서는 같은 팀 선수끼리만 교체할 수 있습니다.");
+        return;
+      }
+      if (
+        selectedDisplayMatch.division !== "ALL" &&
+        selectedDisplayMatch.division !== getPlayerDivision(restingPlayer.gender)
+      ) {
+        showTransientNotice("팀 대항 자동대진에서는 같은 복식 구분 안에서만 교체할 수 있습니다.");
+        return;
+      }
+    }
+
+    const nextBracket = JSON.parse(JSON.stringify(bracket)) as SessionBracket;
+    const mutableRounds =
+      matchGroupId && nextBracket.levelGroupData
+        ? nextBracket.levelGroupData.find((group) => group.groupId === matchGroupId)?.rounds
+        : nextBracket.rounds;
+    const roundNumber = displayRounds[roundIndex]!.roundNumber;
+    const mutableRound = mutableRounds?.find((round) => round.roundNumber === roundNumber);
+    const matchIndex = selectedDisplayMatch._origMatchIndex ?? swapSelection.matchIndex;
+    const mutableMatch = mutableRound?.matches[matchIndex];
+    if (!mutableRound || !mutableMatch) return;
+
+    const team = swapSelection.team === "A" ? mutableMatch.teamA : mutableMatch.teamB;
+    const outgoingPlayer = team.players[swapSelection.playerIndex];
+    const mutableRestIndex = mutableRound.restingPlayers.findIndex(
+      (player) => player.playerId === restingPlayer.playerId
+    );
+    if (!outgoingPlayer || mutableRestIndex < 0) return;
+
+    const confirmed = window.confirm(
+      "휴식자와 수동 교체 후에는 연속 휴식이나 경기 수 차이가 생길 수 있습니다. 그래도 진행하시겠습니까?"
+    );
+    if (!confirmed) {
+      setSwapSelection(null);
+      return;
+    }
+
+    team.players[swapSelection.playerIndex] = mutableRound.restingPlayers[mutableRestIndex]!;
+    mutableRound.restingPlayers[mutableRestIndex] = outgoingPlayer;
+    recalculateBracketAfterRestSwap(nextBracket, matchGroupId);
+    setBracketSlots((prev) => ({ ...prev, [slotKey]: nextBracket }));
+    setSwapSelection(null);
+    setSwapNotice("");
+    void saveEditedRounds(nextBracket, matchGroupId);
+
+    void notifyAdminActivity({
+      event: "SESSION_BRACKET_SWAP",
+      sessionTitle: session.title,
+      roundNumber,
+      fromCourtNumber: selectedDisplayMatch._origCourtNumber ?? mutableMatch.courtNumber,
+      toCourtNumber: selectedDisplayMatch._origCourtNumber ?? mutableMatch.courtNumber,
+      fromPlayerName: outgoingPlayer.name,
+      toPlayerName: restingPlayer.name,
     });
   }
 
@@ -1609,9 +1816,7 @@ export function SessionBracketPanel({
         </div>
 
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-bold leading-6 text-sky-700">
-          {generationMode === "TEAM_BATTLE"
-            ? "선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다. 팀 대항 자동대진에서는 같은 팀 안에서만 위치를 바꿀 수 있습니다."
-            : "선수 이름을 클릭하면 같은 라운드 안에서 위치를 바꿀 수 있습니다."}
+          선수 이름을 클릭하면 같은 라운드의 경기 선수 또는 휴식 선수와 바꿀 수 있습니다.
           
         </div>
 
@@ -2142,7 +2347,7 @@ export function SessionBracketPanel({
               {swapSelection && (
                 <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-2.5">
                   <span className="text-xs font-bold text-sky-700">
-                    ✦ 바꿀 선수를 같은 라운드에서 선택하세요
+                    ✦ 바꿀 경기 선수 또는 휴식 선수를 같은 라운드에서 선택하세요
                   </span>
                   <button
                     type="button"
@@ -2358,13 +2563,20 @@ export function SessionBracketPanel({
                       </p>
                       {round.restingPlayers.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {round.restingPlayers.map((player) => (
-                            <span
+                          {round.restingPlayers.map((player, restingPlayerIndex) => (
+                            <button
                               key={`${round.roundNumber}-${player.playerId}`}
-                              className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600"
+                              type="button"
+                              onClick={() => handleRestingPlayerClick(roundIndex, restingPlayerIndex)}
+                              className={[
+                                "rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600 transition",
+                                swapSelection?.roundIndex === roundIndex
+                                  ? "ring-1 ring-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                                  : "hover:bg-slate-100",
+                              ].join(" ")}
                             >
                               {stripTrialPrefix(player.name)}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       ) : (
